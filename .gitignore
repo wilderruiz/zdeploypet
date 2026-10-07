@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+local.settings.json
+MillenovaDeployIncidents/
+*.key
+*.pem

@@ -1,0 +1,24 @@
+<Window x:Class="MillenovaDeployConsole.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Millenova Deploy Console — Discovery" Height="650" Width="900"
+        MinHeight="520" MinWidth="760" WindowStartupLocation="CenterScreen">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock FontSize="26" FontWeight="SemiBold" Text="Millenova Deploy Console" />
+        <TextBlock Grid.Row="1" Margin="0,8,0,20" Foreground="#555"
+                   Text="PDA-0 read-only environment discovery. No credentials, server connections, or deployments." />
+        <TextBox x:Name="ResultsTextBox" Grid.Row="2" IsReadOnly="True" TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="14" Padding="14"
+                 Text="Discovery has not run." />
+        <StackPanel Grid.Row="3" Margin="0,18,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+            <TextBlock x:Name="StatusText" Margin="0,0,16,0" VerticalAlignment="Center" Foreground="#555" />
+            <Button x:Name="DiscoverButton" Padding="20,9" Click="DiscoverButton_Click" Content="Run discovery" />
+        </StackPanel>
+    </Grid>
+</Window>
