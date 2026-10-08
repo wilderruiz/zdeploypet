@@ -2,6 +2,8 @@
 
 A friendly Windows + WSL deployment companion. ZDeployPet is designed to unlock approved SSH deployment keys once per bounded session, run allowlisted deployment profiles, monitor structured results, and keep production credentials local.
 
+The authoritative roadmap, phase status and restart handoff are maintained in [`ZDEPLOYPET_IMPLEMENTATION_PLAN.md`](ZDEPLOYPET_IMPLEMENTATION_PLAN.md).
+
 The current PDA-0A build is intentionally read-only. First run creates a validated local deployment profile, then discovery verifies Windows, .NET, WSL, OpenSSH, the selected project, approved script fingerprint, and optional deployment-report storage. It does not create keys, start an SSH agent, change SSH configuration, contact a server, or run a deployment.
 
 The existing `deploy_millenova.sh` remains owned by the Millenova repository and is not copied or modified here.
