@@ -4,6 +4,6 @@ obj/
 *.user
 *.suo
 local.settings.json
-MillenovaDeployIncidents/
+ZDeployPetIncidents/
 *.key
 *.pem
