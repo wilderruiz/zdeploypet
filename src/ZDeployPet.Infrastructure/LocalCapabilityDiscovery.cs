@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
-using MillenovaDeployConsole.Core;
+using ZDeployPet.Core;
 
-namespace MillenovaDeployConsole.Infrastructure;
+namespace ZDeployPet.Infrastructure;
 
 public sealed class LocalCapabilityDiscovery
 {

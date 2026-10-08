@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\MillenovaDeployConsole.Core\MillenovaDeployConsole.Core.csproj" />
+    <ProjectReference Include="..\ZDeployPet.Core\ZDeployPet.Core.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

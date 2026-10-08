@@ -1,4 +1,4 @@
-namespace MillenovaDeployConsole.Core;
+namespace ZDeployPet.Core;
 
 public sealed record DiscoveryOptions(
     string WindowsRepositoryPath,

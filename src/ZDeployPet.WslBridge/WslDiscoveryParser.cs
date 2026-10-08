@@ -1,6 +1,6 @@
-using MillenovaDeployConsole.Core;
+using ZDeployPet.Core;
 
-namespace MillenovaDeployConsole.WslBridge;
+namespace ZDeployPet.WslBridge;
 
 public static class WslDiscoveryParser
 {

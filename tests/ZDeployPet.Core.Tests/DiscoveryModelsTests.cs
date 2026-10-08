@@ -1,6 +1,6 @@
-using MillenovaDeployConsole.Core;
+using ZDeployPet.Core;
 
-namespace MillenovaDeployConsole.Core.Tests;
+namespace ZDeployPet.Core.Tests;
 
 public sealed class DiscoveryModelsTests
 {

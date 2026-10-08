@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MillenovaDeployConsole.Core\MillenovaDeployConsole.Core.csproj" />
+    <ProjectReference Include="..\..\src\ZDeployPet.Core\ZDeployPet.Core.csproj" />
   </ItemGroup>
 
 </Project>

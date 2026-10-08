@@ -21,9 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MillenovaDeployConsole.Core\MillenovaDeployConsole.Core.csproj" />
-    <ProjectReference Include="..\..\src\MillenovaDeployConsole.Infrastructure\MillenovaDeployConsole.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\MillenovaDeployConsole.WslBridge\MillenovaDeployConsole.WslBridge.csproj" />
+    <ProjectReference Include="..\..\src\ZDeployPet.Core\ZDeployPet.Core.csproj" />
+    <ProjectReference Include="..\..\src\ZDeployPet.Infrastructure\ZDeployPet.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\ZDeployPet.WslBridge\ZDeployPet.WslBridge.csproj" />
   </ItemGroup>
 
 </Project>

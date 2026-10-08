@@ -1,13 +1,13 @@
-using MillenovaDeployConsole.WslBridge;
+using ZDeployPet.WslBridge;
 
-namespace MillenovaDeployConsole.Infrastructure.Tests;
+namespace ZDeployPet.Infrastructure.Tests;
 
 public sealed class WslDiscoveryParserTests
 {
     [Fact]
     public void ProbeUsesExecAndPreservesPositionalPaths()
     {
-        var options = new MillenovaDeployConsole.Core.DiscoveryOptions(
+        var options = new ZDeployPet.Core.DiscoveryOptions(
             "H:\\repo", "Ubuntu-24.04", "/mnt/h/repo", "/home/user/reports");
 
         var arguments = WslCapabilityDiscovery.CreateProbeStartInfo(options).ArgumentList;

@@ -1,7 +1,7 @@
-<Window x:Class="MillenovaDeployConsole.App.MainWindow"
+<Window x:Class="ZDeployPet.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Millenova Deploy Console — Discovery" Height="650" Width="900"
+        Title="ZDeployPet — Discovery" Height="650" Width="900"
         MinHeight="520" MinWidth="760" WindowStartupLocation="CenterScreen">
     <Grid Margin="28">
         <Grid.RowDefinitions>
@@ -10,7 +10,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TextBlock FontSize="26" FontWeight="SemiBold" Text="Millenova Deploy Console" />
+        <TextBlock FontSize="26" FontWeight="SemiBold" Text="ZDeployPet" />
         <TextBlock Grid.Row="1" Margin="0,8,0,20" Foreground="#555"
                    Text="PDA-0 read-only environment discovery. No credentials, server connections, or deployments." />
         <TextBox x:Name="ResultsTextBox" Grid.Row="2" IsReadOnly="True" TextWrapping="Wrap"

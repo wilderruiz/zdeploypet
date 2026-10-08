@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using MillenovaDeployConsole.Core;
+using ZDeployPet.Core;
 
-namespace MillenovaDeployConsole.WslBridge;
+namespace ZDeployPet.WslBridge;
 
 public sealed class WslCapabilityDiscovery
 {

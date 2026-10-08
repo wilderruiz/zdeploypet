@@ -1,6 +1,6 @@
-using MillenovaDeployConsole.Infrastructure;
+using ZDeployPet.Infrastructure;
 
-namespace MillenovaDeployConsole.Infrastructure.Tests;
+namespace ZDeployPet.Infrastructure.Tests;
 
 public sealed class LocalCapabilityDiscoveryTests
 {

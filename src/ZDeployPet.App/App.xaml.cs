@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace MillenovaDeployConsole.App;
+namespace ZDeployPet.App;
 
 public partial class App : Application
 {

@@ -1,10 +1,10 @@
 using System.Text;
 using System.Windows;
-using MillenovaDeployConsole.Core;
-using MillenovaDeployConsole.Infrastructure;
-using MillenovaDeployConsole.WslBridge;
+using ZDeployPet.Core;
+using ZDeployPet.Infrastructure;
+using ZDeployPet.WslBridge;
 
-namespace MillenovaDeployConsole.App;
+namespace ZDeployPet.App;
 
 public partial class MainWindow : Window
 {
