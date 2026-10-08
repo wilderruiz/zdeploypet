@@ -19,6 +19,18 @@ public sealed record InputHistory(
     public static InputHistory Empty { get; } = new([], [], [], [], [], [], [], [], [], [], []);
 }
 
+public sealed record SetupTargetDraft(string Label, string Host, int Port, string User);
+public sealed record SetupDestinationDraft(string TargetLabel, string Label, string RemotePath);
+public sealed record SetupDraft(
+    string ProfileName,
+    string ProjectPath,
+    string WslDistribution,
+    string ScriptPath,
+    string ReportRoot,
+    string ConfirmationPhrase,
+    IReadOnlyList<SetupTargetDraft> Targets,
+    IReadOnlyList<SetupDestinationDraft> Destinations);
+
 public sealed class InputHistoryStore
 {
     private const int MaximumSuggestionsPerField = 12;
@@ -28,6 +40,7 @@ public sealed class InputHistoryStore
         WriteIndented = true
     };
     private readonly string _historyPath;
+    private readonly string _draftPath;
 
     public InputHistoryStore(string? root = null)
     {
@@ -35,6 +48,7 @@ public sealed class InputHistoryStore
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Zomniverse", "ZDeployPet");
         _historyPath = Path.Combine(storageRoot, "input-history.json");
+        _draftPath = Path.Combine(storageRoot, "setup-draft.json");
     }
 
     public async Task<InputHistory> LoadAsync(CancellationToken cancellationToken = default)
@@ -73,6 +87,36 @@ public sealed class InputHistoryStore
         File.Move(temporaryPath, _historyPath, true);
     }
 
+    public async Task<SetupDraft?> LoadDraftAsync(CancellationToken cancellationToken = default)
+    {
+        if (!File.Exists(_draftPath)) return null;
+        await using FileStream stream = File.OpenRead(_draftPath);
+        return await JsonSerializer.DeserializeAsync<SetupDraft>(stream, JsonOptions, cancellationToken);
+    }
+
+    public async Task SaveDraftAsync(SetupDraft draft, CancellationToken cancellationToken = default)
+    {
+        await WriteAtomicAsync(_draftPath, draft, cancellationToken);
+    }
+
+    public async Task RememberDraftAsync(SetupDraft draft, CancellationToken cancellationToken = default)
+    {
+        InputHistory current = await LoadAsync(cancellationToken);
+        InputHistory updated = new(
+            Merge(current.ProfileNames, [draft.ProfileName]),
+            Merge(current.ProjectPaths, [draft.ProjectPath]),
+            Merge(current.ScriptPaths, [draft.ScriptPath]),
+            Merge(current.ReportRoots, [draft.ReportRoot]),
+            Merge(current.ConfirmationPhrases, [draft.ConfirmationPhrase]),
+            Merge(current.TargetLabels, draft.Targets.Select(target => target.Label)),
+            Merge(current.Hosts, draft.Targets.Select(target => target.Host)),
+            Merge(current.Ports, draft.Targets.Select(target => target.Port.ToString())),
+            Merge(current.Users, draft.Targets.Select(target => target.User)),
+            Merge(current.DestinationLabels, draft.Destinations.Select(destination => destination.Label)),
+            Merge(current.RemotePaths, draft.Destinations.Select(destination => destination.RemotePath)));
+        await WriteAtomicAsync(_historyPath, updated, cancellationToken);
+    }
+
     public Task ClearAsync()
     {
         if (File.Exists(_historyPath)) File.Delete(_historyPath);
@@ -86,4 +130,18 @@ public sealed class InputHistoryStore
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(MaximumSuggestionsPerField)
             .ToArray();
+
+    private static async Task WriteAtomicAsync<T>(string path, T value, CancellationToken cancellationToken)
+    {
+        string? directory = Path.GetDirectoryName(path);
+        if (directory is null) throw new InvalidOperationException("Local data path has no parent directory.");
+        Directory.CreateDirectory(directory);
+        string temporaryPath = path + ".tmp";
+        await using (FileStream stream = new(temporaryPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            await JsonSerializer.SerializeAsync(stream, value, JsonOptions, cancellationToken);
+            await stream.FlushAsync(cancellationToken);
+        }
+        File.Move(temporaryPath, path, true);
+    }
 }

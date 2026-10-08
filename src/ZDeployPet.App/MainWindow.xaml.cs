@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -52,7 +53,16 @@ public partial class MainWindow : Window
             if (_activeProfile is null)
             {
                 BeginNewProfile();
-                ShowSetup("No deployment profile has been saved yet. Complete the five setup sections above.");
+                SetupDraft? draft = await _inputHistoryStore.LoadDraftAsync();
+                if (draft is not null)
+                {
+                    PopulateDraft(draft);
+                    ShowSetup("Your unfinished setup was restored. Complete the five sections when ready.");
+                }
+                else
+                {
+                    ShowSetup("No deployment profile has been saved yet. Complete the five setup sections above.");
+                }
             }
             else
             {
@@ -115,6 +125,33 @@ public partial class MainWindow : Window
         }
     }
 
+    private void PopulateDraft(SetupDraft draft)
+    {
+        ProfileNameTextBox.Text = draft.ProfileName;
+        ProjectPathTextBox.Text = draft.ProjectPath;
+        DistributionComboBox.SelectedItem = draft.WslDistribution;
+        ScriptPathTextBox.Text = draft.ScriptPath;
+        ReportRootTextBox.Text = draft.ReportRoot;
+        ConfirmationTextBox.Text = draft.ConfirmationPhrase;
+        _targetDrafts.Clear();
+        foreach (SetupTargetDraft target in draft.Targets)
+        {
+            _targetDrafts.Add(new TargetDraft { Label = target.Label, Host = target.Host, Port = target.Port, User = target.User });
+        }
+        if (_targetDrafts.Count == 0) _targetDrafts.Add(new TargetDraft { Port = 22 });
+        _destinationDrafts.Clear();
+        foreach (SetupDestinationDraft destination in draft.Destinations)
+        {
+            _destinationDrafts.Add(new DestinationDraft
+            {
+                TargetLabel = destination.TargetLabel,
+                Label = destination.Label,
+                RemotePath = destination.RemotePath
+            });
+        }
+        if (_destinationDrafts.Count == 0) _destinationDrafts.Add(new DestinationDraft());
+    }
+
     private void BrowseProject_Click(object sender, RoutedEventArgs e)
     {
         OpenFolderDialog dialog = new() { Title = "Choose the project ZDeployPet may inspect" };
@@ -153,6 +190,10 @@ public partial class MainWindow : Window
             TargetsGrid.CommitEdit(DataGridEditingUnit.Row, true);
             DestinationsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
             DestinationsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            SetupDraft draft = BuildDraft();
+            await _inputHistoryStore.SaveDraftAsync(draft);
+            await _inputHistoryStore.RememberDraftAsync(draft);
+            await LoadSuggestionsAsync();
             string distribution = DistributionComboBox.SelectedItem as string ?? string.Empty;
             WslPathResolution resolution = await _profileDiscovery.ResolveAndVerifyProjectPathAsync(
                 distribution, ProjectPathTextBox.Text.Trim());
@@ -232,6 +273,38 @@ public partial class MainWindow : Window
             ConfirmationTextBox.Text.Trim(),
             targets,
             destinations);
+    }
+
+    private SetupDraft BuildDraft() => new(
+        ProfileNameTextBox.Text.Trim(),
+        ProjectPathTextBox.Text.Trim(),
+        DistributionComboBox.SelectedItem as string ?? string.Empty,
+        ScriptPathTextBox.Text.Trim(),
+        ReportRootTextBox.Text.Trim(),
+        ConfirmationTextBox.Text.Trim(),
+        _targetDrafts.Where(target => !target.IsBlank)
+            .Select(target => new SetupTargetDraft(target.Label.Trim(), target.Host.Trim(), target.Port, target.User.Trim()))
+            .ToArray(),
+        _destinationDrafts.Where(destination => !destination.IsBlank)
+            .Select(destination => new SetupDestinationDraft(
+                destination.TargetLabel.Trim(), destination.Label.Trim(), destination.RemotePath.Trim()))
+            .ToArray());
+
+    private void Window_Closing(object? sender, CancelEventArgs e)
+    {
+        if (SetupPanel.Visibility != Visibility.Visible) return;
+        try
+        {
+            TargetsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            TargetsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            DestinationsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            DestinationsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            _inputHistoryStore.SaveDraftAsync(BuildDraft()).GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // Closing must not be blocked if local draft persistence is unavailable.
+        }
     }
 
     private void EditProfile_Click(object sender, RoutedEventArgs e)
