@@ -3,6 +3,23 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ZDeployPet" Height="820" Width="1040" MinHeight="650" MinWidth="860"
         WindowStartupLocation="CenterScreen" Loaded="Window_Loaded">
+    <Window.Resources>
+        <Style TargetType="{x:Type ToolTip}">
+            <Setter Property="MaxWidth" Value="440" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap" LineHeight="20" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="{x:Type GroupBox}">
+            <Setter Property="ToolTipService.InitialShowDelay" Value="350" />
+            <Setter Property="ToolTipService.ShowDuration" Value="20000" />
+        </Style>
+    </Window.Resources>
     <Grid Margin="28">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -21,7 +38,8 @@
                     <TextBlock TextWrapping="Wrap" Text="Set up your deployment profile. ZDeployPet will check and save these settings only on this computer. It will not connect to your servers, ask for passwords or deploy anything yet." />
                 </Border>
 
-                <GroupBox Header="1 — Choose the project you want to deploy" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="1 — Choose the project you want to deploy" Padding="12" Margin="0,0,0,12"
+                          ToolTip="Identify this deployment profile, select the project folder on Windows, and choose the WSL Linux environment that can access it. ZDeployPet checks the matching Linux path so the deployment script can run from the correct project later.">
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -38,7 +56,8 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="2 — Choose the deployment script and safety settings" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="2 — Choose the deployment script and safety settings" Padding="12" Margin="0,0,0,12"
+                          ToolTip="Choose the existing deployment script inside your project, where its deployment reports are stored, and the exact phrase required before a live deployment. These settings help ZDeployPet run only the approved script and prevent accidental deployments.">
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -51,7 +70,8 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="3 — Add the servers that receive your files" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="3 — Add the servers that receive your files" Padding="12" Margin="0,0,0,12"
+                          ToolTip="List each server used by the deployment, including its friendly name, hostname or IP address, SSH port and username. This section describes connection destinations only; it does not connect, sign in or store a password.">
                     <DataGrid x:Name="TargetsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Server name" Binding="{Binding Label}" Width="140" />
@@ -62,7 +82,8 @@
                     </DataGrid>
                 </GroupBox>
 
-                <GroupBox Header="4 — Choose where each part of the project goes" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="4 — Choose where each part of the project goes" Padding="12" Margin="0,0,0,12"
+                          ToolTip="Map each deployed part—such as a website, private configuration file or backend application—to its server and exact remote folder or file path. A server can have several destinations when different parts must be kept separate.">
                     <StackPanel>
                         <TextBlock Margin="4,0,4,9" TextWrapping="Wrap" Text="Add one row for every remote folder or file. The server name must match a server entered above." />
                         <DataGrid x:Name="DestinationsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
@@ -75,7 +96,8 @@
                     </StackPanel>
                 </GroupBox>
 
-                <GroupBox Header="5 — Check and save your profile" Padding="12">
+                <GroupBox Header="5 — Check and save your profile" Padding="12"
+                          ToolTip="Check that all local paths, server details and destination mappings are valid, then save the profile on this computer. Saving does not contact a server or deploy anything, and no passwords or private keys are stored in the profile.">
                     <StackPanel>
                         <TextBlock TextWrapping="Wrap" Text="Your profile is saved only in your Windows Local Application Data folder and is not added to Git. ZDeployPet never stores passwords, key passphrases or private-key contents in this profile." />
                         <TextBlock x:Name="SetupValidationText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#A02020" />
