@@ -37,7 +37,7 @@ public partial class MainWindow : Window
             if (_activeProfile is null)
             {
                 BeginNewProfile();
-                ShowSetup("No local deployment profile exists. Complete these four non-deploying setup steps.");
+                ShowSetup("No deployment profile has been saved yet. Complete the five setup sections above.");
             }
             else
             {
@@ -250,7 +250,7 @@ public partial class MainWindow : Window
 
     private void ShowSetup(string status)
     {
-        SubtitleText.Text = "PDA-0A — Create a local, validated deployment profile before authentication setup.";
+        SubtitleText.Text = "Tell ZDeployPet what to deploy and where it should go.";
         SetupPanel.Visibility = Visibility.Visible;
         DiscoveryPanel.Visibility = Visibility.Collapsed;
         SaveProfileButton.Visibility = Visibility.Visible;

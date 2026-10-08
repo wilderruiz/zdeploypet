@@ -18,63 +18,66 @@
         <ScrollViewer x:Name="SetupPanel" Grid.Row="2" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
             <StackPanel Margin="0,0,14,0">
                 <Border Padding="14" Margin="0,0,0,14" Background="#FFF5E6" BorderBrush="#E6C77A" BorderThickness="1">
-                    <TextBlock TextWrapping="Wrap" Text="First-run setup is local and non-deploying. ZDeployPet will validate your project, WSL path, script and destination definitions. It will not contact a server or create credentials in this phase." />
+                    <TextBlock TextWrapping="Wrap" Text="Set up your deployment profile. ZDeployPet will check and save these settings only on this computer. It will not connect to your servers, ask for passwords or deploy anything yet." />
                 </Border>
 
-                <GroupBox Header="1 — Project and WSL" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="1 — Choose the project you want to deploy" Padding="12" Margin="0,0,0,12">
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <TextBlock VerticalAlignment="Center" Text="Profile name" />
                         <TextBox x:Name="ProfileNameTextBox" Grid.Column="1" Grid.ColumnSpan="2" Margin="8,4" Padding="7" />
-                        <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Windows project folder" />
+                        <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Project folder" />
                         <TextBox x:Name="ProjectPathTextBox" Grid.Row="1" Grid.Column="1" Margin="8,4" Padding="7" />
                         <Button Grid.Row="1" Grid.Column="2" Margin="4" Padding="14,7" Click="BrowseProject_Click" Content="Browse…" />
-                        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="WSL distribution" />
+                        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Linux environment (WSL)" />
                         <ComboBox x:Name="DistributionComboBox" Grid.Row="2" Grid.Column="1" Margin="8,4" Padding="5" IsEditable="False" />
                         <Button Grid.Row="2" Grid.Column="2" Margin="4" Padding="14,7" Click="RefreshDistributions_Click" Content="Refresh" />
-                        <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Verified WSL project path" />
+                        <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Project path in WSL" />
                         <TextBox x:Name="WslPathTextBox" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="8,4" Padding="7" IsReadOnly="True" />
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="2 — Approved runner and reporting" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="2 — Choose the deployment script and safety settings" Padding="12" Margin="0,0,0,12">
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                        <TextBlock VerticalAlignment="Center" Text="Script path inside project" />
+                        <TextBlock VerticalAlignment="Center" Text="Deployment script" />
                         <TextBox x:Name="ScriptPathTextBox" Grid.Column="1" Margin="8,4" Padding="7" ToolTip="Example: deploy.sh or scripts/deploy.sh" />
-                        <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="WSL report root (optional)" />
+                        <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Deployment report folder (optional)" />
                         <TextBox x:Name="ReportRootTextBox" Grid.Row="1" Grid.Column="1" Margin="8,4" Padding="7" />
-                        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Live confirmation phrase" />
+                        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Phrase required to deploy" />
                         <TextBox x:Name="ConfirmationTextBox" Grid.Row="2" Grid.Column="1" Margin="8,4" Padding="7" Text="DEPLOY" />
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="3 — SSH targets (click the blank row to add another)" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="3 — Add the servers that receive your files" Padding="12" Margin="0,0,0,12">
                     <DataGrid x:Name="TargetsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Label}" Width="120" />
-                            <DataGridTextColumn Header="Host / IP" Binding="{Binding Host}" Width="*" />
-                            <DataGridTextColumn Header="Port" Binding="{Binding Port}" Width="70" />
-                            <DataGridTextColumn Header="SSH user" Binding="{Binding User}" Width="160" />
+                            <DataGridTextColumn Header="Server name" Binding="{Binding Label}" Width="140" />
+                            <DataGridTextColumn Header="Hostname or IP address" Binding="{Binding Host}" Width="*" />
+                            <DataGridTextColumn Header="SSH port" Binding="{Binding Port}" Width="90" />
+                            <DataGridTextColumn Header="Username" Binding="{Binding User}" Width="160" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </GroupBox>
 
-                <GroupBox Header="4 — Destination rules (target name must match above)" Padding="12" Margin="0,0,0,12">
-                    <DataGrid x:Name="DestinationsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Target name" Binding="{Binding TargetLabel}" Width="150" />
-                            <DataGridTextColumn Header="Purpose" Binding="{Binding Label}" Width="180" />
-                            <DataGridTextColumn Header="Remote path (/path or ~/path)" Binding="{Binding RemotePath}" Width="*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </GroupBox>
-
-                <GroupBox Header="5 — Review and save locally" Padding="12">
+                <GroupBox Header="4 — Choose where each part of the project goes" Padding="12" Margin="0,0,0,12">
                     <StackPanel>
-                        <TextBlock TextWrapping="Wrap" Text="The saved binding stays under your Local Application Data folder and is ignored by Git. Passwords, passphrases and private-key contents are never fields in this profile." />
+                        <TextBlock Margin="4,0,4,9" TextWrapping="Wrap" Text="Add one row for every remote folder or file. The server name must match a server entered above." />
+                        <DataGrid x:Name="DestinationsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Server name" Binding="{Binding TargetLabel}" Width="150" />
+                                <DataGridTextColumn Header="What goes here" Binding="{Binding Label}" Width="180" />
+                                <DataGridTextColumn Header="Destination folder or file" Binding="{Binding RemotePath}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="5 — Check and save your profile" Padding="12">
+                    <StackPanel>
+                        <TextBlock TextWrapping="Wrap" Text="Your profile is saved only in your Windows Local Application Data folder and is not added to Git. ZDeployPet never stores passwords, key passphrases or private-key contents in this profile." />
                         <TextBlock x:Name="SetupValidationText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#A02020" />
                     </StackPanel>
                 </GroupBox>
@@ -95,7 +98,7 @@
             <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#555" DockPanel.Dock="Left" />
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                 <Button x:Name="EditProfileButton" Margin="0,0,8,0" Padding="16,9" Click="EditProfile_Click" Content="Edit profile" Visibility="Collapsed" />
-                <Button x:Name="SaveProfileButton" Padding="16,9" Click="SaveProfile_Click" Content="Validate and save profile" Visibility="Collapsed" />
+                <Button x:Name="SaveProfileButton" Padding="16,9" Click="SaveProfile_Click" Content="Check settings and save" Visibility="Collapsed" />
                 <Button x:Name="DiscoverButton" Padding="16,9" Click="DiscoverButton_Click" Content="Run discovery" Visibility="Collapsed" />
             </StackPanel>
         </DockPanel>
