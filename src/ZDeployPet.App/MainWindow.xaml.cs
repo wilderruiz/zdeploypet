@@ -18,12 +18,14 @@ public partial class MainWindow : Window
     private readonly DeploymentProfileValidator _validator = new();
     private readonly ProfileStore _profileStore = new();
     private readonly ObservableCollection<TargetDraft> _targetDrafts = [];
+    private readonly ObservableCollection<DestinationDraft> _destinationDrafts = [];
     private DeploymentProfile? _activeProfile;
 
     public MainWindow()
     {
         InitializeComponent();
         TargetsGrid.ItemsSource = _targetDrafts;
+        DestinationsGrid.ItemsSource = _destinationDrafts;
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -61,6 +63,8 @@ public partial class MainWindow : Window
         ConfirmationTextBox.Text = "DEPLOY";
         _targetDrafts.Clear();
         _targetDrafts.Add(new TargetDraft { Port = 22 });
+        _destinationDrafts.Clear();
+        _destinationDrafts.Add(new DestinationDraft());
     }
 
     private void PopulateEditor(DeploymentProfile profile)
@@ -80,8 +84,18 @@ public partial class MainWindow : Window
                 Label = target.Label,
                 Host = target.Host,
                 Port = target.Port,
-                User = target.User,
-                RemoteDestination = target.RemoteDestination
+                User = target.User
+            });
+        }
+        _destinationDrafts.Clear();
+        foreach (DeploymentDestination destination in profile.Destinations)
+        {
+            string targetLabel = profile.Targets.FirstOrDefault(target => target.Id == destination.TargetId)?.Label ?? string.Empty;
+            _destinationDrafts.Add(new DestinationDraft
+            {
+                TargetLabel = targetLabel,
+                Label = destination.Label,
+                RemotePath = destination.RemotePath
             });
         }
     }
@@ -122,6 +136,8 @@ public partial class MainWindow : Window
         {
             TargetsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
             TargetsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            DestinationsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            DestinationsGrid.CommitEdit(DataGridEditingUnit.Row, true);
             string distribution = DistributionComboBox.SelectedItem as string ?? string.Empty;
             WslPathResolution resolution = await _profileDiscovery.ResolveAndVerifyProjectPathAsync(
                 distribution, ProjectPathTextBox.Text.Trim());
@@ -168,11 +184,23 @@ public partial class MainWindow : Window
 
     private DeploymentProfile BuildProfile(string distribution, string wslPath)
     {
-        List<DeploymentTarget> targets = _targetDrafts
+        List<(TargetDraft Draft, DeploymentTarget Target)> mappedTargets = _targetDrafts
             .Where(target => !target.IsBlank)
-            .Select(target => new DeploymentTarget(
+            .Select(target => (target, new DeploymentTarget(
                 Guid.NewGuid().ToString("D"), target.Label.Trim(), target.Host.Trim(), target.Port,
-                target.User.Trim(), target.RemoteDestination.Trim()))
+                target.User.Trim())))
+            .ToList();
+        List<DeploymentTarget> targets = mappedTargets.Select(item => item.Target).ToList();
+        Dictionary<string, string> targetIdsByLabel = mappedTargets
+            .GroupBy(item => item.Target.Label, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().Target.Id, StringComparer.OrdinalIgnoreCase);
+        List<DeploymentDestination> destinations = _destinationDrafts
+            .Where(destination => !destination.IsBlank)
+            .Select(destination => new DeploymentDestination(
+                Guid.NewGuid().ToString("D"),
+                targetIdsByLabel.TryGetValue(destination.TargetLabel.Trim(), out string? targetId) ? targetId : string.Empty,
+                destination.Label.Trim(),
+                destination.RemotePath.Trim()))
             .ToList();
 
         return new DeploymentProfile(
@@ -185,7 +213,8 @@ public partial class MainWindow : Window
             ScriptPathTextBox.Text.Trim().Replace('\\', '/'),
             NullIfWhiteSpace(ReportRootTextBox.Text),
             ConfirmationTextBox.Text.Trim(),
-            targets);
+            targets,
+            destinations);
     }
 
     private void EditProfile_Click(object sender, RoutedEventArgs e)
@@ -238,7 +267,7 @@ public partial class MainWindow : Window
         SaveProfileButton.Visibility = Visibility.Collapsed;
         EditProfileButton.Visibility = Visibility.Visible;
         DiscoverButton.Visibility = Visibility.Visible;
-        ProfileSummaryText.Text = $"Profile: {profile.Name}   •   Project: {profile.WindowsProjectPath}   •   WSL: {profile.WslDistribution}   •   Runner: {profile.ScriptRelativePath}   •   Targets: {profile.Targets.Count}";
+        ProfileSummaryText.Text = $"Profile: {profile.Name}   •   Project: {profile.WindowsProjectPath}   •   WSL: {profile.WslDistribution}   •   Runner: {profile.ScriptRelativePath}   •   Targets: {profile.Targets.Count}   •   Destinations: {profile.Destinations.Count}";
         StatusText.Text = status;
     }
 
@@ -274,7 +303,14 @@ public partial class MainWindow : Window
         public string Host { get; set; } = string.Empty;
         public int Port { get; set; } = 22;
         public string User { get; set; } = string.Empty;
-        public string RemoteDestination { get; set; } = string.Empty;
-        public bool IsBlank => string.IsNullOrWhiteSpace(Label) && string.IsNullOrWhiteSpace(Host) && string.IsNullOrWhiteSpace(User) && string.IsNullOrWhiteSpace(RemoteDestination);
+        public bool IsBlank => string.IsNullOrWhiteSpace(Label) && string.IsNullOrWhiteSpace(Host) && string.IsNullOrWhiteSpace(User);
+    }
+
+    public sealed class DestinationDraft
+    {
+        public string TargetLabel { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public string RemotePath { get; set; } = string.Empty;
+        public bool IsBlank => string.IsNullOrWhiteSpace(TargetLabel) && string.IsNullOrWhiteSpace(Label) && string.IsNullOrWhiteSpace(RemotePath);
     }
 }

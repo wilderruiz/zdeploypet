@@ -16,6 +16,7 @@ public sealed class DeploymentProfileValidator
         ValidateProjectAndScript(profile, errors);
         ValidateReportRoot(profile.ReportRoot, errors);
         ValidateTargets(profile.Targets, errors);
+        ValidateDestinations(profile.Targets, profile.Destinations, errors);
 
         if (string.IsNullOrWhiteSpace(profile.LiveConfirmationPhrase))
             errors.Add("A live confirmation phrase is required.");
@@ -66,16 +67,42 @@ public sealed class DeploymentProfileValidator
         }
 
         HashSet<string> ids = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> labels = new(StringComparer.OrdinalIgnoreCase);
         foreach (DeploymentTarget target in targets)
         {
             if (string.IsNullOrWhiteSpace(target.Id) || !ids.Add(target.Id))
                 errors.Add("Every target requires a unique identifier.");
-            if (string.IsNullOrWhiteSpace(target.Label)) errors.Add("Every target requires a label.");
+            if (string.IsNullOrWhiteSpace(target.Label) || !labels.Add(target.Label))
+                errors.Add("Every target requires a unique label.");
             if (string.IsNullOrWhiteSpace(target.Host)) errors.Add($"Target '{target.Label}' requires a host.");
             if (target.Port is < 1 or > 65535) errors.Add($"Target '{target.Label}' has an invalid SSH port.");
             if (string.IsNullOrWhiteSpace(target.User)) errors.Add($"Target '{target.Label}' requires an SSH user.");
-            if (!IsSafeRemoteDestination(target.RemoteDestination))
-                errors.Add($"Target '{target.Label}' requires a safe absolute destination below the remote root/home.");
+        }
+    }
+
+    private static void ValidateDestinations(
+        IReadOnlyList<DeploymentTarget> targets,
+        IReadOnlyList<DeploymentDestination> destinations,
+        List<string> errors)
+    {
+        HashSet<string> targetIds = targets.Select(target => target.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> destinationIds = new(StringComparer.OrdinalIgnoreCase);
+        foreach (DeploymentDestination destination in destinations)
+        {
+            if (string.IsNullOrWhiteSpace(destination.Id) || !destinationIds.Add(destination.Id))
+                errors.Add("Every destination requires a unique identifier.");
+            if (!targetIds.Contains(destination.TargetId))
+                errors.Add($"Destination '{destination.Label}' references an unknown target.");
+            if (string.IsNullOrWhiteSpace(destination.Label))
+                errors.Add("Every destination requires a purpose label.");
+            if (!IsSafeRemoteDestination(destination.RemotePath))
+                errors.Add($"Destination '{destination.Label}' requires a safe path below the remote root/home.");
+        }
+
+        foreach (DeploymentTarget target in targets)
+        {
+            if (!destinations.Any(destination => string.Equals(destination.TargetId, target.Id, StringComparison.OrdinalIgnoreCase)))
+                errors.Add($"Target '{target.Label}' requires at least one destination rule.");
         }
     }
 

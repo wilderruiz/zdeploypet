@@ -5,8 +5,13 @@ public sealed record DeploymentTarget(
     string Label,
     string Host,
     int Port,
-    string User,
-    string RemoteDestination);
+    string User);
+
+public sealed record DeploymentDestination(
+    string Id,
+    string TargetId,
+    string Label,
+    string RemotePath);
 
 public sealed record DeploymentProfile(
     int SchemaVersion,
@@ -18,7 +23,8 @@ public sealed record DeploymentProfile(
     string ScriptRelativePath,
     string? ReportRoot,
     string LiveConfirmationPhrase,
-    IReadOnlyList<DeploymentTarget> Targets)
+    IReadOnlyList<DeploymentTarget> Targets,
+    IReadOnlyList<DeploymentDestination> Destinations)
 {
     public const int CurrentSchemaVersion = 1;
 }

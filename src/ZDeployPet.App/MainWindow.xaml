@@ -51,19 +51,28 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="3 — Deployment targets (click the blank row to add another)" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="3 — SSH targets (click the blank row to add another)" Padding="12" Margin="0,0,0,12">
                     <DataGrid x:Name="TargetsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Name" Binding="{Binding Label}" Width="120" />
                             <DataGridTextColumn Header="Host / IP" Binding="{Binding Host}" Width="*" />
                             <DataGridTextColumn Header="Port" Binding="{Binding Port}" Width="70" />
-                            <DataGridTextColumn Header="SSH user" Binding="{Binding User}" Width="130" />
-                            <DataGridTextColumn Header="Remote destination (/path or ~/path)" Binding="{Binding RemoteDestination}" Width="2*" />
+                            <DataGridTextColumn Header="SSH user" Binding="{Binding User}" Width="160" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </GroupBox>
 
-                <GroupBox Header="4 — Review and save locally" Padding="12">
+                <GroupBox Header="4 — Destination rules (target name must match above)" Padding="12" Margin="0,0,0,12">
+                    <DataGrid x:Name="DestinationsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Target name" Binding="{Binding TargetLabel}" Width="150" />
+                            <DataGridTextColumn Header="Purpose" Binding="{Binding Label}" Width="180" />
+                            <DataGridTextColumn Header="Remote path (/path or ~/path)" Binding="{Binding RemotePath}" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </GroupBox>
+
+                <GroupBox Header="5 — Review and save locally" Padding="12">
                     <StackPanel>
                         <TextBlock TextWrapping="Wrap" Text="The saved binding stays under your Local Application Data folder and is ignored by Git. Passwords, passphrases and private-key contents are never fields in this profile." />
                         <TextBlock x:Name="SetupValidationText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#A02020" />
