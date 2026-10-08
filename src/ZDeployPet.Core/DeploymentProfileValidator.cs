@@ -81,7 +81,15 @@ public sealed class DeploymentProfileValidator
 
     public static bool IsSafeRemoteDestination(string path)
     {
-        if (string.IsNullOrWhiteSpace(path) || !path.StartsWith('/') || path.Contains('\0')) return false;
+        if (string.IsNullOrWhiteSpace(path) || path.Contains('\0')) return false;
+        if (path.StartsWith("~/", StringComparison.Ordinal))
+        {
+            string homeRelative = path[2..].TrimEnd('/');
+            if (homeRelative.Length == 0) return false;
+            string[] homeSegments = homeRelative.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            return homeSegments.Length > 0 && !homeSegments.Any(segment => segment is "." or "..");
+        }
+        if (!path.StartsWith('/')) return false;
         string normalized = path.TrimEnd('/');
         if (normalized.Length == 0) return false;
         string[] segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);

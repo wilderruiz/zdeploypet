@@ -58,7 +58,7 @@
                             <DataGridTextColumn Header="Host / IP" Binding="{Binding Host}" Width="*" />
                             <DataGridTextColumn Header="Port" Binding="{Binding Port}" Width="70" />
                             <DataGridTextColumn Header="SSH user" Binding="{Binding User}" Width="130" />
-                            <DataGridTextColumn Header="Absolute remote destination" Binding="{Binding RemoteDestination}" Width="2*" />
+                            <DataGridTextColumn Header="Remote destination (/path or ~/path)" Binding="{Binding RemoteDestination}" Width="2*" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </GroupBox>

@@ -11,6 +11,8 @@ public sealed class DeploymentProfileValidatorTests
     [InlineData("/home/user")]
     [InlineData("relative/path")]
     [InlineData("/var/../etc")]
+    [InlineData("~")]
+    [InlineData("~/../other")]
     public void UnsafeRemoteDestinationsAreRejected(string path) =>
         Assert.False(DeploymentProfileValidator.IsSafeRemoteDestination(path));
 
@@ -18,6 +20,7 @@ public sealed class DeploymentProfileValidatorTests
     [InlineData("/var/www/app")]
     [InlineData("/home/user/apps/site")]
     [InlineData("/srv/releases/current")]
+    [InlineData("~/domains/example.test/public_html")]
     public void ScopedRemoteDestinationsAreAccepted(string path) =>
         Assert.True(DeploymentProfileValidator.IsSafeRemoteDestination(path));
 
