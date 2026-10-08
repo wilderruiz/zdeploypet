@@ -75,16 +75,7 @@ public sealed class InputHistoryStore
             Merge(current.DestinationLabels, profile.Destinations.Select(destination => destination.Label)),
             Merge(current.RemotePaths, profile.Destinations.Select(destination => destination.RemotePath)));
 
-        string? directory = Path.GetDirectoryName(_historyPath);
-        if (directory is null) throw new InvalidOperationException("Input history path has no parent directory.");
-        Directory.CreateDirectory(directory);
-        string temporaryPath = _historyPath + ".tmp";
-        await using (FileStream stream = new(temporaryPath, FileMode.Create, FileAccess.Write, FileShare.None))
-        {
-            await JsonSerializer.SerializeAsync(stream, updated, JsonOptions, cancellationToken);
-            await stream.FlushAsync(cancellationToken);
-        }
-        File.Move(temporaryPath, _historyPath, true);
+        await WriteAtomicAsync(_historyPath, updated, cancellationToken);
     }
 
     public async Task<SetupDraft?> LoadDraftAsync(CancellationToken cancellationToken = default)
@@ -136,12 +127,19 @@ public sealed class InputHistoryStore
         string? directory = Path.GetDirectoryName(path);
         if (directory is null) throw new InvalidOperationException("Local data path has no parent directory.");
         Directory.CreateDirectory(directory);
-        string temporaryPath = path + ".tmp";
-        await using (FileStream stream = new(temporaryPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        string temporaryPath = path + ".tmp." + Guid.NewGuid().ToString("N");
+        try
         {
-            await JsonSerializer.SerializeAsync(stream, value, JsonOptions, cancellationToken);
-            await stream.FlushAsync(cancellationToken);
+            await using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                await JsonSerializer.SerializeAsync(stream, value, JsonOptions, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+            }
+            File.Move(temporaryPath, path, true);
         }
-        File.Move(temporaryPath, path, true);
+        finally
+        {
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
     }
 }

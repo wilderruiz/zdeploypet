@@ -194,6 +194,12 @@ public partial class MainWindow : Window
             await _inputHistoryStore.SaveDraftAsync(draft);
             await _inputHistoryStore.RememberDraftAsync(draft);
             await LoadSuggestionsAsync();
+            if (string.IsNullOrWhiteSpace(ProjectPathTextBox.Text) || !Directory.Exists(ProjectPathTextBox.Text.Trim()))
+            {
+                SetupValidationText.Text = "Choose an existing project folder. Your unfinished setup has been saved and will be restored next time.";
+                StatusText.Text = "Draft saved — project folder required";
+                return;
+            }
             string distribution = DistributionComboBox.SelectedItem as string ?? string.Empty;
             WslPathResolution resolution = await _profileDiscovery.ResolveAndVerifyProjectPathAsync(
                 distribution, ProjectPathTextBox.Text.Trim());

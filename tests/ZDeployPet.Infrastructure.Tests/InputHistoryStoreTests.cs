@@ -61,4 +61,27 @@ public sealed class InputHistoryStoreTests
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
     }
+
+    [Fact]
+    public async Task ConcurrentDraftWritesDoNotCompeteForOneTemporaryFile()
+    {
+        string root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            InputHistoryStore store = new(root);
+            SetupDraft first = new("First", "", "Ubuntu", "", "", "DEPLOY", [], []);
+            SetupDraft second = first with { ProfileName = "Second" };
+
+            await Task.WhenAll(store.SaveDraftAsync(first), store.SaveDraftAsync(second));
+
+            SetupDraft? loaded = await store.LoadDraftAsync();
+            Assert.NotNull(loaded);
+            Assert.Contains(loaded.ProfileName, new[] { "First", "Second" });
+            Assert.Empty(Directory.GetFiles(root, "*.tmp.*"));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
 }
