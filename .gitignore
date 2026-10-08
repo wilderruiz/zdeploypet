@@ -10,3 +10,44 @@ settings.json
 ZDeployPetIncidents/
 *.key
 *.pem
+
+# =============================================================================
+# Suggested by ZomniverseGitPet — files and folders Git should leave alone
+# These ignore patterns were explicitly selected in GitPet.
+# A pattern without a leading / applies by name throughout the project tree.
+# Lines beginning with ! are safe exceptions that keep matching templates visible to Git.
+# =============================================================================
+# Ignore real .env secret/configuration files anywhere in the project.
+.env
+# Ignore environment variants such as .env.local or .env.production anywhere.
+.env.*
+# Keep this common environment template visible so it can be committed safely.
+!.env.example
+# Keep this common environment template visible so it can be committed safely.
+!.env.*.example
+# Keep this common environment template visible so it can be committed safely.
+!.env.sample
+# Keep this common environment template visible so it can be committed safely.
+!.env.*.sample
+# Keep this common environment template visible so it can be committed safely.
+!.env.template
+# Keep this common environment template visible so it can be committed safely.
+!.env.*.template
+# Keep this common environment template visible so it can be committed safely.
+!.env.dist
+# Keep this common environment template visible so it can be committed safely.
+!.env.*.dist
+# Ignore files ending in .log anywhere in the project.
+*.log
+# Ignore files ending in .tmp anywhere in the project.
+*.tmp
+# Ignore folders named 'tmp' anywhere in the project.
+tmp/
+# Ignore folders named 'temp' anywhere in the project.
+temp/
+# Ignore items named 'Thumbs.db' anywhere in the project.
+Thumbs.db
+# Ignore items named '.DS_Store' anywhere in the project.
+.DS_Store
+# Ignore folders named '.idea' anywhere in the project.
+.idea/
