@@ -305,7 +305,7 @@ public partial class MainWindow : Window
             TargetsGrid.CommitEdit(DataGridEditingUnit.Row, true);
             DestinationsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
             DestinationsGrid.CommitEdit(DataGridEditingUnit.Row, true);
-            _inputHistoryStore.SaveDraftAsync(BuildDraft()).GetAwaiter().GetResult();
+            _inputHistoryStore.SaveDraft(BuildDraft());
         }
         catch
         {

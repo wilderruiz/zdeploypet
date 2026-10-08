@@ -84,4 +84,23 @@ public sealed class InputHistoryStoreTests
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
     }
+
+    [Fact]
+    public async Task SynchronousClosePathPersistsDraftWithoutAsyncWait()
+    {
+        string root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            InputHistoryStore store = new(root);
+            SetupDraft draft = new("Millenova", "", "Ubuntu-24.04", "", "", "DEPLOY", [], []);
+
+            store.SaveDraft(draft);
+
+            Assert.Equal("Millenova", (await store.LoadDraftAsync())?.ProfileName);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
 }

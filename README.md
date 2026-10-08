@@ -10,10 +10,31 @@ ZDeployPet is a sibling in the Zomniverse application family, not a component em
 
 ## Development
 
+Open `ZDeployPet.code-workspace` in VS Code. For the normal edit/test loop, fully exit ZDeployPet and run:
+
 ```powershell
-dotnet build ZDeployPet.sln
-dotnet test ZDeployPet.sln --no-build
-dotnet run --project src/ZDeployPet.App
+powershell -ExecutionPolicy Bypass -File scripts\publish-local.ps1
+```
+
+The script builds the solution, runs both regression suites, and publishes a self-contained single EXE to:
+
+```text
+C:\Dev\ZDeployPet_Releases\current\ZDeployPet.exe
+```
+
+Launch that EXE for visual smoke tests. If a previous build is stuck, inspect and stop it before publishing:
+
+```powershell
+Get-Process -Name ZDeployPet -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,Path
+Stop-Process -Name ZDeployPet -Force -ErrorAction SilentlyContinue
+```
+
+To run the checks manually:
+
+```powershell
+dotnet build ZDeployPet.sln -c Release
+dotnet run --project tests\ZDeployPet.Core.Tests\ZDeployPet.Core.Tests.csproj -c Release
+dotnet run --project tests\ZDeployPet.Infrastructure.Tests\ZDeployPet.Infrastructure.Tests.csproj -c Release
 ```
 
 Discovery capabilities are documented in `docs/PDA0_DISCOVERY.md`; community profile storage and validation are documented in `docs/PROFILES.md`.

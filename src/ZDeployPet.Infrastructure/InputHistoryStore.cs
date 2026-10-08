@@ -90,6 +90,11 @@ public sealed class InputHistoryStore
         await WriteAtomicAsync(_draftPath, draft, cancellationToken);
     }
 
+    public void SaveDraft(SetupDraft draft)
+    {
+        WriteAtomic(_draftPath, draft);
+    }
+
     public async Task RememberDraftAsync(SetupDraft draft, CancellationToken cancellationToken = default)
     {
         InputHistory current = await LoadAsync(cancellationToken);
@@ -134,6 +139,27 @@ public sealed class InputHistoryStore
             {
                 await JsonSerializer.SerializeAsync(stream, value, JsonOptions, cancellationToken);
                 await stream.FlushAsync(cancellationToken);
+            }
+            File.Move(temporaryPath, path, true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
+    }
+
+    private static void WriteAtomic<T>(string path, T value)
+    {
+        string? directory = Path.GetDirectoryName(path);
+        if (directory is null) throw new InvalidOperationException("Local data path has no parent directory.");
+        Directory.CreateDirectory(directory);
+        string temporaryPath = path + ".tmp." + Guid.NewGuid().ToString("N");
+        try
+        {
+            using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                JsonSerializer.Serialize(stream, value, JsonOptions);
+                stream.Flush(true);
             }
             File.Move(temporaryPath, path, true);
         }
