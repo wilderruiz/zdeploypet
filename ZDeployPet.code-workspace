@@ -1,0 +1,11 @@
+{
+  "folders": [
+    {
+      "name": "ZDeployPet",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "terminal.integrated.cwd": "${workspaceFolder}"
+  }
+}

@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ZDeployPet.Core\ZDeployPet.Core.csproj" />
+    <ProjectReference Include="..\ZDeployPet.Infrastructure\ZDeployPet.Infrastructure.csproj" />
+    <ProjectReference Include="..\ZDeployPet.WslBridge\ZDeployPet.WslBridge.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>ZDeployPet</AssemblyName>
+    <RootNamespace>ZDeployPet.App</RootNamespace>
+    <Product>ZDeployPet</Product>
+    <Description>A friendly Windows and WSL deployment companion.</Description>
+  </PropertyGroup>
+
+</Project>
