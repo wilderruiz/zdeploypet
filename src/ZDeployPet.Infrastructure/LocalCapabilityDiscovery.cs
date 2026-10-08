@@ -5,9 +5,9 @@ namespace ZDeployPet.Infrastructure;
 
 public sealed class LocalCapabilityDiscovery
 {
-    public LocalDiscoveryResult Discover(string repositoryPath)
+    public LocalDiscoveryResult Discover(string repositoryPath, string scriptRelativePath)
     {
-        string deployScriptPath = Path.Combine(repositoryPath, "deploy_millenova.sh");
+        string deployScriptPath = Path.Combine(repositoryPath, scriptRelativePath);
         bool scriptExists = File.Exists(deployScriptPath);
 
         return new LocalDiscoveryResult(

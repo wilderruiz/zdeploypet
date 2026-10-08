@@ -8,7 +8,7 @@ public sealed class WslDiscoveryParserTests
     public void ProbeUsesExecAndPreservesPositionalPaths()
     {
         var options = new ZDeployPet.Core.DiscoveryOptions(
-            "H:\\repo", "Ubuntu-24.04", "/mnt/h/repo", "/home/user/reports");
+            "H:\\repo", "Ubuntu-24.04", "/mnt/h/repo", "/home/user/reports", "deploy.sh");
 
         var arguments = WslCapabilityDiscovery.CreateProbeStartInfo(options).ArgumentList;
 
@@ -16,6 +16,7 @@ public sealed class WslDiscoveryParserTests
         Assert.Equal("pda0-probe", arguments[6]);
         Assert.Equal("/mnt/h/repo", arguments[7]);
         Assert.Equal("/home/user/reports", arguments[8]);
+        Assert.Equal("deploy.sh", arguments[9]);
     }
 
     [Fact]

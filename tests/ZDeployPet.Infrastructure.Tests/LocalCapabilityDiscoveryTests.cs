@@ -8,7 +8,7 @@ public sealed class LocalCapabilityDiscoveryTests
     public void MissingRepositoryIsReportedWithoutMutation()
     {
         string path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-        var result = new LocalCapabilityDiscovery().Discover(path);
+        var result = new LocalCapabilityDiscovery().Discover(path, "deploy.sh");
         Assert.False(result.RepositoryExists);
         Assert.False(result.DeployScriptExists);
         Assert.Null(result.DeployScriptSha256);

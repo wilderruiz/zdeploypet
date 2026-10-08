@@ -4,7 +4,8 @@ public sealed record DiscoveryOptions(
     string WindowsRepositoryPath,
     string WslDistribution,
     string WslRepositoryPath,
-    string DeploymentReportRoot);
+    string DeploymentReportRoot,
+    string ScriptRelativePath);
 
 public sealed record LocalDiscoveryResult(
     string RuntimeVersion,

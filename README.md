@@ -2,7 +2,7 @@
 
 A friendly Windows + WSL deployment companion. ZDeployPet is designed to unlock approved SSH deployment keys once per bounded session, run allowlisted deployment profiles, monitor structured results, and keep production credentials local.
 
-The current PDA-0 build is intentionally read-only and uses Millenova as its first development profile. It verifies Windows, .NET, WSL, OpenSSH, the Millenova repository, the deploy script fingerprint, and deployment-report storage. It does not create keys, start an SSH agent, change SSH configuration, contact either server, or run a deployment.
+The current PDA-0A build is intentionally read-only. First run creates a validated local deployment profile, then discovery verifies Windows, .NET, WSL, OpenSSH, the selected project, approved script fingerprint, and optional deployment-report storage. It does not create keys, start an SSH agent, change SSH configuration, contact a server, or run a deployment.
 
 The existing `deploy_millenova.sh` remains owned by the Millenova repository and is not copied or modified here.
 
@@ -16,6 +16,6 @@ dotnet test ZDeployPet.sln --no-build
 dotnet run --project src/ZDeployPet.App
 ```
 
-The default discovery targets are documented in `docs/PDA0_DISCOVERY.md`.
+Discovery capabilities are documented in `docs/PDA0_DISCOVERY.md`; community profile storage and validation are documented in `docs/PROFILES.md`.
 
-Development source lives at `C:\Dev\ZDeployPet`. Release artifacts will be generated outside the repository at `C:\Dev\ZDeployPet_Releases`; runtime binaries and private profiles will live under `%LOCALAPPDATA%\Zomniverse\ZDeployPet`.
+Release artifacts are generated outside the source repository; runtime binaries and private profiles live under `%LOCALAPPDATA%\Zomniverse\ZDeployPet`.

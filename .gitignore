@@ -4,6 +4,8 @@ obj/
 *.user
 *.suo
 local.settings.json
+profiles/
+settings.json
 ZDeployPetIncidents/
 *.key
 *.pem
