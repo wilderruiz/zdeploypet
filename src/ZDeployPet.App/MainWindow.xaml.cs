@@ -17,21 +17,36 @@ public partial class MainWindow : Window
     private readonly WslProfileDiscovery _profileDiscovery = new();
     private readonly DeploymentProfileValidator _validator = new();
     private readonly ProfileStore _profileStore = new();
+    private readonly InputHistoryStore _inputHistoryStore = new();
     private readonly ObservableCollection<TargetDraft> _targetDrafts = [];
     private readonly ObservableCollection<DestinationDraft> _destinationDrafts = [];
     private DeploymentProfile? _activeProfile;
 
+    public ObservableCollection<string> TargetLabels { get; } = [];
+    public ObservableCollection<string> Hosts { get; } = [];
+    public ObservableCollection<string> Ports { get; } = [];
+    public ObservableCollection<string> Users { get; } = [];
+    public ObservableCollection<string> DestinationLabels { get; } = [];
+    public ObservableCollection<string> RemotePaths { get; } = [];
+
     public MainWindow()
     {
         InitializeComponent();
+        DataContext = this;
         TargetsGrid.ItemsSource = _targetDrafts;
         DestinationsGrid.ItemsSource = _destinationDrafts;
+        ProfileNameTextBox.ItemsSource = new ObservableCollection<string>();
+        ProjectPathTextBox.ItemsSource = new ObservableCollection<string>();
+        ScriptPathTextBox.ItemsSource = new ObservableCollection<string>();
+        ReportRootTextBox.ItemsSource = new ObservableCollection<string>();
+        ConfirmationTextBox.ItemsSource = new ObservableCollection<string>();
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
+            await LoadSuggestionsAsync();
             await RefreshDistributionsAsync();
             _activeProfile = await _profileStore.LoadActiveAsync();
             if (_activeProfile is null)
@@ -168,6 +183,8 @@ public partial class MainWindow : Window
             }
 
             await _profileStore.SaveActiveAsync(profile);
+            await _inputHistoryStore.RememberAsync(profile);
+            await LoadSuggestionsAsync();
             _activeProfile = profile;
             ShowDiscovery(profile, $"Profile saved locally under {_profileStore.Root}. No server was contacted.");
         }
@@ -256,6 +273,7 @@ public partial class MainWindow : Window
         SaveProfileButton.Visibility = Visibility.Visible;
         EditProfileButton.Visibility = Visibility.Collapsed;
         DiscoverButton.Visibility = Visibility.Collapsed;
+        ForgetSuggestionsButton.Visibility = Visibility.Visible;
         StatusText.Text = status;
     }
 
@@ -267,6 +285,7 @@ public partial class MainWindow : Window
         SaveProfileButton.Visibility = Visibility.Collapsed;
         EditProfileButton.Visibility = Visibility.Visible;
         DiscoverButton.Visibility = Visibility.Visible;
+        ForgetSuggestionsButton.Visibility = Visibility.Collapsed;
         ProfileSummaryText.Text = $"Profile: {profile.Name}   •   Project: {profile.WindowsProjectPath}   •   WSL: {profile.WslDistribution}   •   Runner: {profile.ScriptRelativePath}   •   Targets: {profile.Targets.Count}   •   Destinations: {profile.Destinations.Count}";
         StatusText.Text = status;
     }
@@ -296,6 +315,43 @@ public partial class MainWindow : Window
 
     private static string? NullIfWhiteSpace(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static string Mark(bool value) => value ? "[OK]" : "[MISSING]";
+
+    private async Task LoadSuggestionsAsync()
+    {
+        InputHistory history = await _inputHistoryStore.LoadAsync();
+        ReplaceSuggestions((ObservableCollection<string>)ProfileNameTextBox.ItemsSource, history.ProfileNames);
+        ReplaceSuggestions((ObservableCollection<string>)ProjectPathTextBox.ItemsSource, history.ProjectPaths);
+        ReplaceSuggestions((ObservableCollection<string>)ScriptPathTextBox.ItemsSource, history.ScriptPaths);
+        ReplaceSuggestions((ObservableCollection<string>)ReportRootTextBox.ItemsSource, history.ReportRoots);
+        ReplaceSuggestions((ObservableCollection<string>)ConfirmationTextBox.ItemsSource, history.ConfirmationPhrases);
+        ReplaceSuggestions(TargetLabels, history.TargetLabels);
+        ReplaceSuggestions(Hosts, history.Hosts);
+        ReplaceSuggestions(Ports, history.Ports);
+        ReplaceSuggestions(Users, history.Users);
+        ReplaceSuggestions(DestinationLabels, history.DestinationLabels);
+        ReplaceSuggestions(RemotePaths, history.RemotePaths);
+    }
+
+    private async void ForgetSuggestions_Click(object sender, RoutedEventArgs e)
+    {
+        MessageBoxResult result = MessageBox.Show(
+            this,
+            "Forget all remembered input suggestions? Your saved deployment profile will not be deleted.",
+            "Forget suggestions",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (result != MessageBoxResult.Yes) return;
+
+        await _inputHistoryStore.ClearAsync();
+        await LoadSuggestionsAsync();
+        StatusText.Text = "Remembered suggestions were cleared. The saved profile was not changed.";
+    }
+
+    private static void ReplaceSuggestions(ObservableCollection<string> destination, IEnumerable<string> values)
+    {
+        destination.Clear();
+        foreach (string value in values) destination.Add(value);
+    }
 
     public sealed class TargetDraft
     {

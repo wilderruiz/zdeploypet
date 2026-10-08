@@ -15,8 +15,16 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style TargetType="{x:Type GroupBox}">
-            <Setter Property="ToolTipService.InitialShowDelay" Value="350" />
+        <Style x:Key="InfoButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="25" />
+            <Setter Property="Height" Value="25" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,5,8,0" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Content" Value="i" />
+            <Setter Property="ToolTipService.InitialShowDelay" Value="250" />
             <Setter Property="ToolTipService.ShowDuration" Value="20000" />
         </Style>
     </Window.Resources>
@@ -28,7 +36,12 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock FontSize="28" FontWeight="SemiBold" Text="ZDeployPet" />
+        <Grid>
+            <TextBlock FontSize="28" FontWeight="SemiBold" Text="ZDeployPet" />
+            <Button x:Name="ForgetSuggestionsButton" HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Padding="12,6" Click="ForgetSuggestions_Click" Content="Forget suggestions" Visibility="Collapsed"
+                    ToolTip="Erase remembered input suggestions from this computer. Your saved deployment profile is not deleted." />
+        </Grid>
         <TextBlock x:Name="SubtitleText" Grid.Row="1" Margin="0,7,0,18" Foreground="#555"
                    Text="Loading local profile…" />
 
@@ -38,15 +51,15 @@
                     <TextBlock TextWrapping="Wrap" Text="Set up your deployment profile. ZDeployPet will check and save these settings only on this computer. It will not connect to your servers, ask for passwords or deploy anything yet." />
                 </Border>
 
-                <GroupBox Header="1 — Choose the project you want to deploy" Padding="12" Margin="0,0,0,12"
-                          ToolTip="Identify this deployment profile, select the project folder on Windows, and choose the WSL Linux environment that can access it. ZDeployPet checks the matching Linux path so the deployment script can run from the correct project later.">
+                <Grid Margin="0,0,0,12">
+                <GroupBox Header="1 — Choose the project you want to deploy" Padding="12">
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <TextBlock VerticalAlignment="Center" Text="Profile name" />
-                        <TextBox x:Name="ProfileNameTextBox" Grid.Column="1" Grid.ColumnSpan="2" Margin="8,4" Padding="7" />
+                        <ComboBox x:Name="ProfileNameTextBox" Grid.Column="1" Grid.ColumnSpan="2" Margin="8,4" Padding="7" IsEditable="True" />
                         <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Project folder" />
-                        <TextBox x:Name="ProjectPathTextBox" Grid.Row="1" Grid.Column="1" Margin="8,4" Padding="7" />
+                        <ComboBox x:Name="ProjectPathTextBox" Grid.Row="1" Grid.Column="1" Margin="8,4" Padding="7" IsEditable="True" />
                         <Button Grid.Row="1" Grid.Column="2" Margin="4" Padding="14,7" Click="BrowseProject_Click" Content="Browse…" />
                         <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Linux environment (WSL)" />
                         <ComboBox x:Name="DistributionComboBox" Grid.Row="2" Grid.Column="1" Margin="8,4" Padding="5" IsEditable="False" />
@@ -55,54 +68,64 @@
                         <TextBox x:Name="WslPathTextBox" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="8,4" Padding="7" IsReadOnly="True" />
                     </Grid>
                 </GroupBox>
+                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="Identify this deployment profile, select the project folder on Windows, and choose the WSL Linux environment that can access it. ZDeployPet checks the matching Linux path so the deployment script can run from the correct project later." />
+                </Grid>
 
-                <GroupBox Header="2 — Choose the deployment script and safety settings" Padding="12" Margin="0,0,0,12"
-                          ToolTip="Choose the existing deployment script inside your project, where its deployment reports are stored, and the exact phrase required before a live deployment. These settings help ZDeployPet run only the approved script and prevent accidental deployments.">
+                <Grid Margin="0,0,0,12">
+                <GroupBox Header="2 — Choose the deployment script and safety settings" Padding="12">
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <TextBlock VerticalAlignment="Center" Text="Deployment script" />
-                        <TextBox x:Name="ScriptPathTextBox" Grid.Column="1" Margin="8,4" Padding="7" ToolTip="Example: deploy.sh or scripts/deploy.sh" />
+                        <ComboBox x:Name="ScriptPathTextBox" Grid.Column="1" Margin="8,4" Padding="7" IsEditable="True" ToolTip="Example: deploy.sh or scripts/deploy.sh" />
                         <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Deployment report folder (optional)" />
-                        <TextBox x:Name="ReportRootTextBox" Grid.Row="1" Grid.Column="1" Margin="8,4" Padding="7" />
+                        <ComboBox x:Name="ReportRootTextBox" Grid.Row="1" Grid.Column="1" Margin="8,4" Padding="7" IsEditable="True" />
                         <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Phrase required to deploy" />
-                        <TextBox x:Name="ConfirmationTextBox" Grid.Row="2" Grid.Column="1" Margin="8,4" Padding="7" Text="DEPLOY" />
+                        <ComboBox x:Name="ConfirmationTextBox" Grid.Row="2" Grid.Column="1" Margin="8,4" Padding="7" IsEditable="True" Text="DEPLOY" />
                     </Grid>
                 </GroupBox>
+                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="Choose the existing deployment script inside your project, where its deployment reports are stored, and the exact phrase required before a live deployment. These settings help ZDeployPet run only the approved script and prevent accidental deployments." />
+                </Grid>
 
-                <GroupBox Header="3 — Add the servers that receive your files" Padding="12" Margin="0,0,0,12"
-                          ToolTip="List each server used by the deployment, including its friendly name, hostname or IP address, SSH port and username. This section describes connection destinations only; it does not connect, sign in or store a password.">
+                <Grid Margin="0,0,0,12">
+                <GroupBox Header="3 — Add the servers that receive your files" Padding="12">
                     <DataGrid x:Name="TargetsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Server name" Binding="{Binding Label}" Width="140" />
-                            <DataGridTextColumn Header="Hostname or IP address" Binding="{Binding Host}" Width="*" />
-                            <DataGridTextColumn Header="SSH port" Binding="{Binding Port}" Width="90" />
-                            <DataGridTextColumn Header="Username" Binding="{Binding User}" Width="160" />
+                            <DataGridTemplateColumn Header="Server name" Width="140"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.TargetLabels, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Hostname or IP address" Width="*"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.Hosts, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="SSH port" Width="90"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.Ports, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Username" Width="160"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding User, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.Users, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </GroupBox>
+                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="List each server used by the deployment, including its friendly name, hostname or IP address, SSH port and username. This section describes connection destinations only; it does not connect, sign in or store a password." />
+                </Grid>
 
-                <GroupBox Header="4 — Choose where each part of the project goes" Padding="12" Margin="0,0,0,12"
-                          ToolTip="Map each deployed part—such as a website, private configuration file or backend application—to its server and exact remote folder or file path. A server can have several destinations when different parts must be kept separate.">
+                <Grid Margin="0,0,0,12">
+                <GroupBox Header="4 — Choose where each part of the project goes" Padding="12">
                     <StackPanel>
                         <TextBlock Margin="4,0,4,9" TextWrapping="Wrap" Text="Add one row for every remote folder or file. The server name must match a server entered above." />
                         <DataGrid x:Name="DestinationsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Server name" Binding="{Binding TargetLabel}" Width="150" />
-                                <DataGridTextColumn Header="What goes here" Binding="{Binding Label}" Width="180" />
-                                <DataGridTextColumn Header="Destination folder or file" Binding="{Binding RemotePath}" Width="*" />
+                                <DataGridTemplateColumn Header="Server name" Width="150"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding TargetLabel, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.TargetLabels, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="What goes here" Width="180"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.DestinationLabels, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Destination folder or file" Width="*"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding RemotePath, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.RemotePaths, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>
                 </GroupBox>
+                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="Map each deployed part—such as a website, private configuration file or backend application—to its server and exact remote folder or file path. A server can have several destinations when different parts must be kept separate." />
+                </Grid>
 
-                <GroupBox Header="5 — Check and save your profile" Padding="12"
-                          ToolTip="Check that all local paths, server details and destination mappings are valid, then save the profile on this computer. Saving does not contact a server or deploy anything, and no passwords or private keys are stored in the profile.">
+                <Grid>
+                <GroupBox Header="5 — Check and save your profile" Padding="12">
                     <StackPanel>
                         <TextBlock TextWrapping="Wrap" Text="Your profile is saved only in your Windows Local Application Data folder and is not added to Git. ZDeployPet never stores passwords, key passphrases or private-key contents in this profile." />
                         <TextBlock x:Name="SetupValidationText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#A02020" />
                     </StackPanel>
                 </GroupBox>
+                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="Check that all local paths, server details and destination mappings are valid, then save the profile on this computer. Saving does not contact a server or deploy anything, and no passwords or private keys are stored in the profile." />
+                </Grid>
             </StackPanel>
         </ScrollViewer>
 
