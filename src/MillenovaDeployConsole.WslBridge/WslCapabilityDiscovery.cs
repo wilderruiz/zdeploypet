@@ -20,23 +20,7 @@ public sealed class WslCapabilityDiscovery
     public async Task<WslDiscoveryResult> DiscoverAsync(DiscoveryOptions options, CancellationToken cancellationToken = default)
     {
         using Process process = new();
-        process.StartInfo = new ProcessStartInfo
-        {
-            FileName = "wsl.exe",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        process.StartInfo.ArgumentList.Add("--distribution");
-        process.StartInfo.ArgumentList.Add(options.WslDistribution);
-        process.StartInfo.ArgumentList.Add("--");
-        process.StartInfo.ArgumentList.Add("sh");
-        process.StartInfo.ArgumentList.Add("-c");
-        process.StartInfo.ArgumentList.Add(ProbeScript);
-        process.StartInfo.ArgumentList.Add("pda0-probe");
-        process.StartInfo.ArgumentList.Add(options.WslRepositoryPath);
-        process.StartInfo.ArgumentList.Add(options.DeploymentReportRoot);
+        process.StartInfo = CreateProbeStartInfo(options);
 
         try
         {
@@ -54,5 +38,27 @@ public sealed class WslCapabilityDiscovery
         {
             return WslDiscoveryParser.Parse(options.WslDistribution, string.Empty, exception.Message);
         }
+    }
+
+    internal static ProcessStartInfo CreateProbeStartInfo(DiscoveryOptions options)
+    {
+        ProcessStartInfo startInfo = new()
+        {
+            FileName = "wsl.exe",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        startInfo.ArgumentList.Add("--distribution");
+        startInfo.ArgumentList.Add(options.WslDistribution);
+        startInfo.ArgumentList.Add("--exec");
+        startInfo.ArgumentList.Add("sh");
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add(ProbeScript);
+        startInfo.ArgumentList.Add("pda0-probe");
+        startInfo.ArgumentList.Add(options.WslRepositoryPath);
+        startInfo.ArgumentList.Add(options.DeploymentReportRoot);
+        return startInfo;
     }
 }
