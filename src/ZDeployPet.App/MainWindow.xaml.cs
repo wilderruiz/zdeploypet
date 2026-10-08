@@ -268,7 +268,7 @@ public partial class MainWindow : Window
     private static string? NullIfWhiteSpace(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static string Mark(bool value) => value ? "[OK]" : "[MISSING]";
 
-    private sealed class TargetDraft
+    public sealed class TargetDraft
     {
         public string Label { get; set; } = string.Empty;
         public string Host { get; set; } = string.Empty;
