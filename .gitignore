@@ -51,3 +51,11 @@ Thumbs.db
 .DS_Store
 # Ignore folders named '.idea' anywhere in the project.
 .idea/
+
+# =============================================================================
+# These ignore patterns were explicitly selected in GitPet.
+# A pattern without a leading / applies by name throughout the project tree.
+# Lines beginning with ! are safe exceptions that keep matching templates visible to Git.
+# =============================================================================
+# Ignore items named 'Wilder_Notes.md' anywhere in the project.
+Wilder_Notes.md
