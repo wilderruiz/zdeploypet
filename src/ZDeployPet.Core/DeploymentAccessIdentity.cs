@@ -51,6 +51,12 @@ public sealed record SshPublicKeyCandidate(
         : $"{Comment} — {Fingerprint}";
 }
 
+public sealed record SshKeyCreationResult(
+    bool Success,
+    bool Created,
+    SshPublicKeyCandidate? Candidate,
+    string? Error = null);
+
 public sealed record HostKeyScanResult(
     bool Success,
     string? Fingerprint,
