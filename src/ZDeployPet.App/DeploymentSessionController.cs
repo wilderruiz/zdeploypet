@@ -138,18 +138,23 @@ public sealed class DeploymentSessionController
         State = DeploymentAccessSessionState.Locked;
     }
 
-    public void LockSynchronouslyBestEffort()
+    public void LockSynchronouslyBestEffort(TimeSpan? timeout = null)
     {
         if (_runtime is null) return;
+
+        using CancellationTokenSource cancellation = new(timeout ?? TimeSpan.FromSeconds(2));
         try
         {
-            LockAsync().GetAwaiter().GetResult();
+            LockAsync(cancellation.Token).GetAwaiter().GetResult();
         }
         catch
         {
+            // App shutdown must never hang indefinitely on WSL/ssh-agent cleanup.
+            // The final process boundary still runs after this method returns.
             _runtime = null;
             _lease = null;
             State = DeploymentAccessSessionState.Locked;
+            Message = "LOCKED locally — shutdown cleanup timed out or failed.";
         }
     }
 
