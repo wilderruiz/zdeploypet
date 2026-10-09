@@ -54,12 +54,8 @@
                     <TextBlock FontWeight="SemiBold" Text="Enrolled fingerprint" />
                     <TextBlock x:Name="EnrolledHostFingerprintText" Margin="0,3,0,8" TextWrapping="Wrap" FontFamily="Consolas" Text="Not enrolled" />
                     <WrapPanel>
-                        <Button x:Name="ScanHostButton" Padding="12,6" Margin="0,0,6,6" Click="ScanHost_Click" Content="Scan host key" />
-                        <Button Style="{StaticResource SharedInfoButtonStyle}" Margin="0,0,8,6"
-                                Loaded="ScanHostHelpButton_Loaded" />
-                        <Button x:Name="EnrollHostButton" Padding="12,6" Margin="0,0,6,6" Click="EnrollHost_Click" Content="Enroll scanned key" IsEnabled="False" />
-                        <Button Style="{StaticResource SharedInfoButtonStyle}" Margin="0,0,8,6"
-                                Loaded="EnrollHostHelpButton_Loaded" />
+                        <Button x:Name="ScanHostButton" Padding="12,6" Margin="0,0,8,6" Click="ScanHost_Click" Content="Scan host key" />
+                        <Button x:Name="EnrollHostButton" Padding="12,6" Margin="0,0,8,6" Click="EnrollHost_Click" Content="Enroll scanned key" IsEnabled="False" />
                         <Button x:Name="InstallKeyButton" Padding="12,6" Margin="0,0,6,6" Click="InstallKey_Click" Content="Install public key" />
                         <Button x:Name="InstallKeyHelpButton" Style="{StaticResource SharedInfoButtonStyle}" Margin="0,0,0,6"
                                 Loaded="InstallKeyHelpButton_Loaded" />
