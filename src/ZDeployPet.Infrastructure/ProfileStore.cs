@@ -33,10 +33,47 @@ public sealed class ProfileStore
         AppSettings? settings = await JsonSerializer.DeserializeAsync<AppSettings>(settingsStream, JsonOptions, cancellationToken);
         if (settings is null || string.IsNullOrWhiteSpace(settings.ActiveProfileId)) return null;
 
-        string profilePath = GetProfilePath(settings.ActiveProfileId);
-        if (!File.Exists(profilePath)) return null;
-        await using FileStream profileStream = File.OpenRead(profilePath);
-        return await JsonSerializer.DeserializeAsync<DeploymentProfile>(profileStream, JsonOptions, cancellationToken);
+        return await LoadByIdAsync(settings.ActiveProfileId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DeploymentProfile>> LoadAllAsync(CancellationToken cancellationToken = default)
+    {
+        if (!Directory.Exists(_profilesRoot)) return [];
+
+        List<DeploymentProfile> profiles = [];
+        foreach (string profilePath in Directory.EnumerateFiles(_profilesRoot, "*.json", SearchOption.TopDirectoryOnly))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                await using FileStream profileStream = File.OpenRead(profilePath);
+                DeploymentProfile? profile = await JsonSerializer.DeserializeAsync<DeploymentProfile>(profileStream, JsonOptions, cancellationToken);
+                if (profile is not null) profiles.Add(profile);
+            }
+            catch (JsonException)
+            {
+                // One damaged profile must not prevent the operator from loading the others.
+            }
+            catch (IOException)
+            {
+                // Ignore an individual unreadable profile; callers still receive all healthy profiles.
+            }
+        }
+
+        return profiles
+            .OrderBy(profile => profile.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(profile => profile.Id, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    public async Task<DeploymentProfile?> LoadByNameAsync(
+        string profileName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(profileName)) return null;
+        IReadOnlyList<DeploymentProfile> profiles = await LoadAllAsync(cancellationToken);
+        return profiles.FirstOrDefault(profile =>
+            string.Equals(profile.Name, profileName.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task SaveActiveAsync(DeploymentProfile profile, CancellationToken cancellationToken = default)
@@ -44,7 +81,23 @@ public sealed class ProfileStore
         Directory.CreateDirectory(_profilesRoot);
         string profilePath = GetProfilePath(profile.Id);
         await WriteAtomicAsync(profilePath, profile, cancellationToken);
-        await WriteAtomicAsync(_settingsPath, new AppSettings(1, profile.Id), cancellationToken);
+        await SetActiveProfileAsync(profile.Id, cancellationToken);
+    }
+
+    public async Task SetActiveProfileAsync(string profileId, CancellationToken cancellationToken = default)
+    {
+        _ = GetProfilePath(profileId); // Validate the canonical profile id before persisting it.
+        await WriteAtomicAsync(_settingsPath, new AppSettings(1, profileId), cancellationToken);
+    }
+
+    private async Task<DeploymentProfile?> LoadByIdAsync(
+        string profileId,
+        CancellationToken cancellationToken)
+    {
+        string profilePath = GetProfilePath(profileId);
+        if (!File.Exists(profilePath)) return null;
+        await using FileStream profileStream = File.OpenRead(profilePath);
+        return await JsonSerializer.DeserializeAsync<DeploymentProfile>(profileStream, JsonOptions, cancellationToken);
     }
 
     private string GetProfilePath(string profileId)
