@@ -231,8 +231,8 @@ public sealed class WslSshAgentSession
         {
             using Process process = new() { StartInfo = info };
             if (!process.Start()) return new(false, -1, string.Empty, "Process did not start.");
-            Task<string> stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
-            Task<string> stderr = process.StandardError.ReadToEndAsync(cancellationToken);
+            Task<string> stdout = process.StandardOutput.ReadToEndAsync();
+            Task<string> stderr = process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync(cancellationToken);
             return new(true, process.ExitCode, await stdout, await stderr);
         }
