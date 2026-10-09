@@ -22,6 +22,46 @@ public partial class AccessOnboardingWindow : Window
         _identity = DeploymentAccessIdentity.Empty(profile.Id);
         TargetComboBox.ItemsSource = profile.Targets;
         ProfileText.Text = $"Profile: {profile.Name}   •   WSL: {profile.WslDistribution}   •   Targets: {profile.Targets.Count}";
+        InitializeHelpTips();
+    }
+
+    private void InitializeHelpTips()
+    {
+        HelpTipFactory.AttachToButton(UseKeyButton, new HelpTipSpec(
+            "Approve the deployment public key for this profile.",
+            "Choose the public half of the SSH key ZDeployPet should expect when it later authenticates to deployment targets.",
+            WhenToUse: "Use this once you have selected the dedicated deployment key you intend to use for this profile. Refresh keys first if the expected key is not listed.",
+            WhatItDoes: "ZDeployPet records the public-key path, algorithm and SHA-256 fingerprint. Future probes re-check the fingerprint and fail closed if the key changes unexpectedly.",
+            Example: "A project can use one dedicated SSH key for both a shared-hosting target and a VPS. Approve that public key here, then enroll each server's host fingerprint separately.",
+            Safety: "ZDeployPet does not read, copy or store private-key contents or the private-key passphrase. This step does not contact a server and does not deploy anything.",
+            Tip: "If the fingerprint changes because you intentionally replaced the key, review the new key independently and approve it again."));
+
+        HelpTipFactory.AttachToButton(ScanHostButton, new HelpTipSpec(
+            "Inspect the SSH host identity presented by the selected server.",
+            "Scanning retrieves the server's public SSH host key so you can compare its fingerprint with a trusted source before enrollment.",
+            WhenToUse: "Run this for each configured target before the first authenticated probe, or whenever a server was rebuilt or its SSH host keys were intentionally rotated.",
+            WhatItDoes: "ZDeployPet asks the configured endpoint for its SSH host key and shows the observed fingerprint. The scan itself does not establish trust.",
+            Example: "If your profile has a shared-hosting server and a VPS, scan each target separately. Compare the shown fingerprint with the hosting control panel, provider documentation, server console, or another trusted channel.",
+            Safety: "A successful scan only proves what the endpoint presented at that moment. Do not enroll a fingerprint merely because the scan succeeded.",
+            Tip: "The Enroll scanned key action stays separate so observing a host key never silently makes it trusted."));
+
+        HelpTipFactory.AttachToButton(EnrollHostButton, new HelpTipSpec(
+            "Trust the verified SSH host fingerprint for this target.",
+            "Enroll only after you have independently confirmed that the scanned fingerprint really belongs to the intended server.",
+            WhenToUse: "Use this after Scan host key and after comparing the fingerprint through a trusted source.",
+            WhatItDoes: "ZDeployPet stores the expected host fingerprint locally for this profile and target. Future probes compare the observed host identity against this exact value.",
+            Example: "After verifying a VPS fingerprint in its provider console, enroll it here. If the server later presents a different key, ZDeployPet blocks the probe until you explicitly re-enroll.",
+            Safety: "Host-key changes are never accepted silently. Re-enrollment is an explicit trust decision and should only follow a known server rebuild or intentional key rotation.",
+            Tip: "If a fingerprint changes unexpectedly, stop and investigate instead of re-enrolling it just to make the warning disappear."));
+
+        HelpTipFactory.AttachToButton(ProbeButton, new HelpTipSpec(
+            "Prove authenticated SSH reachability without deploying anything.",
+            "The probe verifies the approved deployment key, the enrolled server host fingerprint and non-interactive SSH authentication for the selected target.",
+            WhenToUse: "Run this after approving the deployment public key and enrolling the selected target's verified host fingerprint. Repeat it when diagnosing connection, username, key or host-identity problems.",
+            WhatItDoes: "ZDeployPet performs an allowlisted non-writing SSH check and reports whether identity verification and authentication succeeded.",
+            Example: "For a profile with shared hosting and a VPS, probe each target independently. One can pass while another reports a username, key, connectivity or host-key problem.",
+            Safety: "The probe does not upload files, invoke the deployment script, modify remote folders or run arbitrary operator commands. Password authentication is not used.",
+            Tip: "A passed probe means deployment access identity is ready for the next phase; it does not authorize or start a deployment."));
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
