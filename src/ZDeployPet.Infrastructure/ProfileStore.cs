@@ -1,7 +1,14 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using ZDeployPet.Core;
 
 namespace ZDeployPet.Infrastructure;
+
+public sealed record SetupProfileSnapshot(
+    int SchemaVersion,
+    SetupDraft Draft,
+    string VerifiedWslPath);
 
 public sealed class ProfileStore
 {
@@ -13,6 +20,7 @@ public sealed class ProfileStore
 
     private readonly string _root;
     private readonly string _profilesRoot;
+    private readonly string _setupProfilesRoot;
     private readonly string _settingsPath;
 
     public ProfileStore(string? root = null)
@@ -21,6 +29,7 @@ public sealed class ProfileStore
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Zomniverse", "ZDeployPet");
         _profilesRoot = Path.Combine(_root, "profiles");
+        _setupProfilesRoot = Path.Combine(_root, "setup-profiles");
         _settingsPath = Path.Combine(_root, "settings.json");
     }
 
@@ -76,6 +85,77 @@ public sealed class ProfileStore
             string.Equals(profile.Name, profileName.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
+    public async Task SaveSetupSnapshotAsync(
+        SetupDraft draft,
+        string? verifiedWslPath,
+        CancellationToken cancellationToken = default)
+    {
+        string profileName = draft.ProfileName.Trim();
+        if (profileName.Length == 0)
+            throw new InvalidDataException("Profile name is required before this setup can be saved as JSON.");
+
+        Directory.CreateDirectory(_setupProfilesRoot);
+        SetupProfileSnapshot snapshot = new(1, draft, verifiedWslPath?.Trim() ?? string.Empty);
+        await WriteAtomicAsync(GetSetupProfilePath(profileName), snapshot, cancellationToken);
+    }
+
+    public async Task<SetupProfileSnapshot?> LoadSetupSnapshotByNameAsync(
+        string profileName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(profileName)) return null;
+        string path = GetSetupProfilePath(profileName.Trim());
+        if (!File.Exists(path)) return null;
+
+        try
+        {
+            await using FileStream stream = File.OpenRead(path);
+            SetupProfileSnapshot? snapshot = await JsonSerializer.DeserializeAsync<SetupProfileSnapshot>(stream, JsonOptions, cancellationToken);
+            if (snapshot is null || snapshot.SchemaVersion != 1) return null;
+            if (!string.Equals(snapshot.Draft.ProfileName.Trim(), profileName.Trim(), StringComparison.OrdinalIgnoreCase)) return null;
+            return snapshot;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+    }
+
+    public async Task<IReadOnlyList<string>> LoadSetupProfileNamesAsync(CancellationToken cancellationToken = default)
+    {
+        if (!Directory.Exists(_setupProfilesRoot)) return [];
+
+        List<string> names = [];
+        foreach (string path in Directory.EnumerateFiles(_setupProfilesRoot, "*.json", SearchOption.TopDirectoryOnly))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                await using FileStream stream = File.OpenRead(path);
+                SetupProfileSnapshot? snapshot = await JsonSerializer.DeserializeAsync<SetupProfileSnapshot>(stream, JsonOptions, cancellationToken);
+                if (snapshot is not null && snapshot.SchemaVersion == 1 && !string.IsNullOrWhiteSpace(snapshot.Draft.ProfileName))
+                    names.Add(snapshot.Draft.ProfileName.Trim());
+            }
+            catch (JsonException)
+            {
+                // A damaged setup snapshot must not hide other saved profiles.
+            }
+            catch (IOException)
+            {
+                // Ignore an unreadable snapshot and continue.
+            }
+        }
+
+        return names
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
     public async Task SaveActiveAsync(DeploymentProfile profile, CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(_profilesRoot);
@@ -105,6 +185,13 @@ public sealed class ProfileStore
         if (!Guid.TryParse(profileId, out Guid parsed) || parsed.ToString("D") != profileId.ToLowerInvariant())
             throw new InvalidDataException("Profile ID must be a canonical GUID.");
         return Path.Combine(_profilesRoot, profileId + ".json");
+    }
+
+    private string GetSetupProfilePath(string profileName)
+    {
+        byte[] digest = SHA256.HashData(Encoding.UTF8.GetBytes(profileName.Trim().ToUpperInvariant()));
+        string fileName = Convert.ToHexString(digest).ToLowerInvariant() + ".json";
+        return Path.Combine(_setupProfilesRoot, fileName);
     }
 
     private static async Task WriteAtomicAsync<T>(string path, T value, CancellationToken cancellationToken)
