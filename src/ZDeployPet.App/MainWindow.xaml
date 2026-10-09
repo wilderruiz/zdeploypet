@@ -5,15 +5,8 @@
         WindowStartupLocation="CenterScreen" Loaded="Window_Loaded" Closing="Window_Closing">
     <Window.Resources>
         <Style TargetType="{x:Type ToolTip}">
-            <Setter Property="MaxWidth" Value="440" />
-            <Setter Property="Padding" Value="10" />
-            <Setter Property="ContentTemplate">
-                <Setter.Value>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding}" TextWrapping="Wrap" LineHeight="20" />
-                    </DataTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="MaxWidth" Value="520" />
+            <Setter Property="Padding" Value="12" />
         </Style>
         <Style x:Key="InfoButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="Width" Value="25" />
@@ -25,7 +18,7 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Content" Value="i" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="250" />
-            <Setter Property="ToolTipService.ShowDuration" Value="20000" />
+            <Setter Property="ToolTipService.ShowDuration" Value="30000" />
         </Style>
     </Window.Resources>
     <Grid Margin="28">
@@ -89,7 +82,8 @@
 
                 <Grid Margin="0,0,0,12">
                 <GroupBox Header="3 — Add the servers that receive your files" Padding="12">
-                    <DataGrid x:Name="TargetsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
+                    <DataGrid x:Name="TargetsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160"
+                              PreviewKeyDown="TargetsGrid_PreviewKeyDown">
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Server name" Width="140"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.TargetLabels, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="Hostname or IP address" Width="*"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.Hosts, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
@@ -98,14 +92,28 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </GroupBox>
-                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="List each server used by the deployment, including its friendly name, hostname or IP address, SSH port and username. This section describes connection destinations only; it does not connect, sign in or store a password." />
+                <Button Style="{StaticResource InfoButtonStyle}">
+                    <Button.ToolTip>
+                        <ToolTip>
+                            <StackPanel MaxWidth="500">
+                                <TextBlock FontWeight="Bold" Text="Define the servers used by this deployment." />
+                                <TextBlock Margin="0,7,0,0" TextWrapping="Wrap" Text="Add one row for each server ZDeployPet may send files to. Enter a friendly server name, hostname or IP address, SSH port, and username." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="Example" />
+                                <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="A website may be hosted on one shared-hosting server while a backend service runs on a separate VPS. Add both servers here, then use Section 4 to decide which project parts go to each one." />
+                                <TextBlock Margin="0,9,0,0" TextWrapping="Wrap" Text="This section only describes connection destinations. It does not connect to a server, sign in, or store passwords." />
+                                <TextBlock Margin="0,9,0,0" Foreground="#555" TextWrapping="Wrap" Text="Tip: press Enter while editing a row to add another server row quickly." />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
+                </Button>
                 </Grid>
 
                 <Grid Margin="0,0,0,12">
                 <GroupBox Header="4 — Choose where each part of the project goes" Padding="12">
                     <StackPanel>
-                        <TextBlock Margin="4,0,4,9" TextWrapping="Wrap" Text="Add one row for every remote folder or file. The server name must match a server entered above." />
-                        <DataGrid x:Name="DestinationsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160">
+                        <TextBlock Margin="4,0,4,9" TextWrapping="Wrap" Text="Add one row for every project part that needs its own production destination. The server name must match a server entered above." />
+                        <DataGrid x:Name="DestinationsGrid" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" MinHeight="160"
+                                  PreviewKeyDown="DestinationsGrid_PreviewKeyDown">
                             <DataGrid.Columns>
                                 <DataGridTemplateColumn Header="Server name" Width="150"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding TargetLabel, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.TargetLabels, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                 <DataGridTemplateColumn Header="What goes here" Width="180"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox IsEditable="True" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding DataContext.DestinationLabels, RelativeSource={RelativeSource AncestorType=Window}}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
@@ -114,7 +122,27 @@
                         </DataGrid>
                     </StackPanel>
                 </GroupBox>
-                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="Map each deployed part—such as a website, private configuration file or backend application—to its server and exact remote folder or file path. A server can have several destinations when different parts must be kept separate." />
+                <Button Style="{StaticResource InfoButtonStyle}">
+                    <Button.ToolTip>
+                        <ToolTip>
+                            <StackPanel MaxWidth="500">
+                                <TextBlock FontWeight="Bold" Text="Map your repository layout to your production layout." />
+                                <TextBlock Margin="0,7,0,0" TextWrapping="Wrap" Text="Your Git repository can keep the whole project together in one folder for simple commits, pull, push, review, and version control even when production requires some files to live in different locations." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="Example repository" />
+                                <TextBlock Margin="0,3,0,0" FontFamily="Consolas" Text="website/" />
+                                <TextBlock FontFamily="Consolas" Text="private-config.php" />
+                                <TextBlock FontFamily="Consolas" Text="backend/" />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="Example production mapping" />
+                                <TextBlock Margin="0,3,0,0" FontFamily="Consolas" TextWrapping="Wrap" Text="website/ → /home/user/domains/example.com/public_html/" />
+                                <TextBlock FontFamily="Consolas" TextWrapping="Wrap" Text="private-config.php → /home/user/domains/example.com/private/private-config.php" />
+                                <TextBlock FontFamily="Consolas" TextWrapping="Wrap" Text="backend/ → /opt/example/backend/ on a VPS" />
+                                <TextBlock Margin="0,9,0,0" TextWrapping="Wrap" Text="The private configuration file can stay above public_html so it is not publicly accessible, while the website remains inside the web root." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" TextWrapping="Wrap" Text="ZDeployPet keeps one clean Git project locally while deploying each part to the correct production server and path." />
+                                <TextBlock Margin="0,9,0,0" Foreground="#555" TextWrapping="Wrap" Text="Add one row per distinct destination. Press Enter while editing a row to add the next mapping quickly." />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
+                </Button>
                 </Grid>
 
                 <Grid>
