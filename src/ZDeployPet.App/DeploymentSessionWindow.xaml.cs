@@ -1,3 +1,4 @@
+using System.Text;
 using System.Windows;
 using ZDeployPet.Core;
 
@@ -38,6 +39,16 @@ public partial class DeploymentSessionWindow : Window
                 Safety: "Missing, foreign, expired, stale, or unverifiable state fails closed instead of silently becoming READY."));
 
         HelpTipFactory.AttachToButton(
+            ProbeTargetsButton,
+            new HelpTipSpec(
+                "Prove target authentication through the bounded agent.",
+                "Probe targets re-validates the READY session, re-checks each enrolled SSH host fingerprint, then authenticates to every configured target using only the app-owned ssh-agent.",
+                WhenToUse: "Use this after the session is READY and before deployment work that will rely on the bounded agent.",
+                WhatItDoes: "ZDeployPet probes Hostinger/VPS sequentially with password authentication disabled. The ssh command receives the agent socket, not a private-key file path.",
+                Example: "Millenova can prove both Hostinger and the VPS are reachable through the same approved bounded identity during one eight-hour session.",
+                Safety: "The probe remains non-writing. A changed host key, missing enrollment, rejected agent identity, expired lease, or vanished agent fails closed."));
+
+        HelpTipFactory.AttachToButton(
             LockButton,
             new HelpTipSpec(
                 "Immediately remove ZDeployPet deployment access.",
@@ -55,6 +66,7 @@ public partial class DeploymentSessionWindow : Window
         await RunBusyAsync(async () =>
         {
             await _controller.BeginUnlockAsync(_profile);
+            ProbeResultsTextBox.Text = "No bounded-agent target probe has run yet.";
             StatusText.Text = _controller.HasOwnedAgent
                 ? "Trusted unlock terminal opened — complete ssh-add, then click Check session."
                 : "Unlock could not start.";
@@ -73,12 +85,52 @@ public partial class DeploymentSessionWindow : Window
         });
     }
 
+    private async void ProbeTargets_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        await RunBusyAsync(async () =>
+        {
+            IReadOnlyList<DeploymentSessionProbeResult> results = await _controller.ProbeReadyTargetsAsync(_profile);
+            if (results.Count == 0)
+            {
+                ProbeResultsTextBox.Text = _controller.Message;
+                StatusText.Text = "Bounded-agent probe did not run.";
+                return;
+            }
+
+            StringBuilder text = new();
+            foreach (DeploymentSessionProbeResult item in results)
+            {
+                text.Append(item.Result.Success ? "PASS" : "FAIL")
+                    .Append("  ")
+                    .Append(item.Target.Label)
+                    .Append("  ")
+                    .Append(item.Target.User)
+                    .Append('@')
+                    .Append(item.Target.Host)
+                    .Append(':')
+                    .Append(item.Target.Port)
+                    .Append("  —  ")
+                    .Append(item.Result.Status)
+                    .AppendLine();
+                if (!item.Result.Success)
+                    text.AppendLine("      " + item.Result.Message);
+            }
+
+            ProbeResultsTextBox.Text = text.ToString().TrimEnd();
+            StatusText.Text = results.All(item => item.Result.Success)
+                ? "All bounded-agent target probes passed."
+                : "One or more bounded-agent target probes failed.";
+        });
+    }
+
     private async void Lock_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
         await RunBusyAsync(async () =>
         {
             await _controller.LockAsync();
+            ProbeResultsTextBox.Text = "No bounded-agent target probe has run yet.";
             StatusText.Text = "Deployment session locked.";
         });
     }
@@ -113,8 +165,10 @@ public partial class DeploymentSessionWindow : Window
             ? "Lease ends: " + expires.ToLocalTime().ToString("g")
             : "No active lease";
 
-        UnlockButton.IsEnabled = !_busy && _controller.State is not DeploymentAccessSessionState.Ready and not DeploymentAccessSessionState.Expiring;
+        bool ready = _controller.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring;
+        UnlockButton.IsEnabled = !_busy && !ready;
         CheckButton.IsEnabled = !_busy && _controller.HasOwnedAgent;
+        ProbeTargetsButton.IsEnabled = !_busy && ready;
         LockButton.IsEnabled = !_busy && _controller.HasOwnedAgent;
     }
 }
