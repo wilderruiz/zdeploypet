@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Media;
 
 namespace ZDeployPet.App;
 
@@ -54,12 +53,13 @@ internal static class HelpTipFactory
         AddSection(content, "Safety", spec.Safety);
 
         if (!string.IsNullOrWhiteSpace(spec.Tip))
-        {
-            TextBlock tip = AddText(content, spec.Tip!, marginTop: 9);
-            tip.Foreground = Brushes.DimGray;
-        }
+            AddText(content, spec.Tip!, marginTop: 9);
 
-        return new ToolTip { Content = content };
+        ToolTip toolTip = new() { Content = content };
+        if (Application.Current.TryFindResource("SharedToolTipStyle") is Style style)
+            toolTip.Style = style;
+
+        return toolTip;
     }
 
     private static void AddSection(StackPanel content, string heading, string? text)
