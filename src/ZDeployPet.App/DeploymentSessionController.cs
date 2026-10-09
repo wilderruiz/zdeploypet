@@ -4,10 +4,15 @@ using ZDeployPet.WslBridge;
 
 namespace ZDeployPet.App;
 
+public sealed record DeploymentSessionProbeResult(
+    DeploymentTarget Target,
+    SshProbeResult Result);
+
 public sealed class DeploymentSessionController
 {
     private readonly DeploymentAccessIdentityStore _identityStore = new();
     private readonly WslSshAgentSession _agent = new();
+    private readonly WslSshAgentProbe _agentProbe = new();
     private WslSshAgentRuntime? _runtime;
     private DeploymentAccessSessionLease? _lease;
 
@@ -117,6 +122,51 @@ public sealed class DeploymentSessionController
                 "INVALID — the running session metadata could not be trusted.",
             _ => "Deployment access is locked."
         };
+    }
+
+    public async Task<IReadOnlyList<DeploymentSessionProbeResult>> ProbeReadyTargetsAsync(
+        DeploymentProfile profile,
+        CancellationToken cancellationToken = default)
+    {
+        await CheckAsync(profile, cancellationToken);
+        if (_runtime is null || State is not DeploymentAccessSessionState.Ready and not DeploymentAccessSessionState.Expiring)
+        {
+            Message = "The bounded deployment session is not READY. Unlock and verify the session before probing targets.";
+            return [];
+        }
+
+        DeploymentAccessIdentity identity = await _identityStore.LoadAsync(profile.Id, cancellationToken);
+        DeploymentKeyIdentity? key = identity.DeploymentKey;
+        if (key is null)
+        {
+            State = DeploymentAccessSessionState.Invalid;
+            Message = "The profile no longer has an approved deployment key. The bounded session cannot be used.";
+            return [];
+        }
+
+        List<DeploymentSessionProbeResult> results = [];
+        foreach (DeploymentTarget target in profile.Targets)
+        {
+            TargetHostIdentity? hostKey = identity.FindHostKey(target.Id);
+            SshProbeResult probe = hostKey is null
+                ? new SshProbeResult(
+                    SshProbeStatus.HostKeyNotEnrolled,
+                    "No enrolled SSH host fingerprint exists for this target.")
+                : await _agentProbe.ProbeAsync(
+                    profile.WslDistribution,
+                    target,
+                    key,
+                    hostKey,
+                    _runtime,
+                    cancellationToken);
+            results.Add(new(target, probe));
+        }
+
+        int passed = results.Count(item => item.Result.Success);
+        Message = passed == results.Count && results.Count > 0
+            ? $"READY — bounded-agent probes passed for all {passed} configured target{(passed == 1 ? string.Empty : "s")}."
+            : $"READY — bounded session remains valid; {passed} of {results.Count} target probes passed. Review the failed target before deployment.";
+        return results;
     }
 
     public async Task LockAsync(CancellationToken cancellationToken = default)
