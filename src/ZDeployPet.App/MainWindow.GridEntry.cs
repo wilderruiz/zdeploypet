@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -6,6 +7,32 @@ namespace ZDeployPet.App;
 
 public partial class MainWindow
 {
+    protected override void OnContentRendered(EventArgs e)
+    {
+        base.OnContentRendered(e);
+        ConfigureManagedEntryRows();
+    }
+
+    private void ConfigureManagedEntryRows()
+    {
+        // WPF's built-in DataGrid "new item" row is a temporary CollectionView placeholder.
+        // It can display typed values that are not yet present in our ObservableCollection,
+        // so a profile save can silently omit what the operator can see on screen.
+        // ZDeployPet owns row creation instead: every visible editable row is a real draft object.
+        TargetsGrid.CanUserAddRows = false;
+        DestinationsGrid.CanUserAddRows = false;
+        EnsureTrailingEntryRows();
+    }
+
+    private void EnsureTrailingEntryRows()
+    {
+        if (_targetDrafts.Count == 0 || !_targetDrafts[^1].IsBlank)
+            _targetDrafts.Add(new TargetDraft { Port = 22 });
+
+        if (_destinationDrafts.Count == 0 || !_destinationDrafts[^1].IsBlank)
+            _destinationDrafts.Add(new DestinationDraft());
+    }
+
     private void TargetsGrid_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None) return;
