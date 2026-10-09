@@ -18,7 +18,7 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Content" Value="i" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="250" />
-            <Setter Property="ToolTipService.ShowDuration" Value="30000" />
+            <Setter Property="ToolTipService.ShowDuration" Value="2147483647" />
         </Style>
     </Window.Resources>
     <Grid Margin="28">
@@ -50,8 +50,10 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <TextBlock VerticalAlignment="Center" Text="Profile name" />
-                        <ComboBox x:Name="ProfileNameTextBox" Grid.Column="1" Grid.ColumnSpan="2" Margin="8,4" Padding="7" IsEditable="True"
-                                  SelectionChanged="ProfileNameTextBox_SelectionChanged" />
+                        <ComboBox x:Name="ProfileNameTextBox" Grid.Column="1" Margin="8,4" Padding="7" IsEditable="True"
+                                  Loaded="ProfileNameTextBox_Loaded" DropDownOpened="ProfileNameTextBox_DropDownOpened" />
+                        <Button x:Name="LoadProfileButton" Grid.Column="2" Margin="4" Padding="14,7"
+                                Click="LoadProfile_Click" Content="Load profile" ToolTip="Load the selected saved JSON profile into all setup fields." />
                         <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Project folder" />
                         <ComboBox x:Name="ProjectPathTextBox" Grid.Row="1" Grid.Column="1" Margin="8,4" Padding="7" IsEditable="True" />
                         <Button Grid.Row="1" Grid.Column="2" Margin="4" Padding="14,7" Click="BrowseProject_Click" Content="Browse…" />
@@ -62,7 +64,21 @@
                         <TextBox x:Name="WslPathTextBox" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="8,4" Padding="7" IsReadOnly="True" />
                     </Grid>
                 </GroupBox>
-                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="Identify this deployment profile, select the project folder on Windows, and choose the WSL Linux environment that can access it. ZDeployPet checks the matching Linux path so the deployment script can run from the correct project later." />
+                <Button Style="{StaticResource InfoButtonStyle}">
+                    <Button.ToolTip>
+                        <ToolTip>
+                            <StackPanel MaxWidth="500">
+                                <TextBlock FontWeight="Bold" Text="Choose or create a deployment profile." />
+                                <TextBlock Margin="0,7,0,0" TextWrapping="Wrap" Text="A profile is the saved local description of one deployable project: its Windows project folder, WSL environment, deployment script, servers, and production destination mappings." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="Saved profiles" />
+                                <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="Profiles are stored as JSON files under your local ZDeployPet application-data folder. Choose one from the Profile name list and press Load profile to restore its exact saved settings." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="New profile" />
+                                <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="Type a new profile name, choose the project folder and WSL environment, then complete the remaining sections. Check settings and save will validate the configuration before writing the JSON profile." />
+                                <TextBlock Margin="0,9,0,0" Foreground="#555" TextWrapping="Wrap" Text="The WSL project path is derived and verified automatically from the Windows project folder; you do not need to type it twice." />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
+                </Button>
                 </Grid>
 
                 <Grid Margin="0,0,0,12">
@@ -78,7 +94,22 @@
                         <ComboBox x:Name="ConfirmationTextBox" Grid.Row="2" Grid.Column="1" Margin="8,4" Padding="7" IsEditable="True" Text="DEPLOY" />
                     </Grid>
                 </GroupBox>
-                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="Choose the existing deployment script inside your project, where its deployment reports are stored, and the exact phrase required before a live deployment. These settings help ZDeployPet run only the approved script and prevent accidental deployments." />
+                <Button Style="{StaticResource InfoButtonStyle}">
+                    <Button.ToolTip>
+                        <ToolTip>
+                            <StackPanel MaxWidth="500">
+                                <TextBlock FontWeight="Bold" Text="Choose the one script ZDeployPet is allowed to run." />
+                                <TextBlock Margin="0,7,0,0" TextWrapping="Wrap" Text="Deployment script is the existing runner inside your repository, for example deploy.sh or scripts/deploy.sh. ZDeployPet validates that this script belongs to the selected project before it can ever be executed." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="Example" />
+                                <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="A project may keep website files, private configuration, and backend code together in Git while one deployment script knows how to place each part on the correct server. Enter that approved runner here rather than individual shell commands." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="Deployment report folder" />
+                                <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="Optional. If your runner writes deployment reports or receipts, enter the project-relative or configured report location so ZDeployPet can discover and monitor them later." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="Confirmation phrase" />
+                                <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="This exact phrase is a deliberate final safety gate before a live deployment. Keeping a clear phrase such as DEPLOY helps distinguish inspection and setup from an intentional production action." />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
+                </Button>
                 </Grid>
 
                 <Grid Margin="0,0,0,12">
@@ -153,7 +184,21 @@
                         <TextBlock x:Name="SetupValidationText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#A02020" />
                     </StackPanel>
                 </GroupBox>
-                <Button Style="{StaticResource InfoButtonStyle}" ToolTip="Check that all local paths, server details and destination mappings are valid, then save the profile on this computer. Saving does not contact a server or deploy anything, and no passwords or private keys are stored in the profile." />
+                <Button Style="{StaticResource InfoButtonStyle}">
+                    <Button.ToolTip>
+                        <ToolTip>
+                            <StackPanel MaxWidth="500">
+                                <TextBlock FontWeight="Bold" Text="Validate first, then save an exact reusable profile." />
+                                <TextBlock Margin="0,7,0,0" TextWrapping="Wrap" Text="Check settings and save validates the project folder, WSL path, deployment script, server definitions, and destination mappings before the profile becomes an official saved configuration." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="What is saved" />
+                                <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="The complete validated profile is written as a JSON file in your local ZDeployPet application-data folder. Later, choose its name in Section 1 and press Load profile to restore the same settings into the UI." />
+                                <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="What is not saved" />
+                                <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="ZDeployPet does not store server passwords, private-key contents, or private-key passphrases in the profile. Saving a profile also does not contact a server and does not deploy anything." />
+                                <TextBlock Margin="0,9,0,0" Foreground="#555" TextWrapping="Wrap" Text="This gives each project a repeatable local deployment definition instead of relying on remembered form suggestions." />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
+                </Button>
                 </Grid>
             </StackPanel>
         </ScrollViewer>
