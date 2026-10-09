@@ -56,9 +56,7 @@
                     <WrapPanel>
                         <Button x:Name="ScanHostButton" Padding="12,6" Margin="0,0,8,6" Click="ScanHost_Click" Content="Scan host key" />
                         <Button x:Name="EnrollHostButton" Padding="12,6" Margin="0,0,8,6" Click="EnrollHost_Click" Content="Enroll scanned key" IsEnabled="False" />
-                        <Button x:Name="InstallKeyButton" Padding="12,6" Margin="0,0,6,6" Click="InstallKey_Click" Content="Install public key" />
-                        <Button x:Name="InstallKeyHelpButton" Style="{StaticResource SharedInfoButtonStyle}" Margin="0,0,0,6"
-                                Loaded="InstallKeyHelpButton_Loaded" />
+                        <Button x:Name="InstallKeyButton" Padding="12,6" Margin="0,0,0,6" Click="InstallKey_Click" Loaded="InstallKeyButton_Loaded" Content="Install public key" />
                     </WrapPanel>
                     <TextBlock Margin="0,8,0,3" FontWeight="SemiBold" Text="Scanned fingerprint" />
                     <TextBlock x:Name="ScannedHostFingerprintText" TextWrapping="Wrap" FontFamily="Consolas" Text="Not scanned" />
