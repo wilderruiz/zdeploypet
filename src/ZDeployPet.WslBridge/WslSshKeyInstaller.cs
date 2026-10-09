@@ -126,6 +126,10 @@ public sealed class WslSshKeyInstaller
             return new(false, "The selected target's SSH host fingerprint no longer matches the enrolled fingerprint. Installation was blocked.");
         }
 
+        string normalizedInstallScript = InstallScript
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+
         using Process process = new();
         process.StartInfo = new ProcessStartInfo
         {
@@ -139,7 +143,7 @@ public sealed class WslSshKeyInstaller
         process.StartInfo.ArgumentList.Add("--exec");
         process.StartInfo.ArgumentList.Add("/bin/sh");
         process.StartInfo.ArgumentList.Add("-c");
-        process.StartInfo.ArgumentList.Add(InstallScript);
+        process.StartInfo.ArgumentList.Add(normalizedInstallScript);
         process.StartInfo.ArgumentList.Add("zdeploypet-install-key");
         process.StartInfo.ArgumentList.Add(target.Host.Trim());
         process.StartInfo.ArgumentList.Add(target.Port.ToString(System.Globalization.CultureInfo.InvariantCulture));
