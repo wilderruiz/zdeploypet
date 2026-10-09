@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using ZDeployPet.Core;
+using ZDeployPet.Infrastructure;
 
 namespace ZDeployPet.App;
 
@@ -23,11 +24,12 @@ public partial class MainWindow
         {
             _refreshingSavedProfiles = true;
             string currentText = ProfileNameTextBox.Text;
-            IReadOnlyList<DeploymentProfile> profiles = await _profileStore.LoadAllAsync();
+            IReadOnlyList<string> setupNames = await _profileStore.LoadSetupProfileNamesAsync();
+            IReadOnlyList<DeploymentProfile> completeProfiles = await _profileStore.LoadAllAsync();
             ObservableCollection<string> names = (ObservableCollection<string>)ProfileNameTextBox.ItemsSource;
             names.Clear();
-            foreach (string name in profiles
-                         .Select(profile => profile.Name)
+            foreach (string name in setupNames
+                         .Concat(completeProfiles.Select(profile => profile.Name))
                          .Distinct(StringComparer.OrdinalIgnoreCase)
                          .OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
             {
@@ -59,6 +61,17 @@ public partial class MainWindow
         SetupValidationText.Text = string.Empty;
         try
         {
+            SetupProfileSnapshot? snapshot = await _profileStore.LoadSetupSnapshotByNameAsync(profileName);
+            if (snapshot is not null)
+            {
+                _activeProfile = await _profileStore.LoadByNameAsync(profileName);
+                PopulateDraft(snapshot.Draft);
+                WslPathTextBox.Text = snapshot.VerifiedWslPath;
+                ShowSetup($"Saved profile '{snapshot.Draft.ProfileName}' loaded from local JSON. Incomplete and complete settings are restored exactly as last saved.");
+                return;
+            }
+
+            // Backward compatibility for profiles created before setup snapshots existed.
             DeploymentProfile? saved = await _profileStore.LoadByNameAsync(profileName);
             if (saved is null)
             {
