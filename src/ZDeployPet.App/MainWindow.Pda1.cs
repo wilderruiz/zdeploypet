@@ -22,6 +22,7 @@ public partial class MainWindow
         EnsurePdaActionButtons();
         AttachDiscoveryActionHelp();
         RefreshPda1ActionVisibility();
+        InitializePda3Shell();
     }
 
     private void EnsurePdaActionButtons()
