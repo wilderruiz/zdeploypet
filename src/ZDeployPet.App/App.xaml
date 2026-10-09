@@ -14,8 +14,8 @@
         <SolidColorBrush x:Key="AppWarningBackgroundBrush" Color="#342B18" />
         <SolidColorBrush x:Key="AppWarningBorderBrush" Color="#B98A35" />
         <SolidColorBrush x:Key="AppSelectionBrush" Color="#5B2A35" />
-        <SolidColorBrush x:Key="AppInputBackgroundBrush" Color="#F2F3F5" />
-        <SolidColorBrush x:Key="AppInputTextBrush" Color="#17191E" />
+        <SolidColorBrush x:Key="AppInputBackgroundBrush" Color="#22252C" />
+        <SolidColorBrush x:Key="AppInputTextBrush" Color="#F4F5F7" />
 
         <Style TargetType="{x:Type Window}">
             <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
@@ -79,13 +79,13 @@
             <Setter Property="SelectionBrush" Value="{StaticResource AppSelectionBrush}" />
         </Style>
 
-        <!-- WPF's native ComboBox chrome remains light on this Windows theme. Keep its
-             text explicitly dark so editable and non-editable profile/access fields are
-             readable in every state instead of rendering white-on-white. -->
+        <!-- Inputs stay on the same dark surface as the shell. This also keeps the
+             generated TextBlocks used by non-editable ComboBoxes readable because the
+             application TextBlock style is light. -->
         <Style TargetType="{x:Type ComboBox}">
             <Setter Property="Foreground" Value="{StaticResource AppInputTextBrush}" />
             <Setter Property="Background" Value="{StaticResource AppInputBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="#707681" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
         </Style>
 
         <Style TargetType="{x:Type ComboBoxItem}">
@@ -94,12 +94,12 @@
             <Setter Property="Padding" Value="6,4" />
             <Style.Triggers>
                 <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#D7DADF" />
-                    <Setter Property="Foreground" Value="#111318" />
+                    <Setter Property="Background" Value="#30343D" />
+                    <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#C9CED6" />
-                    <Setter Property="Foreground" Value="#111318" />
+                    <Setter Property="Background" Value="{StaticResource AppSelectionBrush}" />
+                    <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -179,12 +179,26 @@
             <Setter Property="Foreground" Value="{StaticResource AppAccentHoverBrush}" />
         </Style>
 
+        <!-- Force the tooltip chrome instead of allowing the Windows light-theme
+             default template to paint a white popup behind our light tooltip text. -->
         <Style x:Key="SharedToolTipStyle" TargetType="{x:Type ToolTip}">
             <Setter Property="MaxWidth" Value="560" />
             <Setter Property="Padding" Value="12" />
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
             <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToolTip}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="SharedInfoButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
