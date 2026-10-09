@@ -14,17 +14,8 @@
         <SolidColorBrush x:Key="AppWarningBackgroundBrush" Color="#342B18" />
         <SolidColorBrush x:Key="AppWarningBorderBrush" Color="#B98A35" />
         <SolidColorBrush x:Key="AppSelectionBrush" Color="#5B2A35" />
-
-        <!-- Native WPF editors and popup chrome consult these system brushes. Keep them dark so
-             editable ComboBoxes/DataGrid cells cannot fall back to white-on-white Windows defaults. -->
-        <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#22252C" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#F4F5F7" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#22252C" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#F4F5F7" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#5B2A35" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#F4F5F7" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#1D2026" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="#F4F5F7" />
+        <SolidColorBrush x:Key="AppInputBackgroundBrush" Color="#F2F3F5" />
+        <SolidColorBrush x:Key="AppInputTextBrush" Color="#17191E" />
 
         <Style TargetType="{x:Type Window}">
             <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
@@ -44,7 +35,6 @@
             <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="10,6" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
@@ -52,8 +42,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="1"
-                                SnapsToDevicePixels="True">
+                                CornerRadius="1">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               Margin="{TemplateBinding Padding}"
@@ -61,15 +50,14 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#313640" />
+                                <Setter TargetName="Chrome" Property="Background" Value="#30343D" />
                                 <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AppAccentHoverBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource AppSelectionBrush}" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AppAccentBrush}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AppAccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#383D47" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Chrome" Property="Background" Value="#202228" />
@@ -91,20 +79,27 @@
             <Setter Property="SelectionBrush" Value="{StaticResource AppSelectionBrush}" />
         </Style>
 
+        <!-- WPF's native ComboBox chrome remains light on this Windows theme. Keep its
+             text explicitly dark so editable and non-editable profile/access fields are
+             readable in every state instead of rendering white-on-white. -->
         <Style TargetType="{x:Type ComboBox}">
-            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource AppInputTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="#707681" />
         </Style>
 
         <Style TargetType="{x:Type ComboBoxItem}">
-            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource AppInputTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppInputBackgroundBrush}" />
             <Setter Property="Padding" Value="6,4" />
             <Style.Triggers>
                 <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="{StaticResource AppSelectionBrush}" />
-                    <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+                    <Setter Property="Background" Value="#D7DADF" />
+                    <Setter Property="Foreground" Value="#111318" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#C9CED6" />
+                    <Setter Property="Foreground" Value="#111318" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -142,12 +137,6 @@
             <Setter Property="VerticalGridLinesBrush" Value="#343943" />
         </Style>
 
-        <Style TargetType="{x:Type DataGridCell}">
-            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="#343943" />
-        </Style>
-
         <Style TargetType="{x:Type DataGridColumnHeader}">
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
             <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
@@ -173,25 +162,17 @@
                 <Trigger Property="IsHighlighted" Value="True">
                     <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
                     <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource AppSurfaceRaisedBrush}" />
                 </Trigger>
                 <Trigger Property="IsSubmenuOpen" Value="True">
                     <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource AppSurfaceRaisedBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style TargetType="{x:Type Separator}">
+            <Setter Property="Background" Value="#343943" />
             <Setter Property="Height" Value="1" />
             <Setter Property="Margin" Value="8,4" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Separator}">
-                        <Border Height="1" Background="#343943" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <Style TargetType="{x:Type Hyperlink}">
@@ -212,8 +193,6 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="4,0,8,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Content" Value="i" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="250" />
