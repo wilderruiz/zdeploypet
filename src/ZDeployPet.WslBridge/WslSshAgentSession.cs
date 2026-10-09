@@ -20,10 +20,71 @@ public sealed record WslSshAgentStartResult(
     WslSshAgentRuntime? Runtime,
     string? Error = null);
 
+public sealed record WslSshAgentUnlockLaunchResult(
+    bool Success,
+    string Message);
+
 public sealed record WslSshAgentLockResult(bool Success, string? Error = null);
 
 public sealed class WslSshAgentSession
 {
+    private const string UnlockScript = """
+        set -eu
+        socket="$1"
+        pid="$2"
+        public_key="$3"
+        expected_fingerprint="$4"
+        lifetime_seconds="$5"
+        profile_name="$6"
+        private_key="${public_key%.pub}"
+
+        export SSH_AUTH_SOCK="$socket"
+        export SSH_AGENT_PID="$pid"
+
+        echo
+        echo "============================================================"
+        echo " ZDEPLOYPET BOUNDED DEPLOYMENT ACCESS"
+        echo "============================================================"
+        echo "Profile              : $profile_name"
+        echo "Approved fingerprint : $expected_fingerprint"
+        echo "Lease                : $lifetime_seconds seconds"
+        echo
+        echo "ZDeployPet is asking OpenSSH to load ONLY the approved deployment key"
+        echo "into this app-owned ssh-agent for the bounded lease above."
+        echo "If the private key has a passphrase, type it only in this terminal."
+        echo "ZDeployPet does not receive or store the passphrase."
+        echo "============================================================"
+        echo
+
+        if [ ! -S "$socket" ]; then
+          echo "ZDeployPet blocked unlock: the app-owned ssh-agent socket is missing."
+          echo "Press Enter to close."
+          read _
+          exit 20
+        fi
+        if [ ! -f "$private_key" ]; then
+          echo "ZDeployPet blocked unlock: the approved private key is missing."
+          echo "Press Enter to close."
+          read _
+          exit 21
+        fi
+
+        set +e
+        ssh-add -t "$lifetime_seconds" "$private_key"
+        code=$?
+        set -e
+
+        echo
+        if [ "$code" -eq 0 ]; then
+          echo "OpenSSH accepted the key. Return to ZDeployPet and click Check session."
+        else
+          echo "The key was not loaded. ssh-add exit code: $code"
+        fi
+        echo "Press Enter to close."
+        read _
+        exit "$code"
+        """;
+
     public async Task<WslSshAgentStartResult> StartAsync(
         string distribution,
         string profileId,
@@ -48,6 +109,61 @@ public sealed class WslSshAgentSession
             return new(false, null, "ssh-agent started, but its process ID could not be parsed.");
 
         return new(true, new(distribution.Trim(), pid.Value, socket, DateTimeOffset.UtcNow));
+    }
+
+    public async Task<WslSshAgentUnlockLaunchResult> LaunchUnlockAsync(
+        WslSshAgentRuntime runtime,
+        DeploymentKeyIdentity deploymentKey,
+        string profileName,
+        TimeSpan? lifetime = null,
+        CancellationToken cancellationToken = default)
+    {
+        CommandResult identity = await ValidateOwnedAgentAsync(runtime, cancellationToken);
+        if (!identity.Started || identity.ExitCode != 0)
+            return new(false, "ZDeployPet refused to unlock because the app-owned ssh-agent could not be verified.");
+
+        TimeSpan duration = lifetime ?? DeploymentAccessSessionLease.DefaultLifetime;
+        if (duration <= TimeSpan.Zero || duration > TimeSpan.FromHours(24))
+            return new(false, "The requested SSH-agent lease is outside the allowed range.");
+
+        string normalizedScript = UnlockScript
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+
+        using Process process = new();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = "wsl.exe",
+            UseShellExecute = true,
+            CreateNoWindow = false,
+            WindowStyle = ProcessWindowStyle.Normal
+        };
+        process.StartInfo.ArgumentList.Add("--distribution");
+        process.StartInfo.ArgumentList.Add(runtime.Distribution);
+        process.StartInfo.ArgumentList.Add("--exec");
+        process.StartInfo.ArgumentList.Add("/bin/sh");
+        process.StartInfo.ArgumentList.Add("-c");
+        process.StartInfo.ArgumentList.Add(normalizedScript);
+        process.StartInfo.ArgumentList.Add("zdeploypet-pda2-unlock");
+        process.StartInfo.ArgumentList.Add(runtime.SocketPath);
+        process.StartInfo.ArgumentList.Add(runtime.AgentPid.ToString(CultureInfo.InvariantCulture));
+        process.StartInfo.ArgumentList.Add(deploymentKey.PublicKeyPath);
+        process.StartInfo.ArgumentList.Add(deploymentKey.Fingerprint.Trim());
+        process.StartInfo.ArgumentList.Add(((int)duration.TotalSeconds).ToString(CultureInfo.InvariantCulture));
+        process.StartInfo.ArgumentList.Add(profileName.Trim());
+
+        try
+        {
+            if (!process.Start())
+                return new(false, "Windows could not start the trusted WSL ssh-add terminal.");
+        }
+        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return new(false, "Windows could not start the trusted WSL ssh-add terminal: " + exception.Message);
+        }
+
+        return new(true,
+            "The trusted OpenSSH unlock terminal was opened. Complete ssh-add there, then return to ZDeployPet and click Check session. ZDeployPet never receives the key passphrase.");
     }
 
     public async Task<WslSshAgentInspection> InspectAsync(
