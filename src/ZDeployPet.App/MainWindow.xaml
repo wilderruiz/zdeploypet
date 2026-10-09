@@ -142,6 +142,7 @@
         <DockPanel Grid.Row="3" Margin="0,18,0,0" LastChildFill="False">
             <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#555" DockPanel.Dock="Left" />
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                <Button x:Name="AccessOnboardingButton" Margin="0,0,8,0" Padding="16,9" Click="AccessOnboarding_Click" Content="Deployment access…" Visibility="Collapsed" />
                 <Button x:Name="EditProfileButton" Margin="0,0,8,0" Padding="16,9" Click="EditProfile_Click" Content="Edit profile" Visibility="Collapsed" />
                 <Button x:Name="SaveProfileButton" Padding="16,9" Click="SaveProfile_Click" Content="Check settings and save" Visibility="Collapsed" />
                 <Button x:Name="DiscoverButton" Padding="16,9" Click="DiscoverButton_Click" Content="Run discovery" Visibility="Collapsed" />
