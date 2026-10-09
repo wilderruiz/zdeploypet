@@ -1,5 +1,7 @@
 # PDA-1 — Deployment key onboarding and SSH diagnostics
 
+**Status:** ✅ ACCEPTED 2026-10-09
+
 PDA-1 establishes explicit SSH identity before ZDeployPet introduces its own bounded SSH-agent session in PDA-2.
 
 ## Local-only identity state
@@ -22,49 +24,52 @@ It never contains a password, private-key contents, private-key passphrase, SSH-
 
 The **Deployment access…** window enumerates `~/.ssh/*.pub` inside the profile's selected WSL distribution and fingerprints candidates with `ssh-keygen -lf ... -E sha256`.
 
-The operator explicitly approves one public key. ZDeployPet records its path and fingerprint only. Before every authenticated probe, the public key is fingerprinted again. A changed or missing key fails closed and requires explicit re-approval.
+The operator can explicitly approve an existing public key or create a dedicated profile-scoped ZDeployPet Ed25519 key under the selected WSL user's `~/.ssh`. ZDeployPet records only path/fingerprint metadata. The private key is never copied into the project repository or to a remote server.
 
-PDA-1 does not ask for a key passphrase. The authenticated probe uses SSH batch mode, so an encrypted key that is not already available to SSH will be rejected without an app-owned passphrase prompt. PDA-2 will introduce the bounded unlock/session workflow.
+The approved public-key fingerprint is rechecked before installation/probe use and fingerprint changes fail closed until explicitly approved again.
 
 ## Host-key enrollment
 
-For a configured target, ZDeployPet performs a read-only `ssh-keyscan` and displays the observed SHA-256 host fingerprint. `ssh-keyscan` is discovery, not trust: the UI tells the operator to compare the fingerprint with the hosting provider/server console or another trusted channel before enrollment.
+For a configured target, ZDeployPet performs a read-only host-key scan and displays the observed SHA-256 fingerprint. Scanning is discovery, not trust: the operator must independently verify the fingerprint before enrollment.
 
-Enrollment requires an explicit confirmation. Only the expected fingerprint and key type are persisted. The raw scanned host-key line remains transient.
+Enrollment is explicit. ZDeployPet persists only the expected fingerprint and key type. Installer and probe rechecks request the exact enrolled host-key type, so servers exposing several key types do not produce false mismatches. Any real mismatch blocks before authentication.
 
-Before a probe, ZDeployPet scans again and compares the observed fingerprint with the enrolled value. Any change hard-blocks the probe until the operator deliberately verifies and re-enrolls the new fingerprint.
+## Public-key installation
+
+ZDeployPet installs only the approved `.pub` half through the trusted WSL/SSH process. Before the one-time account-password prompt, the terminal clearly identifies the friendly server name, username, host, port and account so the operator does not confuse credentials between targets.
+
+The remote account password is entered only into the SSH terminal. ZDeployPet does not receive, echo or persist it.
 
 ## Non-writing authenticated probe
 
 The target probe is deliberately narrow:
 
-- `BatchMode=yes`;
-- password and keyboard-interactive authentication disabled;
-- `StrictHostKeyChecking=yes`;
-- a temporary local WSL `known_hosts` file built only from the verified scan result;
-- the selected matching key identity only;
-- a fixed remote command: `printf ZDEPLOYPET_PROBE_OK`.
+- password and keyboard-interactive authentication are disabled for the probe;
+- strict host-key checking is required;
+- a temporary WSL `known_hosts` file is built only from the already verified host-key line;
+- the selected approved deployment identity is used;
+- the fixed remote command is non-writing and does not run the deployment script.
 
-The temporary known-hosts file is deleted on exit. The remote command does not modify files, destinations, services or application state.
+The temporary known-hosts file is deleted on exit. Probe diagnostics distinguish missing/changed keys, unreachable endpoints, host-key mismatch, authentication rejection and other SSH failures.
 
-Probe diagnostics distinguish:
+## Git/private-key safety
 
-- missing deployment key;
-- changed deployment public-key fingerprint;
-- unreachable host / incorrect endpoint;
-- changed host-key fingerprint;
-- authentication/key/username rejection;
-- unclassified SSH failure.
+The **Git safety…** window scans tracked and relevant unignored files for private-key material, including known private-key headers. Tracked findings are reported separately because `.gitignore` cannot remediate an already tracked secret.
 
-## PDA-1 smoke
+ZDeployPet can add an idempotent, narrowly scoped managed `.gitignore` safety block without rewriting unrelated project rules. It does not blanket-ignore `*.pub`.
 
-Before marking PDA-1 accepted, verify from the published development executable that:
+## Accepted operator smoke
 
-1. public keys are listed from the selected WSL distribution and a selected fingerprint remains stable after restart;
-2. no app field or saved JSON contains a passphrase or private-key content;
-3. a target host fingerprint can be scanned, independently verified and explicitly enrolled;
-4. an enrolled target passes only the fixed authenticated non-writing probe;
-5. a deliberately incorrect enrolled host fingerprint blocks before SSH authentication;
-6. replacing/reselecting a public key with a different fingerprint blocks until explicitly approved;
-7. unreachable host, incorrect username/key and missing key produce actionable diagnostics;
-8. no deployment script is started and no target destination is modified during these checks.
+Accepted from the published development executable on 2026-10-09:
+
+1. dedicated `zdeploypet:Millenova` key creation and persistence passed;
+2. Hostinger host fingerprint was independently verified, explicitly enrolled and rechecked;
+3. Hostinger public-key installation completed through `ssh-copy-id` using the trusted one-time password prompt;
+4. Hostinger returned `Status: Success` on the fixed non-writing authenticated probe without another account-password prompt;
+5. VPS also returned `Status: Success` using the approved deployment key;
+6. guided action state enabled only the next valid onboarding action;
+7. repository secret scan found no private-key material;
+8. the managed `.gitignore` block was added and the follow-up scan returned `PASS` with the block present;
+9. no deployment script was started and no deployment destination/application file was modified by these checks.
+
+PDA-1 is closed. The active phase is **PDA-2 — bounded SSH-agent session**.
