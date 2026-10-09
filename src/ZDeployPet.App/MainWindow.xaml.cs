@@ -190,21 +190,25 @@ public partial class MainWindow : Window
             TargetsGrid.CommitEdit(DataGridEditingUnit.Row, true);
             DestinationsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
             DestinationsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
             SetupDraft draft = BuildDraft();
             await _inputHistoryStore.SaveDraftAsync(draft);
             await _inputHistoryStore.RememberDraftAsync(draft);
-            await LoadSuggestionsAsync();
-            if (string.IsNullOrWhiteSpace(ProjectPathTextBox.Text) || !Directory.Exists(ProjectPathTextBox.Text.Trim()))
+
+            if (string.IsNullOrWhiteSpace(draft.ProjectPath) || !Directory.Exists(draft.ProjectPath))
             {
+                await LoadSuggestionsAsync();
                 SetupValidationText.Text = "Choose an existing project folder. Your unfinished setup has been saved and will be restored next time.";
                 StatusText.Text = "Draft saved — project folder required";
                 return;
             }
-            string distribution = DistributionComboBox.SelectedItem as string ?? string.Empty;
+
+            string distribution = draft.WslDistribution;
             WslPathResolution resolution = await _profileDiscovery.ResolveAndVerifyProjectPathAsync(
-                distribution, ProjectPathTextBox.Text.Trim());
+                distribution, draft.ProjectPath);
             if (!resolution.Success || resolution.WslPath is null)
             {
+                await LoadSuggestionsAsync();
                 SetupValidationText.Text = resolution.Error ?? "Could not verify the project path in WSL.";
                 StatusText.Text = "Profile validation failed";
                 return;
@@ -215,6 +219,7 @@ public partial class MainWindow : Window
             ProfileValidationResult validation = _validator.Validate(profile);
             if (!validation.IsValid)
             {
+                await LoadSuggestionsAsync();
                 SetupValidationText.Text = string.Join(Environment.NewLine, validation.Errors.Select(error => "• " + error));
                 StatusText.Text = "Profile validation failed";
                 return;
@@ -224,6 +229,7 @@ public partial class MainWindow : Window
                 distribution, resolution.WslPath, profile.ScriptRelativePath);
             if (!scriptValidation.Success)
             {
+                await LoadSuggestionsAsync();
                 SetupValidationText.Text = scriptValidation.Error;
                 StatusText.Text = "Script containment failed";
                 return;
@@ -231,9 +237,9 @@ public partial class MainWindow : Window
 
             await _profileStore.SaveActiveAsync(profile);
             await _inputHistoryStore.RememberAsync(profile);
-            await LoadSuggestionsAsync();
             _activeProfile = profile;
-            ShowDiscovery(profile, $"Profile saved locally under {_profileStore.Root}. No server was contacted.");
+            await LoadSuggestionsAsync();
+            ShowDiscovery(profile, $"Profile saved locally as JSON under {_profileStore.Root}. No server was contacted.");
         }
         catch (Exception exception)
         {
@@ -397,8 +403,21 @@ public partial class MainWindow : Window
 
     private async Task LoadSuggestionsAsync()
     {
+        string profileName = ProfileNameTextBox.Text;
+        string projectPath = ProjectPathTextBox.Text;
+        string scriptPath = ScriptPathTextBox.Text;
+        string reportRoot = ReportRootTextBox.Text;
+        string confirmationPhrase = ConfirmationTextBox.Text;
+
         InputHistory history = await _inputHistoryStore.LoadAsync();
-        ReplaceSuggestions((ObservableCollection<string>)ProfileNameTextBox.ItemsSource, history.ProfileNames);
+        IReadOnlyList<DeploymentProfile> savedProfiles = await _profileStore.LoadAllAsync();
+
+        ReplaceSuggestions(
+            (ObservableCollection<string>)ProfileNameTextBox.ItemsSource,
+            savedProfiles
+                .Select(profile => profile.Name)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
         ReplaceSuggestions((ObservableCollection<string>)ProjectPathTextBox.ItemsSource, history.ProjectPaths);
         ReplaceSuggestions((ObservableCollection<string>)ScriptPathTextBox.ItemsSource, history.ScriptPaths);
         ReplaceSuggestions((ObservableCollection<string>)ReportRootTextBox.ItemsSource, history.ReportRoots);
@@ -409,6 +428,13 @@ public partial class MainWindow : Window
         ReplaceSuggestions(Users, history.Users);
         ReplaceSuggestions(DestinationLabels, history.DestinationLabels);
         ReplaceSuggestions(RemotePaths, history.RemotePaths);
+
+        // Refreshing editable ComboBox item sources must never erase the form being validated/saved.
+        ProfileNameTextBox.Text = profileName;
+        ProjectPathTextBox.Text = projectPath;
+        ScriptPathTextBox.Text = scriptPath;
+        ReportRootTextBox.Text = reportRoot;
+        ConfirmationTextBox.Text = confirmationPhrase;
     }
 
     private async void ForgetSuggestions_Click(object sender, RoutedEventArgs e)
