@@ -126,6 +126,8 @@ public partial class MainWindow
         AccessOnboardingButton.Visibility = actionVisibility;
         if (_deploymentSessionButton is not null) _deploymentSessionButton.Visibility = actionVisibility;
         if (_gitSafetyButton is not null) _gitSafetyButton.Visibility = actionVisibility;
+
+        ShellRuntime.State.UpdateProfile(_activeProfile?.Name);
     }
 
     private void AccessOnboarding_Click(object sender, RoutedEventArgs e)
@@ -136,6 +138,7 @@ public partial class MainWindow
             return;
         }
 
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Access", $"Opened deployment access for '{_activeProfile.Name}'.");
         AccessOnboardingWindow window = new(_activeProfile)
         {
             Owner = this
@@ -151,6 +154,7 @@ public partial class MainWindow
             return;
         }
 
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Session", $"Opened bounded deployment session for '{_activeProfile.Name}'.");
         DeploymentSessionWindow window = new(_activeProfile, _deploymentSession)
         {
             Owner = this
@@ -166,6 +170,7 @@ public partial class MainWindow
             return;
         }
 
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Git safety", $"Opened repository Git safety for '{_activeProfile.Name}'.");
         GitSafetyWindow window = new(_activeProfile)
         {
             Owner = this
