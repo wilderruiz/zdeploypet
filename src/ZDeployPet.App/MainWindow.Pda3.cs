@@ -16,6 +16,7 @@ public partial class MainWindow
             DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda3ActionVisibility();
         }
 
+        InitializePda3MenuShell();
         EnsureActivityButton();
         RefreshPda3ActionVisibility();
     }
