@@ -20,15 +20,6 @@
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
         </Style>
 
-        <Style TargetType="{x:Type Grid}">
-            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
-        </Style>
-
-        <Style TargetType="{x:Type ScrollViewer}">
-            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-        </Style>
-
         <Style TargetType="{x:Type TextBlock}">
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
         </Style>
@@ -42,41 +33,20 @@
             <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="10,5" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border x:Name="Chrome"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="1">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                              Margin="{TemplateBinding Padding}"
-                                              RecognizesAccessKey="True" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AppAccentHoverBrush}" />
-                                <Setter TargetName="Chrome" Property="Background" Value="#30343D" />
-                            </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AppAccentBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#353A44" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="#777D87" />
-                                <Setter TargetName="Chrome" Property="Background" Value="#1C1F24" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#343943" />
-                                <Setter Property="Opacity" Value="1" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AppAccentHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AppAccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#7E8590" />
+                    <Setter Property="Background" Value="#202228" />
+                    <Setter Property="BorderBrush" Value="#343943" />
+                    <Setter Property="Opacity" Value="0.72" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <Style TargetType="{x:Type TextBox}">
@@ -91,12 +61,6 @@
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
             <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
-            <Style.Triggers>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Foreground" Value="#777D87" />
-                    <Setter Property="Background" Value="#1C1F24" />
-                </Trigger>
-            </Style.Triggers>
         </Style>
 
         <Style TargetType="{x:Type GroupBox}">
@@ -121,13 +85,6 @@
             </Style.Triggers>
         </Style>
 
-        <Style TargetType="{x:Type GridViewColumnHeader}">
-            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-            <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
-        </Style>
-
         <Style TargetType="{x:Type DataGrid}">
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
             <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
@@ -147,12 +104,32 @@
 
         <Style TargetType="{x:Type Menu}">
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="Background" Value="#1D2026" />
+            <Setter Property="BorderBrush" Value="#30353E" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="6,2" />
         </Style>
 
         <Style TargetType="{x:Type MenuItem}">
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="Background" Value="#1D2026" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="1" />
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
+                    <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+                </Trigger>
+                <Trigger Property="IsSubmenuOpen" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="{x:Type Separator}">
+            <Setter Property="Background" Value="#343943" />
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="8,4" />
         </Style>
 
         <Style TargetType="{x:Type Hyperlink}">
@@ -173,8 +150,6 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="4,0,8,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Content" Value="i" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="250" />
