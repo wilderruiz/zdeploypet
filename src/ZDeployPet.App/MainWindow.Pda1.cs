@@ -8,6 +8,8 @@ public partial class MainWindow
     private bool _pda1ShellHooked;
     private bool _discoveryActionHelpAttached;
     private Button? _gitSafetyButton;
+    private Button? _deploymentSessionButton;
+    private readonly DeploymentSessionController _deploymentSession = new();
 
     private void InitializePda1Shell()
     {
@@ -17,31 +19,47 @@ public partial class MainWindow
             DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda1ActionVisibility();
         }
 
-        EnsureGitSafetyButton();
+        EnsurePdaActionButtons();
         AttachDiscoveryActionHelp();
         RefreshPda1ActionVisibility();
     }
 
-    private void EnsureGitSafetyButton()
+    private void EnsurePdaActionButtons()
     {
-        if (_gitSafetyButton is not null) return;
         if (AccessOnboardingButton.Parent is not StackPanel actions) return;
 
-        _gitSafetyButton = new Button
+        if (_deploymentSessionButton is null)
         {
-            Content = "Git safety…",
-            Margin = new Thickness(0, 0, 8, 0),
-            Padding = new Thickness(16, 9, 16, 9),
-            Visibility = Visibility.Collapsed
-        };
-        _gitSafetyButton.Click += GitSafety_Click;
-        int accessIndex = actions.Children.IndexOf(AccessOnboardingButton);
-        actions.Children.Insert(accessIndex + 1, _gitSafetyButton);
+            _deploymentSessionButton = new Button
+            {
+                Content = "Session…",
+                Margin = new Thickness(0, 0, 8, 0),
+                Padding = new Thickness(16, 9, 16, 9),
+                Visibility = Visibility.Collapsed
+            };
+            _deploymentSessionButton.Click += DeploymentSession_Click;
+            int accessIndex = actions.Children.IndexOf(AccessOnboardingButton);
+            actions.Children.Insert(accessIndex + 1, _deploymentSessionButton);
+        }
+
+        if (_gitSafetyButton is null)
+        {
+            _gitSafetyButton = new Button
+            {
+                Content = "Git safety…",
+                Margin = new Thickness(0, 0, 8, 0),
+                Padding = new Thickness(16, 9, 16, 9),
+                Visibility = Visibility.Collapsed
+            };
+            _gitSafetyButton.Click += GitSafety_Click;
+            int sessionIndex = actions.Children.IndexOf(_deploymentSessionButton);
+            actions.Children.Insert(sessionIndex + 1, _gitSafetyButton);
+        }
     }
 
     private void AttachDiscoveryActionHelp()
     {
-        if (_discoveryActionHelpAttached || _gitSafetyButton is null) return;
+        if (_discoveryActionHelpAttached || _gitSafetyButton is null || _deploymentSessionButton is null) return;
         _discoveryActionHelpAttached = true;
 
         HelpTipFactory.AttachToButton(
@@ -54,6 +72,16 @@ public partial class MainWindow
                 Example: "A project may deploy its website to shared hosting and its backend to a VPS. Configure the deployment key and trusted host fingerprint for each server here before ZDeployPet is allowed to authenticate.",
                 Safety: "ZDeployPet does not store server passwords, private-key contents, or private-key passphrases. Changed key fingerprints or changed server host keys fail closed instead of being silently accepted.",
                 Tip: "This step establishes identity and trust only. It does not deploy project files."));
+
+        HelpTipFactory.AttachToButton(
+            _deploymentSessionButton,
+            new HelpTipSpec(
+                "Unlock the approved deployment identity for a bounded session.",
+                "Session starts a dedicated ZDeployPet-owned ssh-agent and lets OpenSSH load the approved deployment key for up to eight hours.",
+                WhenToUse: "Use this after Deployment access onboarding and target probes are complete, before repeated authenticated deployment operations.",
+                WhatItDoes: "ZDeployPet opens a trusted WSL/OpenSSH ssh-add prompt if needed, then verifies the loaded SHA-256 fingerprint before declaring the session READY.",
+                Example: "Unlock once for Millenova, then reuse that approved key for Hostinger and VPS operations during the valid lease instead of repeatedly entering account passwords.",
+                Safety: "ZDeployPet never receives the private-key passphrase. Foreign keys, missing keys, expired leases, or an unverifiable agent fail closed. Closing ZDeployPet locks the session."));
 
         HelpTipFactory.AttachToButton(
             _gitSafetyButton,
@@ -96,6 +124,7 @@ public partial class MainWindow
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         AccessOnboardingButton.Visibility = actionVisibility;
+        if (_deploymentSessionButton is not null) _deploymentSessionButton.Visibility = actionVisibility;
         if (_gitSafetyButton is not null) _gitSafetyButton.Visibility = actionVisibility;
     }
 
@@ -108,6 +137,21 @@ public partial class MainWindow
         }
 
         AccessOnboardingWindow window = new(_activeProfile)
+        {
+            Owner = this
+        };
+        window.ShowDialog();
+    }
+
+    private void DeploymentSession_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeProfile is null)
+        {
+            StatusText.Text = "Save and validate a deployment profile before opening a deployment session.";
+            return;
+        }
+
+        DeploymentSessionWindow window = new(_activeProfile, _deploymentSession)
         {
             Owner = this
         };
