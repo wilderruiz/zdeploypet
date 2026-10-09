@@ -239,7 +239,15 @@ public sealed class WslSshAgentProbe
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken)
     {
-        List<string> allArguments = ["-d", distribution, "--exec", "/bin/sh", "-c", script, "zdeploypet-agent-probe"];
+        // Raw string literals in a Windows checkout can carry CRLF line endings.
+        // Passing those bytes directly to /bin/sh -c leaves a trailing CR on shell
+        // built-ins such as `set -eu`, which dash reports as `set: Illegal option -`.
+        // Normalize every inline probe script before crossing the WSL boundary.
+        string normalizedScript = script
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+
+        List<string> allArguments = ["-d", distribution, "--exec", "/bin/sh", "-c", normalizedScript, "zdeploypet-agent-probe"];
         allArguments.AddRange(arguments);
         return await RunProcessAsync("wsl.exe", allArguments, cancellationToken);
     }
