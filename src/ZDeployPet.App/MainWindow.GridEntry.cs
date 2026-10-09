@@ -25,6 +25,7 @@ public partial class MainWindow
     {
         base.OnContentRendered(e);
         ConfigureManagedEntryRows();
+        InitializePda1Shell();
     }
 
     protected override void OnClosing(CancelEventArgs e)
