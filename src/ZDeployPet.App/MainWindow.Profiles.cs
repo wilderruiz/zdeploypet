@@ -41,6 +41,7 @@ public partial class MainWindow
         {
             StatusText.Text = "Saved profile list could not be refreshed.";
             SetupValidationText.Text = exception.Message;
+            ShellRuntime.Activity.Add(ShellActivityLevel.Warning, "Profile", "Saved profile list refresh failed: " + exception.Message);
         }
         finally
         {
@@ -68,6 +69,11 @@ public partial class MainWindow
                 PopulateDraft(snapshot.Draft);
                 WslPathTextBox.Text = snapshot.VerifiedWslPath;
                 EnsureTrailingEntryRows();
+                ShellRuntime.State.UpdateProfile(snapshot.Draft.ProfileName);
+                ShellRuntime.Activity.Add(
+                    ShellActivityLevel.Info,
+                    "Profile",
+                    $"Loaded local profile snapshot '{snapshot.Draft.ProfileName}'.");
                 ShowSetup($"Saved profile '{snapshot.Draft.ProfileName}' loaded from local JSON. Incomplete and complete settings are restored exactly as last saved.");
                 return;
             }
@@ -77,6 +83,7 @@ public partial class MainWindow
             if (saved is null)
             {
                 StatusText.Text = $"No saved JSON profile named '{profileName}' was found.";
+                ShellRuntime.Activity.Add(ShellActivityLevel.Warning, "Profile", $"Saved profile '{profileName}' was not found.");
                 return;
             }
 
@@ -84,12 +91,15 @@ public partial class MainWindow
             await _profileStore.SetActiveProfileAsync(saved.Id);
             PopulateEditor(saved);
             EnsureTrailingEntryRows();
+            ShellRuntime.State.UpdateProfile(saved.Name);
+            ShellRuntime.Activity.Add(ShellActivityLevel.Success, "Profile", $"Loaded validated profile '{saved.Name}'.");
             ShowSetup($"Saved profile '{saved.Name}' loaded from local JSON. Review or update it, then save when ready.");
         }
         catch (Exception exception)
         {
             StatusText.Text = "Saved profile could not be loaded.";
             SetupValidationText.Text = exception.Message;
+            ShellRuntime.Activity.Add(ShellActivityLevel.Error, "Profile", "Saved profile load failed: " + exception.Message);
         }
         finally
         {
