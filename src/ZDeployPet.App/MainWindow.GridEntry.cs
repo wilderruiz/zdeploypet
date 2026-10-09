@@ -1,16 +1,74 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace ZDeployPet.App;
 
 public partial class MainWindow
 {
+    static MainWindow()
+    {
+        // A class handler runs before the instance Click handler declared in XAML.
+        // This guarantees that text still being edited inside a DataGrid ComboBox
+        // is pushed into the backing draft objects before SaveProfile_Click builds JSON.
+        EventManager.RegisterClassHandler(
+            typeof(MainWindow),
+            Button.ClickEvent,
+            new RoutedEventHandler(OnMainWindowButtonClick),
+            true);
+    }
+
     protected override void OnContentRendered(EventArgs e)
     {
         base.OnContentRendered(e);
         ConfigureManagedEntryRows();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        // Window_Closing persists the unfinished draft. Flush editors first so the
+        // draft on disk matches every value currently visible in the grids.
+        FlushVisibleGridEditors();
+        base.OnClosing(e);
+    }
+
+    private static void OnMainWindowButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MainWindow window) return;
+        if (e.OriginalSource is not Button button) return;
+        if (!ReferenceEquals(button, window.SaveProfileButton)) return;
+
+        window.FlushVisibleGridEditors();
+    }
+
+    private void FlushVisibleGridEditors()
+    {
+        // DataGridTemplateColumn contains always-visible editable ComboBoxes. WPF can
+        // leave their Text binding one dispatcher step behind the text on screen.
+        // Force every visible editor to update its source before CommitEdit/BuildDraft.
+        UpdateComboBoxTextBindings(TargetsGrid);
+        UpdateComboBoxTextBindings(DestinationsGrid);
+
+        TargetsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+        TargetsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        DestinationsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+        DestinationsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+    }
+
+    private static void UpdateComboBoxTextBindings(DependencyObject root)
+    {
+        int childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (int index = 0; index < childCount; index++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, index);
+            if (child is ComboBox comboBox)
+                comboBox.GetBindingExpression(ComboBox.TextProperty)?.UpdateSource();
+
+            UpdateComboBoxTextBindings(child);
+        }
     }
 
     private void ConfigureManagedEntryRows()
@@ -38,8 +96,7 @@ public partial class MainWindow
         if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None) return;
         e.Handled = true;
 
-        TargetsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-        TargetsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        FlushVisibleGridEditors();
 
         TargetDraft? current = TargetsGrid.CurrentItem as TargetDraft;
         TargetDraft next = GetOrCreateNextTarget(current);
@@ -51,8 +108,7 @@ public partial class MainWindow
         if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None) return;
         e.Handled = true;
 
-        DestinationsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-        DestinationsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        FlushVisibleGridEditors();
 
         DestinationDraft? current = DestinationsGrid.CurrentItem as DestinationDraft;
         DestinationDraft next = GetOrCreateNextDestination(current);
