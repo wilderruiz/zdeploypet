@@ -74,34 +74,143 @@
         <Style TargetType="{x:Type TextBox}">
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
             <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppSurfaceBrush}" />
             <Setter Property="CaretBrush" Value="{StaticResource AppTextBrush}" />
             <Setter Property="SelectionBrush" Value="{StaticResource AppSelectionBrush}" />
         </Style>
 
-        <!-- Inputs stay on the same dark surface as the shell. This also keeps the
-             generated TextBlocks used by non-editable ComboBoxes readable because the
-             application TextBlock style is light. -->
+        <!-- Fully own ComboBox chrome so Windows light-theme rendering cannot replace
+             the selected-value surface with white. This applies to the profile editor,
+             deployment-access selectors, and DataGrid ComboBox editors. -->
         <Style TargetType="{x:Type ComboBox}">
             <Setter Property="Foreground" Value="{StaticResource AppInputTextBrush}" />
             <Setter Property="Background" Value="{StaticResource AppInputBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppInputBackgroundBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,4,30,4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBox}">
+                        <Grid>
+                            <Border x:Name="OuterBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    TextElement.Foreground="{TemplateBinding Foreground}">
+                                <Grid>
+                                    <ContentPresenter x:Name="SelectedContent"
+                                                      Margin="{TemplateBinding Padding}"
+                                                      HorizontalAlignment="Left"
+                                                      VerticalAlignment="Center"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                      IsHitTestVisible="False" />
+                                    <TextBox x:Name="PART_EditableTextBox"
+                                             Margin="4,2,30,2"
+                                             Padding="4,2"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Foreground="{TemplateBinding Foreground}"
+                                             CaretBrush="{TemplateBinding Foreground}"
+                                             SelectionBrush="{StaticResource AppSelectionBrush}"
+                                             VerticalContentAlignment="Center"
+                                             Visibility="Hidden" />
+                                    <ToggleButton x:Name="DropDownToggle"
+                                                  Width="28"
+                                                  HorizontalAlignment="Right"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Focusable="False"
+                                                  IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                                <Border Background="Transparent">
+                                                    <Path Width="8"
+                                                          Height="5"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          Fill="{StaticResource AppTextBrush}"
+                                                          Data="M 0 0 L 8 0 L 4 5 Z" />
+                                                </Border>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Fade">
+                                <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="320"
+                                        Background="{StaticResource AppInputBackgroundBrush}"
+                                        BorderBrush="{StaticResource AppInputBackgroundBrush}"
+                                        BorderThickness="1">
+                                    <ScrollViewer CanContentScroll="True"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Auto">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEditable" Value="True">
+                                <Setter TargetName="SelectedContent" Property="Visibility" Value="Hidden" />
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="OuterBorder" Property="Background" Value="#252830" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="OuterBorder" Property="Background" Value="#252830" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="OuterBorder" Property="Background" Value="#202228" />
+                                <Setter Property="Foreground" Value="#AEB4BE" />
+                                <Setter Property="Opacity" Value="1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="{x:Type ComboBoxItem}">
             <Setter Property="Foreground" Value="{StaticResource AppInputTextBrush}" />
             <Setter Property="Background" Value="{StaticResource AppInputBackgroundBrush}" />
-            <Setter Property="Padding" Value="6,4" />
-            <Style.Triggers>
-                <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#30343D" />
-                    <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-                </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{StaticResource AppSelectionBrush}" />
-                    <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                TextElement.Foreground="{TemplateBinding Foreground}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#30343D" />
+                                <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource AppSelectionBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#7E8590" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="{x:Type GroupBox}">
@@ -179,21 +288,21 @@
             <Setter Property="Foreground" Value="{StaticResource AppAccentHoverBrush}" />
         </Style>
 
-        <!-- Force the tooltip chrome instead of allowing the Windows light-theme
-             default template to paint a white popup behind our light tooltip text. -->
         <Style x:Key="SharedToolTipStyle" TargetType="{x:Type ToolTip}">
             <Setter Property="MaxWidth" Value="560" />
-            <Setter Property="Padding" Value="12" />
+            <Setter Property="Padding" Value="0" />
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
-            <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="HasDropShadow" Value="False" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ToolTip}">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
+                        <Border Background="{StaticResource AppSurfaceRaisedBrush}"
+                                BorderBrush="{StaticResource AppSurfaceRaisedBrush}"
                                 BorderThickness="1"
-                                Padding="{TemplateBinding Padding}">
+                                Padding="12"
+                                TextElement.Foreground="{StaticResource AppTextBrush}">
                             <ContentPresenter />
                         </Border>
                     </ControlTemplate>
@@ -201,16 +310,43 @@
             </Setter>
         </Style>
 
-        <Style x:Key="SharedInfoButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+        <Style x:Key="SharedInfoButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="Width" Value="25" />
             <Setter Property="Height" Value="25" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="4,0,8,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Content" Value="i" />
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppSurfaceRaisedBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="250" />
             <Setter Property="ToolTipService.ShowDuration" Value="2147483647" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="InfoChrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="InfoChrome" Property="Background" Value="#30343D" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="InfoChrome" Property="Background" Value="#383D47" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="{x:Type ToolTip}" BasedOn="{StaticResource SharedToolTipStyle}" />
