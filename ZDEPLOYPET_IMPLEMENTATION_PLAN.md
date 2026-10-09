@@ -3,12 +3,12 @@
 > [!IMPORTANT]
 > This file is the authoritative programme index and handoff record for ZDeployPet. Update the compact overview, current handoff, affected phase, validation matrix, and next action together whenever the programme changes. Do not reconstruct status from memory when this file and repository evidence are available.
 
-**Status:** 🟡 **PDA-1 active — managed deployment-key onboarding, installation and diagnostics next**  
-**Reviewed repository baseline:** `main@9c5a0fc` (`2026-10-09`)  
-**Completed phase:** `PDA-0A — Community profile onboarding`  
-**Active phase:** `PDA-1 — Key onboarding and diagnostics`  
-**Next phase after acceptance:** `PDA-2 — Bounded SSH-agent session`  
-**Remaining phases:** 8 including active PDA-1; 7 after PDA-1 acceptance  
+**Status:** 🟡 **PDA-2 active — bounded SSH-agent session implementation next**  
+**Reviewed repository baseline:** `main@f3bef91` (`2026-10-09`)  
+**Completed phase:** `PDA-1 — Key onboarding and diagnostics`  
+**Active phase:** `PDA-2 — Bounded SSH-agent session`  
+**Next phase after acceptance:** `PDA-3 — Production shell, companion and operator visibility`  
+**Remaining phases:** 7 including active PDA-2; 6 after PDA-2 acceptance  
 **Primary outcome:** one bounded deployment-access login session, no repeated Hostinger/VPS account-password prompts, and one explicit authorization for every live deployment  
 **Product boundary:** standalone Windows/.NET 8 WPF application using WSL through a narrow bridge  
 **Deployment boundary:** project-owned deployment scripts remain authoritative and are not rewritten by ZDeployPet  
@@ -22,8 +22,8 @@
 | --- | --- | --- | --- |
 | **PDA-0** | ✅ ACCEPTED 2026-10-08 | Standalone repository, read-only Windows/WSL/OpenSSH/project/script/report discovery | [`docs/PDA0_DISCOVERY.md`](docs/PDA0_DISCOVERY.md) |
 | **PDA-0A** | ✅ ACCEPTED 2026-10-09 | Community-safe local profiles, first-run setup, multiple targets/destinations, input guidance/history/draft recovery | [`docs/PROFILES.md`](docs/PROFILES.md), [`docs/PRODUCT_IDENTITY.md`](docs/PRODUCT_IDENTITY.md) |
-| **PDA-1** | 🟡 ACTIVE | Discover/create a dedicated local deployment key, install only its public half on approved servers, enroll public-key/host-key fingerprints and run non-writing target probes | This plan §7 |
-| **PDA-2** | ⬜ QUEUED | App-owned bounded SSH-agent session: unlock once, status, expiry and lock | This plan §8 |
+| **PDA-1** | ✅ ACCEPTED 2026-10-09 | Dedicated deployment key, public-key-only installation, explicit host trust, non-writing authenticated probes, Git/private-key safety | [`docs/PDA1_KEY_ONBOARDING.md`](docs/PDA1_KEY_ONBOARDING.md), this plan §7 |
+| **PDA-2** | 🟡 ACTIVE | App-owned bounded SSH-agent session: unlock once, status, expiry and lock | This plan §8 |
 | **PDA-3** | ⬜ QUEUED | Single-instance production shell, accessible state model, companion pet, dark/red visual identity, menu/about and console/log UI | [`docs/PRODUCT_IDENTITY.md`](docs/PRODUCT_IDENTITY.md), this plan §9 |
 | **PDA-4** | ⬜ QUEUED | Read-only structured deployment-report monitor | Millenova reporter plan, this plan §10 |
 | **PDA-5** | ⬜ QUEUED | Allowlisted dry-run executor for the unchanged project script | This plan §11 |
@@ -33,35 +33,35 @@
 
 ### Immediate next action
 
-Continue PDA-1 implementation and validation in this order:
+Begin PDA-2 in this order:
 
-1. fix the current public-key discovery defect: valid `~/.ssh/*.pub` keys exist and fingerprint correctly in `Ubuntu-24.04`, but the Deployment access `Refresh keys` action currently returns no candidates;
-2. add a normal-user onboarding path with **Use existing SSH key** and **Create ZDeployPet deployment key** choices;
-3. create dedicated deployment keys only under the selected WSL user's `~/.ssh`, never inside the project repository or release package;
-4. add explicit **Install public key on server** onboarding so only the `.pub` half is copied to the selected SSH account's `authorized_keys`; any first-time password challenge belongs to the trusted SSH/OS process and is not persisted by ZDeployPet;
-5. display and persist only approved public-key fingerprints and expected host-key fingerprints;
-6. add defense-in-depth Git hygiene: manage narrowly-scoped `.gitignore` entries for ZDeployPet local/private artifacts, never rely on Git ignore as the primary private-key boundary, and add private-key-content detection before release/push-oriented workflows;
-7. complete explicit host-key enrollment and non-writing SSH probes without deployment side effects;
-8. preserve the existing profile boundary and the no-password-storage, no-generic-shell and no-live-deploy guarantees.
+1. introduce a dedicated ZDeployPet SSH-agent session boundary rather than reusing an arbitrary ambient agent;
+2. start the agent inside the selected WSL environment and capture only the non-secret session metadata ZDeployPet needs to address it locally;
+3. verify agent ownership/liveness before every state transition and reject stale, foreign or unverifiable state;
+4. add an explicit **Unlock deployment access** action that invokes `ssh-add` through a trusted terminal/process rather than collecting a passphrase in a ZDeployPet field;
+5. load only the already-approved PDA-1 deployment key and verify the loaded fingerprint exactly matches the approved profile fingerprint before declaring READY;
+6. apply an initial bounded key lifetime of eight hours and expose **LOCKED / READY / EXPIRING** state plus remaining lease time;
+7. add explicit **Lock** and lock-on-close behavior, clearing the app-owned agent/key session without deleting the persistent key from WSL `~/.ssh`;
+8. prove repeated Hostinger and VPS non-writing probes work during one valid session without account-password prompts or repeated key onboarding;
+9. add automated tests for agent-output parsing, ownership/state validation, fingerprint matching, expiry and lock decisions before operator smoke.
 
-### PDA-0A / shell smoke evidence
+### PDA-1 acceptance evidence
 
-Corrected onboarding smoke passed from:
+Accepted from the published development executable on 2026-10-09. Verified end-to-end:
 
-```text
-C:\Dev\ZDeployPet_Releases\current\ZDeployPet.exe
-```
-
-Verified on 2026-10-09:
-
-1. incomplete draft saves without contacting WSL or a server when the project folder is missing;
-2. UI reports the incomplete state instead of discarding entered data;
-3. app closes without UI-thread deadlock;
-4. entered profile data restores after restart;
-5. saved server rows survive close/reopen/load;
-6. shared structured `i` help works on setup, discovery actions and Deployment access controls;
-7. `Forget suggestions` clears remembered suggestions without deleting the current draft or saved profile;
-8. Deployment access opens from the validated profile and remains non-deploying.
+1. existing WSL public keys are discovered and fingerprinted;
+2. a dedicated `zdeploypet:Millenova` Ed25519 key can be created under the selected WSL user's `~/.ssh` and survives app restart;
+3. only the public half is installed remotely; the private key remains local;
+4. Hostinger host identity was independently verified, explicitly enrolled and rechecked by exact host-key type;
+5. the installer clearly identifies the friendly target (`Hostinger`), SSH user, host and port before the one-time account-password prompt;
+6. the Hostinger public-key installation completed through `ssh-copy-id`, with the password typed only into the trusted terminal and not retained by ZDeployPet;
+7. Hostinger non-writing authenticated probe returned `Status: Success` without another account-password prompt;
+8. VPS enrollment/public-key authentication also returned `Status: Success` for the configured VPS target;
+9. target-changing and host-key-type ordering defects were fixed so enrolled fingerprints are compared against the exact enrolled key type and mismatches fail closed;
+10. guided button state enables only the next valid onboarding action instead of exposing every trust/install/probe action simultaneously;
+11. Repository Git safety scan found no private-key material in tracked or relevant untracked files;
+12. the ZDeployPet-managed `.gitignore` safety block was added idempotently and a rescan returned `PASS` with the block present;
+13. no deployment script was run and no deployment destination/application file was modified by PDA-1 probe operations.
 
 ### Maintenance rule
 
@@ -85,6 +85,7 @@ When a phase changes:
 | [`ZDEPLOYPET_IMPLEMENTATION_PLAN.md`](ZDEPLOYPET_IMPLEMENTATION_PLAN.md) | Master roadmap, compact index, phase contracts, handoff and restart record | Programme status and sequencing |
 | [`README.md`](README.md) | Public product introduction and daily build/test/publish commands | User/developer entry point |
 | [`docs/PDA0_DISCOVERY.md`](docs/PDA0_DISCOVERY.md) | Accepted machine-capability baseline | PDA-0 evidence |
+| [`docs/PDA1_KEY_ONBOARDING.md`](docs/PDA1_KEY_ONBOARDING.md) | Accepted deployment-key/host-trust/probe workflow | PDA-1 evidence |
 | [`docs/PRODUCT_IDENTITY.md`](docs/PRODUCT_IDENTITY.md) | Product boundary, companion direction and build identities | Naming/identity boundary |
 | [`docs/PROFILES.md`](docs/PROFILES.md) | Shareable-contract/private-binding split and profile validation | Profile contract summary |
 | [`examples/generic-wsl-script/deployment.json`](examples/generic-wsl-script/deployment.json) | Sanitized shareable project-contract example | Public example only |
@@ -192,22 +193,13 @@ Passwords, passphrases, tokens and private-key contents are never profile, draft
 
 Primary protection is physical/logical separation: ZDeployPet-generated private keys live outside the repository under WSL `~/.ssh`. `.gitignore` is defense in depth, not a vault.
 
-ZDeployPet must provide an idempotent Git-hygiene helper for projects it manages. Where appropriate it should add a clearly marked block such as:
-
-```gitignore
-# ZDeployPet local/private data
-.zdeploypet/local/
-.zdeploypet/private/
-zdeploypet-credentials*
-zdeploypet_*_ed25519
-zdeploypet_*_rsa
-```
+ZDeployPet provides an idempotent Git-hygiene helper for projects it manages. The managed block is narrowly scoped to ZDeployPet local/private artifacts; it does not blanket-ignore `*.pub`.
 
 Rules:
 
-- do not blanket-ignore `*.pub`; public keys are not secrets and projects may legitimately version public material;
+- do not blanket-ignore public keys (`*.pub`); public keys are not secrets and projects may legitimately version public material;
 - do not assume ignore rules make a repository safe if a secret was already tracked;
-- before push/release-oriented workflows, scan bounded project files for private-key markers such as `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----BEGIN PRIVATE KEY-----` and hard-block/report suspicious matches;
+- scan bounded project files for private-key markers such as `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----BEGIN PRIVATE KEY-----` and hard-block/report suspicious matches in push/release-oriented workflows;
 - never automatically move, copy or stage a private key into the repository;
 - any remediation that changes tracked files remains explicit to the operator.
 
@@ -234,12 +226,14 @@ Use existing SSH key OR create dedicated ZDeployPet key
         ↓
 Approve public-key fingerprint
         ↓
+Verify/enroll server host fingerprint
+        ↓
 Install public key on each approved server
 (first-time SSH/OS prompt may request existing account password; ZDeployPet does not save it)
         ↓
-Verify/enroll server host fingerprint
-        ↓
 Non-writing authenticated probe passes
+        ↓
+Git safety passes
         ↓
 Deployment access LOCKED
         ↓
@@ -291,6 +285,7 @@ ZDeployPet/
 │   └── publish-local.ps1
 └── docs/
     ├── PDA0_DISCOVERY.md
+    ├── PDA1_KEY_ONBOARDING.md
     ├── PRODUCT_IDENTITY.md
     └── PROFILES.md
 ```
@@ -342,7 +337,7 @@ The implementation must not:
 - auto-apply or auto-deploy an agent-generated patch;
 - commit real hosts, usernames, personal paths, reports, incident bundles or credentials to the public repository.
 
-If a future target cannot support public-key authentication and password retention becomes unavoidable, it requires a separately reviewed design using an OS-protected secret store such as Windows Credential Manager/DPAPI and a non-secret profile reference. It is not part of PDA-1 and must never regress to plaintext profile storage.
+If a future target cannot support public-key authentication and password retention becomes unavoidable, it requires a separately reviewed design using an OS-protected secret store such as Windows Credential Manager/DPAPI and a non-secret profile reference. It is not part of the current architecture and must never regress to plaintext profile storage.
 
 | Threat | Required control |
 | --- | --- |
@@ -406,157 +401,95 @@ PDA-0A acceptance is based on the corrected operator smoke listed near the top o
 
 # 7. PDA-1 — Key onboarding and diagnostics
 
-**Status:** 🟡 ACTIVE
+**Status:** ✅ ACCEPTED 2026-10-09
 
-PDA-1 establishes a normal-user deployment identity workflow and non-writing target verification before any bounded session is introduced. The intended desktop experience is that ZDeployPet prepares SSH key authentication once; users do not repeatedly type remote account passwords and do not manually run the project deployment script.
+PDA-1 established the normal-user deployment identity workflow and non-writing target verification required before bounded sessions.
 
-## 7.1 Current implementation/evidence
+## 7.1 Accepted implementation/evidence
 
-Implemented so far:
+Completed and smoke-verified:
 
-- dedicated Deployment access window opens from a validated profile;
-- local identity metadata store exists;
-- public-key fingerprint, host-key scan/enrollment and non-writing probe paths exist in code;
-- shared structured `i` help is attached to key approval, host scanning/enrollment and probe actions;
-- host-key enrollment is explicit and later mismatch is designed to fail closed.
+- Deployment access window opens from the validated profile;
+- existing WSL public-key discovery and SHA-256 fingerprinting work;
+- dedicated profile-scoped ZDeployPet Ed25519 key creation works under WSL `~/.ssh` without repository private-key placement;
+- key selection/fingerprint metadata survives application restart;
+- guided onboarding enables only the next valid trust/install/probe action;
+- host-key scan requires explicit independent verification and enrollment;
+- host-key rechecks compare the exact enrolled host-key type and fail closed on mismatch;
+- public-key installer rechecks both the local approved key and enrolled server host identity before opening `ssh-copy-id`;
+- terminal guidance displays friendly server name, username, host, port and account before asking for an account password;
+- first-time password entry occurs only in the trusted SSH terminal and is not received or stored by ZDeployPet;
+- Hostinger public-key installation succeeded and its fixed non-writing authenticated probe returned `Status: Success`;
+- VPS public-key onboarding/probe also returned `Status: Success`;
+- probes do not run the deployment script and do not modify deployment destinations;
+- Git-safety UI scans tracked and relevant untracked repository files for private-key material;
+- the managed `.gitignore` defense block is idempotent and preserves existing repository rules;
+- the Millenova Git-safety operator smoke returned `PASS`, with no private-key material detected and the managed block present.
 
-Current operator finding (2026-10-09):
+## 7.2 Persistence boundary retained
 
-- `Ubuntu-24.04` contains valid public keys under `/home/wilder/.ssh/` and `ssh-keygen -lf <file> -E sha256` fingerprints them successfully;
-- the app's **Refresh keys** currently returns no candidates despite those valid files;
-- therefore key discovery/parsing must be fixed before PDA-1 can pass acceptance. Do not work around this by creating duplicate keys manually.
+ZDeployPet may persist selected public-key path/fingerprint/algorithm/comment and expected target host-key fingerprint/type plus other non-secret onboarding metadata.
 
-## 7.2 Required outcomes
+ZDeployPet does not persist private-key bytes, private-key passphrases, remote SSH account passwords, agent sockets, or website/database/API/admin credentials.
 
-### A. Existing-key discovery
+## 7.3 Acceptance gate result
 
-- enumerate valid public keys in the selected WSL user's `~/.ssh/*.pub` without reading private-key contents;
-- surface the real diagnostic when WSL invocation, `ssh-keygen`, parsing or permissions fail instead of silently presenting an empty list;
-- compute and display SHA-256 fingerprint, algorithm, comment and public-key path;
-- let the user explicitly approve an existing key for the profile;
-- re-check the fingerprint before probe/session use and fail closed if it changes.
-
-### B. ZDeployPet-managed key creation
-
-The Deployment access screen must offer two understandable paths:
-
-1. **Use an existing SSH key**
-2. **Create a new ZDeployPet deployment key**
-
-Managed creation requirements:
-
-- create the key inside the selected WSL user's `~/.ssh`, never inside the project repository;
-- default to a dedicated Ed25519 key with a predictable sanitized profile-scoped name such as `zdeploypet_<profile>_ed25519`;
-- refuse to overwrite an existing private key silently;
-- apply appropriate private/public file permissions;
-- immediately compute/display the public-key fingerprint;
-- store only metadata/fingerprint/path in ZDeployPet's profile/access metadata;
-- never persist the private-key contents;
-- never collect/store a private-key passphrase in a ZDeployPet textbox; passphrase creation/unlock, if used, belongs to a trusted terminal/OS mechanism;
-- provide clear shared `i` help explaining that the private key stays on the desktop/WSL machine.
-
-### C. Install the public key on approved servers
-
-For each configured target ZDeployPet must support an explicit **Install public key on server** onboarding action.
-
-Required behavior:
-
-- install/copy only the selected `.pub` public key into the target SSH account's `~/.ssh/authorized_keys`;
-- never send the private key to Hostinger, VPS or any remote target;
-- make installation idempotent so the same public key is not duplicated unnecessarily;
-- show the exact target label/host/user/port and public-key fingerprint before installation;
-- a first-time target may require the existing SSH account password or provider-side key-import flow; any password challenge must occur in a trusted SSH/OS process and ZDeployPet must not persist or echo it;
-- after installation, verify key authentication with a non-writing command before declaring target identity ready;
-- support different deployment keys per target in a later extension if needed, while allowing one dedicated project key across multiple targets in v1;
-- explain in UI/help that SSH key authentication does not translate into the account password and does not replace application/database/admin/API passwords.
-
-### D. Server host identity
-
-- allow explicit expected host-key enrollment per target and display the enrolled fingerprint;
-- explain that `ssh-keyscan`/scan only reports what an endpoint presented and does not itself establish trust;
-- require independent verification before explicit enrollment;
-- hard-block host-key changes until the operator deliberately verifies and re-enrolls the new fingerprint;
-- keep host fingerprints in private local metadata only.
-
-### E. Non-writing authenticated probe
-
-- add/retain non-writing SSH probes for configured targets using allowlisted command forms only;
-- prove authenticated reachability using the approved deployment key and enrolled host key;
-- surface actionable diagnostics for missing key, unreachable host, bad username/port, key rejection and host-key mismatch;
-- never modify deployment destinations or application state during probe operations;
-- do not treat probe success as deployment success.
-
-### F. Git/repository hygiene
-
-- ensure ZDeployPet-generated private keys remain outside the repository under WSL `~/.ssh`;
-- add an idempotent helper to ensure narrowly scoped ZDeployPet local/private patterns are represented in the project's `.gitignore` when such project-local artifacts exist;
-- never blanket-ignore public keys (`*.pub`);
-- add bounded private-key-content detection for repository/release safety using known private-key headers and fail visibly on suspicious material;
-- detect tracked sensitive files separately from ignored/untracked files; `.gitignore` is not considered sufficient once a secret is already tracked;
-- never auto-delete or rewrite suspicious tracked files without explicit operator action.
-
-## 7.3 Persistence boundary
-
-ZDeployPet may persist:
-
-- selected public-key path;
-- SHA-256 fingerprint;
-- key algorithm/comment;
-- expected target host-key fingerprint/type;
-- onboarding/probe status timestamps and non-secret metadata.
-
-ZDeployPet must not persist:
-
-- private-key bytes;
-- private-key passphrases;
-- remote SSH account passwords;
-- agent sockets;
-- website/database/API/admin credentials.
-
-If password-only SSH support is ever required, design it separately around an OS-protected secret store such as Windows Credential Manager/DPAPI and store only a reference in ZDeployPet metadata.
-
-## 7.4 Acceptance gate
-
-PDA-1 is accepted only when all of the following pass:
-
-- existing WSL public keys are discovered reliably and fingerprinted correctly;
-- a user can create a dedicated ZDeployPet deployment key from the GUI without placing private material in the repository;
-- only the public half can be installed to a selected configured server;
-- first-time remote authorization does not cause ZDeployPet to retain a password;
-- key and host fingerprints are visible, stable and persisted only as non-secret metadata;
-- public-key fingerprint mismatch and host-key mismatch fail closed;
-- non-writing authenticated probe passes against the intended private target(s);
-- no target file/deployment destination is modified by the probe;
-- scoped `.gitignore` defense is idempotent and private-key-content checks detect seeded test fixtures;
-- tests cover WSL command construction, discovery/fingerprint parsing, key-path/name sanitization, public-only installation construction, host-key parsing/mismatch and secret/Git hygiene;
-- owning operator smoke is completed against the intended private profile;
-- no password/passphrase/private-key content is stored or echoed by ZDeployPet.
+PDA-1 acceptance requirements are satisfied by the automated/regression coverage implemented during the phase plus the owning operator smoke against the Millenova private profile. Hostinger and VPS both passed authenticated non-writing probes using the dedicated ZDeployPet key, and Git safety passed after the managed defense block was installed.
 
 ---
 
 # 8. PDA-2 — Bounded SSH-agent session
 
-**Status:** ⬜ QUEUED
+**Status:** 🟡 ACTIVE
 
-PDA-2 introduces app-owned bounded access state without making the app a credential collector.
+PDA-2 introduces app-owned bounded access state without making the app a credential collector. PDA-1 already proves the approved deployment key can authenticate to both intended private targets; PDA-2 now turns that persistent key into a temporary, explicitly controlled session.
 
-Required outcomes:
+## 8.1 Required outcomes
 
-- create/own a dedicated SSH-agent process/session;
-- unlock the approved key through trusted terminal/`ssh-add`, not an app password field;
-- support bounded lifetime, initially eight hours;
-- show LOCKED / READY / EXPIRING state;
-- support explicit Lock and lock-on-close;
-- verify loaded key fingerprint(s) against the profile before declaring READY;
-- reject stale, foreign or unverifiable agent state;
-- persist only non-secret session metadata required for safe recovery/expiry decisions.
+- create/own a dedicated SSH-agent process/session in the selected WSL environment rather than trusting an arbitrary ambient agent;
+- record only the minimum non-secret local session metadata required to address and validate that agent;
+- verify agent ownership/liveness and reject stale, foreign or unverifiable state;
+- unlock the approved key through trusted terminal/`ssh-add`, not an app password/passphrase field;
+- load only the PDA-1-approved deployment key and verify the actual loaded fingerprint against the approved profile fingerprint;
+- support bounded lifetime, initially eight hours, using agent/key lifetime controls rather than an unbounded remembered unlock;
+- show **LOCKED / READY / EXPIRING** state and remaining lease time;
+- support explicit **Lock** and lock-on-close;
+- locking removes the key/session authorization but does not delete the persistent deployment key from WSL `~/.ssh` or alter remote `authorized_keys`;
+- closing/restarting the app must never silently restore READY from stale metadata alone;
+- repeat authenticated probes during one valid lease must not request Hostinger/VPS account passwords or repeated key onboarding;
+- preserve PDA-1 host-key verification and fail-closed fingerprint checks for all session-backed probes;
+- persist only non-secret session metadata required for safe recovery/expiry decisions;
+- never expose/export the agent socket to remote targets, Git, incident bundles or external agents.
 
-Acceptance gate:
+## 8.2 Initial implementation sequence
 
-- one unlock supports repeated authenticated probes/deployments within the valid lease;
+1. add a WSL agent-session service with testable parsing of `ssh-agent -s` output;
+2. define session metadata/state contracts separately from WPF UI;
+3. start a dedicated agent and validate PID/socket/liveness before accepting it;
+4. add trusted-terminal `ssh-add -t 8h <approved-private-key>` onboarding without any app-owned passphrase field;
+5. enumerate loaded agent fingerprints and require the approved fingerprint before READY;
+6. add LOCKED/READY/EXPIRING state computation and countdown refresh;
+7. add explicit Lock that removes loaded identities and terminates the owned agent where appropriate;
+8. wire lock-on-close and stale-session cleanup;
+9. route non-writing target probes through the bounded agent session and smoke repeated Hostinger/VPS access;
+10. add negative tests for foreign agent, wrong fingerprint, expired lease, dead PID/socket and stale metadata.
+
+## 8.3 Acceptance gate
+
+PDA-2 is accepted only when:
+
+- one trusted unlock establishes READY with the expected approved key fingerprint;
+- one unlock supports repeated authenticated Hostinger/VPS probes within the valid lease without remote account-password prompts;
+- the UI exposes clear LOCKED / READY / EXPIRING state and expiry information;
+- explicit Lock immediately removes deployment authorization;
 - closing ZDeployPet locks access;
-- expired or foreign state fails closed;
-- no agent socket or private material is exported.
+- expiry returns the session to a non-authorized state without operator ambiguity;
+- app restart does not trust stale/foreign agent metadata without live validation;
+- wrong/foreign key fingerprint fails closed;
+- no passphrase is collected/stored by a ZDeployPet field;
+- no agent socket or private material is exported or written into the project repository;
+- automated tests cover parsing, validation, expiry, fingerprint matching and lock decisions;
+- the owning published-executable operator smoke passes against the Millenova profile.
 
 ---
 
@@ -722,8 +655,8 @@ Acceptance gate:
 | --- | --- | --- | --- |
 | PDA-0 discovery | ✅ | ✅ | N/A |
 | PDA-0A profile onboarding | ✅ | ✅ 2026-10-09 | N/A |
-| PDA-1 key/host onboarding | Required: discovery, key creation naming/path, public-only install, fingerprint/mismatch, Git/secret checks | Required: existing key + create-key + install-key + help UX | Required non-writing probe; verify public key installed and no private/password material retained |
-| PDA-2 bounded agent | Required | Required | Required |
+| PDA-1 key/host/Git safety | ✅ phase tests/regressions | ✅ 2026-10-09 | ✅ Hostinger + VPS non-writing authenticated probes |
+| PDA-2 bounded agent | Required: parsing, ownership/liveness, fingerprint, expiry, lock | Required | Required repeated Hostinger + VPS probes during one lease |
 | PDA-3 shell/pet/theme/menu/log UI | Required where practical | Required | N/A |
 | PDA-4 report monitor | Required | Required | Required against real reporter output |
 | PDA-5 dry-run | Required | Required | Required |
@@ -737,30 +670,33 @@ Acceptance gate:
 
 **Repository:** `wilderruiz/zdeploypet`  
 **Branch:** `main`  
-**Reviewed baseline before this plan update:** `9c5a0fcc88666d42ab100197da0c239eb3bf3862`  
-**Repository state at handoff:** local/GitHub synchronization is being managed through ZomniverseGitPet; previous standalone-publishing history remains preserved  
-**Completed:** PDA-0 and PDA-0A  
-**Active:** PDA-1
+**Reviewed baseline before this plan update:** `f3bef910d58a4d7c149b1a707135c061862a061c`  
+**Repository state at handoff:** local/GitHub synchronization is managed through ZomniverseGitPet; the known-good local publish workflow remains `scripts/publish-local.ps1`  
+**Completed:** PDA-0, PDA-0A and PDA-1  
+**Active:** PDA-2
 
 Recent acceptance/evidence:
 
-- corrected PDA-0A smoke passed from `C:\Dev\ZDeployPet_Releases\current\ZDeployPet.exe`;
-- profile rows now persist across save/close/reopen/load;
-- shared structured `i` help passed smoke on setup/discovery and Deployment access surfaces;
-- Deployment access window opens for the validated Millenova profile without deploying anything;
-- manual WSL verification found three valid `.pub` files in `/home/wilder/.ssh` and `ssh-keygen -lf ... -E sha256` fingerprints all three successfully;
-- app `Refresh keys` still reports none, establishing the current PDA-1 discovery defect;
-- no duplicate key should be created as a workaround for that defect.
+- PDA-1 dedicated ZDeployPet key creation/persistence smoke passed;
+- Hostinger host fingerprint was independently verified and explicitly enrolled;
+- Hostinger public-key-only installation succeeded through the trusted SSH terminal with clear friendly-target/password guidance;
+- Hostinger non-writing authenticated probe returned `Status: Success` without another account-password prompt;
+- VPS target also returned `Status: Success` using the approved deployment key;
+- exact enrolled host-key type is now honored during installer/probe rechecks, avoiding false mismatches on multi-key-type servers;
+- guided action state enables only the next procedural trust/onboarding step;
+- Repository Git safety scan passed with no private-key material detected;
+- managed `.gitignore` defense block is present and its update action becomes inactive once already correct;
+- PDA-1 caused no deployment-script execution and no application/deployment destination modification.
 
 Next concrete implementation target:
 
-1. fix `WslSshDiagnostics.ListPublicKeysAsync`/invocation/parsing so the existing valid WSL public keys appear in the GUI and failures surface actionable diagnostics;
-2. add **Use existing SSH key / Create ZDeployPet deployment key** onboarding;
-3. create managed keys only in WSL `~/.ssh` with safe profile-scoped naming and no silent overwrite;
-4. add explicit public-key-only server installation and first-time trusted SSH/OS authorization flow without password persistence;
-5. add/verify scoped `.gitignore` defense and private-key-content detection;
-6. finish host-key enrollment/mismatch hard-block and non-writing authenticated probes;
-7. add automated tests and complete the owning private-profile smoke.
+1. create the PDA-2 session-state/core contracts and WSL agent-session service;
+2. parse/start/validate a dedicated app-owned `ssh-agent` inside the selected WSL distribution;
+3. add trusted-terminal `ssh-add -t 8h` unlock for only the PDA-1-approved key;
+4. verify the loaded fingerprint before showing READY;
+5. implement LOCKED / READY / EXPIRING plus remaining lease display;
+6. implement explicit Lock, lock-on-close and stale/foreign agent rejection;
+7. route repeated Hostinger/VPS probes through the bounded session and complete the owning smoke.
 
 Future product-shell requirements already committed to the roadmap:
 
@@ -784,4 +720,5 @@ When resuming work:
 4. preserve all security invariants before expanding UI behavior;
 5. keep real infrastructure data and all private key material outside the public repository;
 6. treat `.gitignore` as defense in depth, not secret storage;
-7. update this plan in the same change that materially changes phase status or acceptance evidence.
+7. for PDA-2, never treat persisted agent metadata alone as authorization—live ownership/liveness/fingerprint validation is mandatory;
+8. update this plan in the same change that materially changes phase status or acceptance evidence.
