@@ -17,7 +17,7 @@
         <StackPanel Grid.Row="0">
             <TextBlock FontSize="26" FontWeight="SemiBold" Text="Console / Activity" />
             <TextBlock Margin="0,5,0,0" Foreground="{StaticResource AppMutedTextBrush}" TextWrapping="Wrap"
-                       Text="Sanitized ZDeployPet lifecycle, profile, session and probe events. Secret-bearing values are redacted before entries reach this view." />
+                       Text="Live sanitized ZDeployPet activity. Secret-bearing values are redacted before they reach this console." />
         </StackPanel>
 
         <Border Grid.Row="1" Margin="0,16,0,14" Padding="12" Background="{StaticResource AppSurfaceBrush}"
@@ -36,21 +36,28 @@
             </Grid>
         </Border>
 
-        <ListView x:Name="ActivityList" Grid.Row="2" SelectionMode="Extended">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Time" Width="160" DisplayMemberBinding="{Binding LocalTime}" />
-                    <GridViewColumn Header="Level" Width="90" DisplayMemberBinding="{Binding Level}" />
-                    <GridViewColumn Header="Category" Width="130" DisplayMemberBinding="{Binding Category}" />
-                    <GridViewColumn Header="Message" Width="520" DisplayMemberBinding="{Binding Message}" />
-                </GridView>
-            </ListView.View>
-        </ListView>
+        <Border Grid.Row="2" Background="#0B0D10" BorderBrush="{StaticResource AppBorderBrush}" BorderThickness="1">
+            <TextBox x:Name="ConsoleTextBox"
+                     Margin="0"
+                     Padding="14"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     AcceptsTab="True"
+                     FontFamily="Cascadia Mono, Consolas"
+                     FontSize="13"
+                     Foreground="#D8DEE9"
+                     Background="#0B0D10"
+                     BorderThickness="0"
+                     TextWrapping="NoWrap"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto"
+                     SelectionBrush="{StaticResource AppSelectionBrush}" />
+        </Border>
 
         <DockPanel Grid.Row="3" Margin="0,16,0,0" LastChildFill="False">
             <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{StaticResource AppMutedTextBrush}" />
             <Button x:Name="CopySelectedButton" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="14,8"
-                    Content="Copy selected" Click="CopySelected_Click" />
+                    Content="Copy selection" Click="CopySelected_Click" />
             <Button x:Name="CopyAllButton" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="14,8"
                     Content="Copy all" Click="CopyAll_Click" />
             <Button DockPanel.Dock="Right" Width="90" Margin="8,0,0,0" Padding="12,8"
