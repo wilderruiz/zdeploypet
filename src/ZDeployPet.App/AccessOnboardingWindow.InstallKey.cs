@@ -58,7 +58,8 @@ public partial class AccessOnboardingWindow
             MessageBoxImage.Warning);
         if (answer != MessageBoxResult.Yes) return;
 
-        InstallKeyButton.IsEnabled = false;
+        _guidedBusy = true;
+        UpdateGuidedActionState();
         StatusText.Text = $"Re-checking identities before opening the installer for {target.Label}…";
         try
         {
@@ -68,8 +69,11 @@ public partial class AccessOnboardingWindow
                 _identity.DeploymentKey,
                 hostKey);
 
+            if (result.Success)
+                _installerLaunchedTargetId = target.Id;
+
             StatusText.Text = result.Success
-                ? "Interactive public-key installer opened."
+                ? "Interactive public-key installer opened — complete it, then run the probe."
                 : "Public-key installation was blocked before any remote change.";
             ResultTextBox.Text = result.Message;
         }
@@ -80,7 +84,8 @@ public partial class AccessOnboardingWindow
         }
         finally
         {
-            InstallKeyButton.IsEnabled = true;
+            _guidedBusy = false;
+            UpdateGuidedActionState();
         }
     }
 }
