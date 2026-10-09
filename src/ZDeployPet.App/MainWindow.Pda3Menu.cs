@@ -1,11 +1,18 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 
 namespace ZDeployPet.App;
 
 public partial class MainWindow
 {
     private bool _pda3MenuInitialized;
+
+    private Brush AppSurface => (Brush)Application.Current.Resources["AppSurfaceBrush"];
+    private Brush AppSurfaceRaised => (Brush)Application.Current.Resources["AppSurfaceRaisedBrush"];
+    private Brush AppBorder => (Brush)Application.Current.Resources["AppBorderBrush"];
+    private Brush AppText => (Brush)Application.Current.Resources["AppTextBrush"];
 
     private void InitializePda3MenuShell()
     {
@@ -16,54 +23,138 @@ public partial class MainWindow
 
         Content = null;
         DockPanel shell = new();
-        Menu menu = BuildTopMenu();
-        DockPanel.SetDock(menu, Dock.Top);
-        shell.Children.Add(menu);
+        FrameworkElement menuBar = BuildTopMenu();
+        DockPanel.SetDock(menuBar, Dock.Top);
+        shell.Children.Add(menuBar);
         shell.Children.Add(existingContent);
         Content = shell;
 
         ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Top application menu initialized.");
     }
 
-    private Menu BuildTopMenu()
+    private FrameworkElement BuildTopMenu()
     {
-        Menu menu = new()
+        Border bar = new()
         {
-            HorizontalAlignment = HorizontalAlignment.Stretch
+            Background = AppSurface,
+            BorderBrush = AppBorder,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(8, 2, 8, 2)
         };
 
-        MenuItem project = new() { Header = "_Project / Profile", Padding = new Thickness(10, 5, 10, 5) };
-        project.Items.Add(CreateMenuItem("_Edit profile", (_, _) => EditProfile_Click(this, new RoutedEventArgs())));
-        project.Items.Add(new Separator());
-        project.Items.Add(CreateMenuItem("Deployment _access…", (_, _) => AccessOnboarding_Click(this, new RoutedEventArgs())));
-        project.Items.Add(CreateMenuItem("_Session…", (_, _) => DeploymentSession_Click(this, new RoutedEventArgs())));
-        project.Items.Add(CreateMenuItem("_Git safety…", (_, _) => GitSafety_Click(this, new RoutedEventArgs())));
-        project.Items.Add(new Separator());
-        project.Items.Add(CreateMenuItem("E_xit", (_, _) => Close()));
+        StackPanel row = new()
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
 
-        MenuItem view = new() { Header = "_View", Padding = new Thickness(10, 5, 10, 5) };
-        view.Items.Add(CreateMenuItem("Console / _Activity…", (_, _) => Activity_Click(this, new RoutedEventArgs())));
+        row.Children.Add(CreatePopupMenu("Project / Profile", popup =>
+        {
+            StackPanel panel = CreatePopupPanel();
+            panel.Children.Add(CreatePopupAction("Edit profile", popup, () => EditProfile_Click(this, new RoutedEventArgs())));
+            panel.Children.Add(CreatePopupSeparator());
+            panel.Children.Add(CreatePopupAction("Deployment access…", popup, () => AccessOnboarding_Click(this, new RoutedEventArgs())));
+            panel.Children.Add(CreatePopupAction("Session…", popup, () => DeploymentSession_Click(this, new RoutedEventArgs())));
+            panel.Children.Add(CreatePopupAction("Git safety…", popup, () => GitSafety_Click(this, new RoutedEventArgs())));
+            panel.Children.Add(CreatePopupSeparator());
+            panel.Children.Add(CreatePopupAction("Exit", popup, Close));
+            return panel;
+        }));
 
-        MenuItem help = new() { Header = "_Help", Padding = new Thickness(10, 5, 10, 5) };
-        help.Items.Add(CreateMenuItem("_About ZDeployPet…", (_, _) => OpenAboutWindow()));
+        row.Children.Add(CreatePopupMenu("View", popup =>
+        {
+            StackPanel panel = CreatePopupPanel();
+            panel.Children.Add(CreatePopupAction("Console / Activity…", popup, () => Activity_Click(this, new RoutedEventArgs())));
+            return panel;
+        }));
 
-        menu.Items.Add(project);
-        menu.Items.Add(view);
-        menu.Items.Add(help);
-        return menu;
+        row.Children.Add(CreatePopupMenu("Help", popup =>
+        {
+            StackPanel panel = CreatePopupPanel();
+            panel.Children.Add(CreatePopupAction("About ZDeployPet…", popup, OpenAboutWindow));
+            return panel;
+        }));
+
+        bar.Child = row;
+        return bar;
     }
 
-    private static MenuItem CreateMenuItem(string header, RoutedEventHandler handler)
+    private FrameworkElement CreatePopupMenu(string label, Func<Popup, UIElement> buildContent)
     {
-        MenuItem item = new()
+        Button anchor = new()
         {
-            Header = header,
-            MinWidth = 230,
-            Padding = new Thickness(14, 8, 14, 8)
+            Content = label,
+            Padding = new Thickness(10, 5, 10, 5),
+            Margin = new Thickness(0, 0, 2, 0),
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Foreground = AppText,
+            HorizontalContentAlignment = HorizontalAlignment.Center
         };
-        item.Click += handler;
+
+        Popup popup = new()
+        {
+            Placement = PlacementMode.Bottom,
+            PlacementTarget = anchor,
+            StaysOpen = false,
+            AllowsTransparency = true
+        };
+
+        Border popupChrome = new()
+        {
+            Background = AppSurface,
+            BorderBrush = AppSurface,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(3),
+            Child = buildContent(popup)
+        };
+        popup.Child = popupChrome;
+
+        Grid host = new();
+        host.Children.Add(anchor);
+        host.Children.Add(popup);
+
+        anchor.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
+        return host;
+    }
+
+    private StackPanel CreatePopupPanel() => new()
+    {
+        Background = AppSurface,
+        MinWidth = 245
+    };
+
+    private Button CreatePopupAction(string label, Popup owner, Action action)
+    {
+        Button item = new()
+        {
+            Content = label,
+            MinWidth = 245,
+            Padding = new Thickness(14, 9, 14, 9),
+            Margin = new Thickness(0),
+            Background = AppSurface,
+            Foreground = AppText,
+            BorderBrush = AppSurface,
+            BorderThickness = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Left
+        };
+
+        item.MouseEnter += (_, _) => item.Background = AppSurfaceRaised;
+        item.MouseLeave += (_, _) => item.Background = AppSurface;
+        item.Click += (_, _) =>
+        {
+            owner.IsOpen = false;
+            action();
+        };
         return item;
     }
+
+    private FrameworkElement CreatePopupSeparator() => new Border
+    {
+        Height = 1,
+        Margin = new Thickness(8, 3, 8, 3),
+        Background = AppBorder
+    };
 
     private void OpenAboutWindow()
     {
