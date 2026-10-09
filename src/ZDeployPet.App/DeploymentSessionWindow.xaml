@@ -38,12 +38,9 @@
                 <StackPanel Grid.Column="1" Margin="20,0,0,0">
                     <TextBlock x:Name="MessageText" TextWrapping="Wrap" Text="Deployment access is locked." />
                     <StackPanel Margin="0,18,0,0" Orientation="Horizontal">
-                        <Button x:Name="UnlockButton" Padding="18,9" Content="Unlock for 8 hours" Click="Unlock_Click" />
-                        <Button x:Name="UnlockHelpButton" Margin="6,0,14,0" Width="34" Content="i" />
-                        <Button x:Name="CheckButton" Padding="18,9" Content="Check session" Click="Check_Click" />
-                        <Button x:Name="CheckHelpButton" Margin="6,0,14,0" Width="34" Content="i" />
+                        <Button x:Name="UnlockButton" Margin="0,0,14,0" Padding="18,9" Content="Unlock for 8 hours" Click="Unlock_Click" />
+                        <Button x:Name="CheckButton" Margin="0,0,14,0" Padding="18,9" Content="Check session" Click="Check_Click" />
                         <Button x:Name="LockButton" Padding="18,9" Content="Lock" Click="Lock_Click" />
-                        <Button x:Name="LockHelpButton" Margin="6,0,0,0" Width="34" Content="i" />
                     </StackPanel>
                 </StackPanel>
             </Grid>
