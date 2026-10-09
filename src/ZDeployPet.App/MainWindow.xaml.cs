@@ -41,6 +41,10 @@ public partial class MainWindow : Window
         ScriptPathTextBox.ItemsSource = new ObservableCollection<string>();
         ReportRootTextBox.ItemsSource = new ObservableCollection<string>();
         ConfirmationTextBox.ItemsSource = new ObservableCollection<string>();
+
+        WslPathTextBox.ToolTip =
+            "Automatic, verified WSL path for the Windows project folder above. " +
+            "ZDeployPet keeps this read-only so the Windows and Linux project locations cannot silently drift apart.";
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -183,7 +187,7 @@ public partial class MainWindow : Window
     {
         SaveProfileButton.IsEnabled = false;
         SetupValidationText.Text = string.Empty;
-        StatusText.Text = "Validating local profile…";
+        StatusText.Text = "Checking setup…";
         try
         {
             TargetsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
@@ -198,8 +202,9 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(draft.ProjectPath) || !Directory.Exists(draft.ProjectPath))
             {
                 await LoadSuggestionsAsync();
-                SetupValidationText.Text = "Choose an existing project folder. Your unfinished setup has been saved and will be restored next time.";
-                StatusText.Text = "Draft saved — project folder required";
+                ShowDraftNeedsAttention([
+                    "Choose an existing project folder."
+                ], "project folder required");
                 return;
             }
 
@@ -209,10 +214,13 @@ public partial class MainWindow : Window
             if (!resolution.Success || resolution.WslPath is null)
             {
                 await LoadSuggestionsAsync();
-                SetupValidationText.Text = resolution.Error ?? "Could not verify the project path in WSL.";
-                StatusText.Text = "Profile validation failed";
+                ShowDraftNeedsAttention([
+                    resolution.Error ?? "ZDeployPet could not verify the project path in the selected WSL environment."
+                ], "WSL path could not be verified");
                 return;
             }
+
+            // Keep the successful Windows -> WSL verification visible even when later sections are incomplete.
             WslPathTextBox.Text = resolution.WslPath;
 
             DeploymentProfile profile = BuildProfile(distribution, resolution.WslPath);
@@ -220,8 +228,7 @@ public partial class MainWindow : Window
             if (!validation.IsValid)
             {
                 await LoadSuggestionsAsync();
-                SetupValidationText.Text = string.Join(Environment.NewLine, validation.Errors.Select(error => "• " + error));
-                StatusText.Text = "Profile validation failed";
+                ShowDraftNeedsAttention(validation.Errors, "profile incomplete");
                 return;
             }
 
@@ -230,8 +237,9 @@ public partial class MainWindow : Window
             if (!scriptValidation.Success)
             {
                 await LoadSuggestionsAsync();
-                SetupValidationText.Text = scriptValidation.Error;
-                StatusText.Text = "Script containment failed";
+                ShowDraftNeedsAttention([
+                    scriptValidation.Error ?? "The deployment script could not be verified inside the selected project."
+                ], "deployment script needs attention");
                 return;
             }
 
@@ -245,11 +253,53 @@ public partial class MainWindow : Window
         {
             SetupValidationText.Text = exception.Message;
             StatusText.Text = "Profile save failed";
+            SetupValidationText.BringIntoView();
         }
         finally
         {
             SaveProfileButton.IsEnabled = true;
         }
+    }
+
+    private void ShowDraftNeedsAttention(IReadOnlyList<string> requirements, string summary)
+    {
+        List<string> uniqueRequirements = requirements
+            .Where(requirement => !string.IsNullOrWhiteSpace(requirement))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        StringBuilder message = new();
+        message.AppendLine("Draft saved. Complete these items before ZDeployPet creates the reusable JSON profile:");
+        foreach (string requirement in uniqueRequirements)
+            message.AppendLine("• " + FriendlySetupRequirement(requirement));
+
+        if (!string.IsNullOrWhiteSpace(WslPathTextBox.Text))
+        {
+            message.AppendLine();
+            message.AppendLine("✓ Windows project folder was found.");
+            message.AppendLine($"✓ WSL project path verified automatically: {WslPathTextBox.Text}");
+        }
+
+        SetupValidationText.Text = message.ToString().TrimEnd();
+        StatusText.Text = $"Draft saved — {summary}";
+        SetupValidationText.BringIntoView();
+    }
+
+    private static string FriendlySetupRequirement(string requirement)
+    {
+        return requirement switch
+        {
+            "Choose a deployment script using a path relative to the project folder." =>
+                "Choose the deployment script inside this project (for example deploy.sh or scripts/deploy.sh).",
+            "Add at least one deployment target." =>
+                "Add at least one server in Section 3.",
+            "A live confirmation phrase is required." =>
+                "Enter the phrase required to approve a live deployment in Section 2.",
+            _ when requirement.StartsWith("Target '", StringComparison.Ordinal) &&
+                   requirement.EndsWith("requires at least one destination rule.", StringComparison.Ordinal) =>
+                requirement.Replace("requires at least one destination rule.", "needs at least one production destination in Section 4.", StringComparison.Ordinal),
+            _ => requirement
+        };
     }
 
     private DeploymentProfile BuildProfile(string distribution, string wslPath)
