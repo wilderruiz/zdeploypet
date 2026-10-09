@@ -13,9 +13,9 @@ public sealed class WslSshDiagnostics
           line="$(ssh-keygen -lf "$f" -E sha256 2>/dev/null || true)"
           [ -n "$line" ] || continue
           found=1
-          printf 'path=%s\n' "$f"
-          printf 'info=%s\n' "$line"
-          printf '%s\n' '--'
+          echo "path=$f"
+          echo "info=$line"
+          echo "--"
         done
         [ "$found" -eq 1 ] || true
         """;
@@ -26,16 +26,16 @@ public sealed class WslSshDiagnostics
         port="$2"
         line="$(ssh-keyscan -T 6 -p "$port" "$host" 2>/dev/null | head -n 1 || true)"
         if [ -z "$line" ]; then
-          printf 'error=No SSH host key was returned.\n'
+          echo "error=No SSH host key was returned."
           exit 2
         fi
-        info="$(printf '%s\n' "$line" | ssh-keygen -lf - -E sha256 2>/dev/null || true)"
+        info="$(echo "$line" | ssh-keygen -lf - -E sha256 2>/dev/null || true)"
         if [ -z "$info" ]; then
-          printf 'error=The returned SSH host key could not be fingerprinted.\n'
+          echo "error=The returned SSH host key could not be fingerprinted."
           exit 3
         fi
-        printf 'info=%s\n' "$info"
-        printf 'key=%s\n' "$line"
+        echo "info=$info"
+        echo "key=$line"
         """;
 
     private const string ProbeScript = """
@@ -47,12 +47,12 @@ public sealed class WslSshDiagnostics
         host_key_line="$5"
         private_key="${public_key%.pub}"
         if [ ! -f "$public_key" ] || [ ! -f "$private_key" ]; then
-          printf 'probe_error=MISSING_KEY\n'
+          echo "probe_error=MISSING_KEY"
           exit 20
         fi
         known_hosts="$(mktemp)"
         trap 'rm -f "$known_hosts"' EXIT HUP INT TERM
-        printf '%s\n' "$host_key_line" > "$known_hosts"
+        echo "$host_key_line" > "$known_hosts"
         set +e
         output="$(ssh \
           -o BatchMode=yes \
@@ -71,10 +71,10 @@ public sealed class WslSshDiagnostics
         code=$?
         set -e
         if [ "$code" -eq 0 ] && [ "$output" = 'ZDEPLOYPET_PROBE_OK' ]; then
-          printf 'probe_ok=true\n'
+          echo "probe_ok=true"
           exit 0
         fi
-        printf 'probe_error=%s\n' "$output"
+        echo "probe_error=$output"
         exit "$code"
         """;
 
