@@ -252,7 +252,7 @@ public sealed class WslSshDiagnostics
         if (!fingerprint.StartsWith("SHA256:", StringComparison.Ordinal)) return null;
         string algorithm = parts[^1].Trim('(', ')');
         string? comment = parts.Length > 3
-            ? string.Join(' ', parts.Skip(2).Take(parts.Length - 3))
+            ? string.Join(" ", parts.Skip(2).Take(parts.Length - 3))
             : null;
         return new(fingerprint, algorithm, string.IsNullOrWhiteSpace(comment) ? null : comment);
     }
