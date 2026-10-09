@@ -16,11 +16,12 @@
 
         <StackPanel Grid.Row="0">
             <TextBlock FontSize="26" FontWeight="SemiBold" Text="Console / Activity" />
-            <TextBlock Margin="0,5,0,0" Foreground="#555" TextWrapping="Wrap"
+            <TextBlock Margin="0,5,0,0" Foreground="{StaticResource AppMutedTextBrush}" TextWrapping="Wrap"
                        Text="Sanitized ZDeployPet lifecycle, profile, session and probe events. Secret-bearing values are redacted before entries reach this view." />
         </StackPanel>
 
-        <Border Grid.Row="1" Margin="0,16,0,14" Padding="12" BorderBrush="#D8D8D8" BorderThickness="1">
+        <Border Grid.Row="1" Margin="0,16,0,14" Padding="12" Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}" BorderThickness="1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -47,7 +48,7 @@
         </ListView>
 
         <DockPanel Grid.Row="3" Margin="0,16,0,0" LastChildFill="False">
-            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#555" />
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{StaticResource AppMutedTextBrush}" />
             <Button x:Name="CopySelectedButton" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="14,8"
                     Content="Copy selected" Click="CopySelected_Click" />
             <Button x:Name="CopyAllButton" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="14,8"
