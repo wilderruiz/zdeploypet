@@ -3,12 +3,12 @@
 > [!IMPORTANT]
 > This file is the authoritative programme index and handoff record for ZDeployPet. Update the compact overview, current handoff, affected phase, validation matrix, and next action together whenever the programme changes. Do not reconstruct status from memory when this file and repository evidence are available.
 
-**Status:** 🟡 **PDA-0A active — implementation complete; corrected operator smoke pending**  
-**Reviewed repository baseline:** `main@219336a` (`checkpoint: 2026-10-08 11:57`)  
-**Completed phase:** `PDA-0 — Standalone boundary and read-only discovery`  
-**Active phase:** `PDA-0A — Community profile onboarding`  
-**Next phase after acceptance:** `PDA-1 — Key onboarding and diagnostics`  
-**Remaining phases:** 9 including active PDA-0A; 8 after PDA-0A acceptance  
+**Status:** 🟡 **PDA-1 active — key onboarding and diagnostics next**  
+**Reviewed repository baseline:** `main@21084ea` (`checkpoint: 2026-10-08 23:33`)  
+**Completed phase:** `PDA-0A — Community profile onboarding`  
+**Active phase:** `PDA-1 — Key onboarding and diagnostics`  
+**Next phase after acceptance:** `PDA-2 — Bounded SSH-agent session`  
+**Remaining phases:** 8 including active PDA-1; 7 after PDA-1 acceptance  
 **Primary outcome:** one bounded deployment-access login session, no repeated Hostinger/VPS account-password prompts, and one explicit authorization for every live deployment  
 **Product boundary:** standalone Windows/.NET 8 WPF application using WSL through a narrow bridge  
 **Deployment boundary:** project-owned deployment scripts remain authoritative and are not rewritten by ZDeployPet  
@@ -21,34 +21,42 @@
 | Phase | Status | Outcome | Primary documentation |
 | --- | --- | --- | --- |
 | **PDA-0** | ✅ ACCEPTED 2026-10-08 | Standalone repository, read-only Windows/WSL/OpenSSH/project/script/report discovery | [`docs/PDA0_DISCOVERY.md`](docs/PDA0_DISCOVERY.md) |
-| **PDA-0A** | 🟡 ACTIVE | Community-safe local profiles, first-run setup, multiple targets/destinations, input guidance/history/draft recovery | [`docs/PROFILES.md`](docs/PROFILES.md), [`docs/PRODUCT_IDENTITY.md`](docs/PRODUCT_IDENTITY.md) |
-| **PDA-1** | ⬜ QUEUED | Dedicated key onboarding, public-key/host-key fingerprints, non-writing target probes | This plan §7 |
+| **PDA-0A** | ✅ ACCEPTED 2026-10-09 | Community-safe local profiles, first-run setup, multiple targets/destinations, input guidance/history/draft recovery | [`docs/PROFILES.md`](docs/PROFILES.md), [`docs/PRODUCT_IDENTITY.md`](docs/PRODUCT_IDENTITY.md) |
+| **PDA-1** | 🟡 ACTIVE | Dedicated key onboarding, public-key/host-key fingerprints, non-writing target probes | This plan §7 |
 | **PDA-2** | ⬜ QUEUED | App-owned bounded SSH-agent session: unlock once, status, expiry and lock | This plan §8 |
-| **PDA-3** | ⬜ QUEUED | Single-instance production shell, accessible state model and companion UI | [`docs/PRODUCT_IDENTITY.md`](docs/PRODUCT_IDENTITY.md), this plan §9 |
+| **PDA-3** | ⬜ QUEUED | Single-instance production shell, accessible state model, companion pet, dark/red visual identity, menu/about and console/log UI | [`docs/PRODUCT_IDENTITY.md`](docs/PRODUCT_IDENTITY.md), this plan §9 |
 | **PDA-4** | ⬜ QUEUED | Read-only structured deployment-report monitor | Millenova reporter plan, this plan §10 |
 | **PDA-5** | ⬜ QUEUED | Allowlisted dry-run executor for the unchanged project script | This plan §11 |
 | **PDA-6** | ⬜ QUEUED | Live executor with immutable review and exact human confirmation | This plan §12 |
 | **PDA-7** | ⬜ QUEUED | Sanitized incident bundle and local/remote-agent handoff | This plan §13 |
-| **PDA-8** | ⬜ QUEUED | Security hardening, clean-clone CI, installer/portable release and public launch | This plan §14 |
+| **PDA-8** | ⬜ QUEUED | Security hardening, clean-clone CI, installer/portable release, desktop shortcut verification and public launch | This plan §14 |
 
 ### Immediate next action
 
-Finish the corrected PDA-0A operator smoke from the published development executable:
+Begin PDA-1 implementation and validation:
+
+- add dedicated deployment-key onboarding without collecting private-key passphrases in app-owned fields;
+- display and persist only approved public-key fingerprints and expected host-key fingerprints;
+- add non-writing SSH target probes that prove identity/connectivity without deployment side effects;
+- preserve the existing profile boundary, keeping real endpoints and machine-specific bindings local;
+- maintain the no-password-storage, no-generic-shell and no-live-deploy guarantees.
+
+### PDA-0A acceptance evidence
+
+Corrected operator smoke passed from:
 
 ```text
 C:\Dev\ZDeployPet_Releases\current\ZDeployPet.exe
 ```
 
-The acceptance smoke must prove that an incomplete draft:
+Verified on 2026-10-09:
 
-1. saves without contacting WSL or a server when the project folder is missing;
-2. reports `Draft saved — project folder required`;
-3. closes immediately without a UI-thread deadlock;
-4. restores the entered profile name after restart;
-5. keeps tooltip activation limited to each card's `i` button;
-6. clears suggestion history without deleting the current draft or validated profile.
-
-Do not begin PDA-1 until this smoke passes and PDA-0A is marked accepted.
+1. incomplete draft saves without contacting WSL or a server when the project folder is missing;
+2. UI reports `Draft saved — project folder required`;
+3. app closes without UI-thread deadlock;
+4. entered profile name restores after restart;
+5. tooltip activation is limited to each card's `i` button;
+6. `Forget suggestions` clears remembered suggestions without deleting the current draft or saved profile.
 
 ### Maintenance rule
 
@@ -315,530 +323,286 @@ PDA-0 explicitly did not create keys, start a persistent agent, enroll host keys
 
 ## 6.2 PDA-0A phase map
 
+**Status:** ✅ ACCEPTED 2026-10-09
+
 | Subphase | Status | Implemented result |
 | --- | --- | --- |
-| **0A.1 Profile contract/storage** | ✅ CODE COMPLETE | Schema v1, atomic local profile save/load, GUID identity, Git-ignored per-user storage |
-| **0A.2 Project/WSL/script validation** | ✅ CODE COMPLETE | Folder picker, installed WSL selection, derived/verified WSL path, contained script validation |
-| **0A.3 Targets and destinations** | ✅ CODE COMPLETE | Multiple SSH targets and multiple labelled destinations per target; safe `/path` and scoped `~/path` rules |
-| **0A.4 First-run usability** | 🟡 SMOKE PENDING | Plain-language five-section UI, `i`-only tooltips, dropdown suggestions, forget-history action, incomplete draft recovery |
+| **0A.1 Profile contract/storage** | ✅ COMPLETE | Schema v1, atomic local profile save/load, GUID identity, Git-ignored per-user storage |
+| **0A.2 Project/WSL/script validation** | ✅ COMPLETE | Folder picker, installed WSL selection, derived/verified WSL path, contained script validation |
+| **0A.3 Targets and destinations** | ✅ COMPLETE | Multiple SSH targets and multiple labelled destinations per target; safe `/path` and scoped `~/path` rules |
+| **0A.4 First-run usability** | ✅ ACCEPTED | Plain-language five-section UI, `i`-only tooltips, dropdown suggestions, forget-history action, incomplete draft recovery |
 | **0A.5 Local publish loop** | ✅ COMPLETE | VS Code workspace and build/test/self-contained `publish-local.ps1` workflow |
-| **0A.6 Public repository readiness** | 🟡 ACTIVE | GitPet scope/hygiene configured; public GitHub origin still unverified/pending; public policy/license docs remain PDA-8 |
+| **0A.6 Public repository readiness** | ✅ COMPLETE FOR CURRENT SCOPE | GitHub repository linked and healthy; source/public scope established; broader launch policy/license/release work remains PDA-8 |
 
-### Implemented profile behavior
-
-- no real infrastructure is compiled into public source;
-- local bindings live below `%LOCALAPPDATA%\Zomniverse\ZDeployPet`;
-- shareable project contracts contain logical capabilities, not real hosts or destinations;
-- a target may own several destinations, allowing a site folder and separate configuration file without collapsing them into one root;
-- profile validation blocks missing folders/scripts, script escape, invalid ports, unknown destination targets and broad/unsafe destinations;
-- `~/child` represents a scoped path below the authenticated remote user's home;
-- incomplete non-secret setup values are saved as a draft before full validation;
-- remembered suggestions are capped and independently forgettable;
-- forgetting suggestions does not delete the current draft or validated profile;
-- profile/draft/history writes use unique temporary files to tolerate overlap;
-- the WPF close path uses synchronous local persistence and must never synchronously wait on an async UI continuation.
-
-### PDA-0A defects already corrected
-
-- editable deployment rows not committing correctly — fixed in `534f510`;
-- one destination per server could not represent split site/config deployment — fixed in `06cd9bd`;
-- technical setup labels and missing guidance — fixed in `521cfa9` and `9d3384d`;
-- no recent-value suggestions — implemented in `1a8f6ce`;
-- invalid/incomplete profiles lost entered values — fixed in `f42c5ad`;
-- overlapping draft writes reused one `.tmp` file — fixed in `7d6c803`;
-- close handler deadlocked the WPF UI by synchronously waiting on async persistence — fixed in `5de7f5f`;
-- generated local publish artifacts entering project status — excluded by `.gitignore` and GitPet hygiene.
-
-### PDA-0A remaining work
-
-- run and accept the corrected draft-save/close/reopen smoke from the published EXE;
-- complete a valid Millenova private profile and restart discovery smoke;
-- prove all target/destination rows survive restart exactly;
-- prove the public Git repository has its own correct GitHub origin and contains no local binding;
-- decide whether draft/history storage needs a visible path/open-folder affordance;
-- update [`docs/PROFILES.md`](docs/PROFILES.md) if the final accepted UI changes schema or storage behavior.
-
-### PDA-0A acceptance
-
-- [ ] fresh install starts without a private profile;
-- [ ] incomplete draft saves, closes and restores without hanging;
-- [ ] `i` tooltip works only from the icon and is keyboard accessible;
-- [ ] saved non-secret values appear in dropdown suggestions;
-- [ ] Forget suggestions removes history but not draft/profile;
-- [ ] valid project and derived WSL paths identify the same repository;
-- [ ] selected deployment script is a regular contained project file;
-- [ ] unsafe destination fixtures are rejected;
-- [ ] multiple destinations on one target survive save/reload;
-- [ ] full private Millenova profile saves and reopens;
-- [ ] read-only discovery reports `Discovery passed` after restart;
-- [ ] no server was contacted, key created, agent started or deployment run;
-- [ ] public repository contains no real local profile or personal infrastructure values.
-
-### PDA-0A operator smoke
-
-```powershell
-cd C:\Dev\ZDeployPet
-powershell -ExecutionPolicy Bypass -File scripts\publish-local.ps1
-C:\Dev\ZDeployPet_Releases\current\ZDeployPet.exe
-```
-
-First run the incomplete-draft close/reopen test described in the compact overview. Then complete the valid private profile, save it, restart the EXE and run discovery. Record the result here before moving to PDA-1.
+PDA-0A acceptance is based on the corrected operator smoke listed near the top of this plan.
 
 ---
 
-# 7. PDA-1 — Key onboarding and remote diagnostics
+# 7. PDA-1 — Key onboarding and diagnostics
 
-**Status:** ⬜ QUEUED / GATED BY PDA-0A ACCEPTANCE
+**Status:** 🟡 ACTIVE
 
-Purpose: replace repeated remote account-password entry with dedicated, revocable, passphrase-protected deployment keys while keeping all secret input outside the app.
+PDA-1 establishes explicit key identity and non-writing target verification before any bounded session is introduced.
 
-## 7.1 Required implementation
+Required outcomes:
 
-- guide generation or selection of one Ed25519 deployment key per target;
-- store only key paths and public-key fingerprints in the private binding;
-- show/copy public keys for registration;
-- guide Hostinger control-panel/public-key registration when required;
-- perform explicit host-key enrollment with expected/observed fingerprints;
-- implement `BatchMode=yes` non-writing SSH readiness probes;
-- distinguish missing key, passphrase-locked key, network failure, host-key mismatch and remote rejection;
-- evaluate targets independently;
-- never offer a password/passphrase textbox.
+- enumerate/select a dedicated deployment public key without reading or storing its passphrase;
+- compute and display the selected public-key fingerprint;
+- allow explicit expected host-key enrollment per target and display the enrolled fingerprint;
+- hard-block host-key changes until the operator explicitly re-enrolls;
+- add non-writing SSH probes for configured targets using allowlisted command forms only;
+- surface actionable diagnostics for missing key, unreachable host, bad username/port, key rejection and host-key mismatch;
+- never modify target files, deployment destinations or application state during probe operations;
+- keep all real hosts, usernames, ports and fingerprints in the private local profile boundary.
 
-Suggested private key shape for the first Millenova binding:
+Acceptance gate:
 
-```text
-~/.ssh/millenova_hostinger
-~/.ssh/millenova_vps
-```
-
-These names are local profile guidance, not public hard-coded defaults.
-
-## 7.2 Acceptance
-
-- [ ] two independently revocable keys exist outside all repositories;
-- [ ] public fingerprints match the private profile;
-- [ ] explicit host-key fingerprints are enrolled;
-- [ ] non-writing key-auth probe passes for each intended target;
-- [ ] wrong/missing key and changed-host-key fixtures fail closed;
-- [ ] no account password, key passphrase or private-key content is stored/logged.
-
-**Operator smoke:** register each public key and prove each target reports `KEY AUTH PASS` without executing a deployment command.
+- key and host fingerprints are visible and stable;
+- probe success proves only authenticated non-writing reachability;
+- key mismatch and host-key mismatch fail closed;
+- no password/passphrase is stored or echoed by ZDeployPet;
+- tests cover command construction and diagnostic parsing;
+- owning operator smoke is completed against the intended private profile.
 
 ---
 
-# 8. PDA-2 — One-session access broker
+# 8. PDA-2 — Bounded SSH-agent session
 
 **Status:** ⬜ QUEUED
 
-Use an app-specific SSH agent in WSL:
+PDA-2 introduces app-owned bounded access state without making the app a credential collector.
 
-```text
-${XDG_RUNTIME_DIR:-/tmp}/zdeploypet/ssh-agent.sock
-```
+Required outcomes:
 
-## 8.1 Required implementation
+- create/own a dedicated SSH-agent process/session;
+- unlock the approved key through trusted terminal/`ssh-add`, not an app password field;
+- support bounded lifetime, initially eight hours;
+- show LOCKED / READY / EXPIRING state;
+- support explicit Lock and lock-on-close;
+- verify loaded key fingerprint(s) against the profile before declaring READY;
+- reject stale, foreign or unverifiable agent state;
+- persist only non-secret session metadata required for safe recovery/expiry decisions.
 
-- start or safely reuse only the app-owned agent;
-- validate state-directory/socket/PID ownership and permissions;
-- load only approved fingerprints with a bounded `ssh-add -t` lifetime;
-- open a visible trusted terminal for passphrase entry;
-- return structured `LOCKED`, `PARTIAL`, `READY`, `EXPIRED` or `UNAVAILABLE` state;
-- expose target-specific key readiness;
-- unload keys and terminate the app-owned agent on Lock;
-- lock on normal app close by default;
-- recover safely from stale sockets, WSL restart and abandoned/crashed sessions;
-- pass `SSH_AUTH_SOCK` only to approved probes/executions.
+Acceptance gate:
 
-## 8.2 Acceptance
-
-- [ ] one Unlock action makes all required targets READY;
-- [ ] repeat probes/deployments within the lease cause no repeat passphrase/account-password prompts;
-- [ ] Lock removes keys and causes probes to fail safely;
-- [ ] close, expiry, logoff/reboot and WSL restart produce deterministic locked/recovery state;
-- [ ] foreign/stale agent state cannot be adopted silently.
-
-**Operator smoke:** unlock once, repeat both target probes without prompts, lock, and prove both probes become unavailable.
+- one unlock supports repeated authenticated probes/deployments within the valid lease;
+- closing ZDeployPet locks access;
+- expired or foreign state fails closed;
+- no agent socket or private material is exported.
 
 ---
 
-# 9. PDA-3 — Production application shell and companion
+# 9. PDA-3 — Production shell, companion and operator visibility
 
 **Status:** ⬜ QUEUED
 
-The current setup/discovery window is a functional prototype. PDA-3 turns it into the stable application shell.
+PDA-3 turns the onboarding-oriented window into the durable production shell while keeping deployment authority explicit and bounded.
 
-## 9.1 Required implementation
+Required outcomes:
 
-- enforce one application instance and activate the existing window;
-- split orchestration/state from `MainWindow` into testable services/view models;
-- centralize theme, spacing, controls and status semantics;
-- support DPI scaling and clamped multi-monitor window placement;
-- show profile, repository, report and access state without exposing secrets;
-- add Unlock/Lock controls and target readiness;
-- distinguish quiet monitoring from foreground work;
-- give DEV, portable and installed builds distinct identity/state roots;
-- implement the original robotic space-otter courier companion states from [`docs/PRODUCT_IDENTITY.md`](docs/PRODUCT_IDENTITY.md);
-- provide text, symbol, reduced-motion and static fallbacks;
-- ensure rendering failure cannot affect authentication or execution.
+- single-instance desktop shell with accessible keyboard/focus behavior;
+- durable state presentation for profile, session, target and deployment readiness;
+- top application menu with at minimum Project/Profile, View, Help and About surfaces;
+- About dialog modeled on the useful transparency of ZomniverseGitPet: product name, purpose, builder, version, build date, platform, license and repository, plus relevant sibling-project references without coupling runtimes;
+- dark theme as the primary application theme, using a restrained red accent for ZDeployPet identity while preserving readable warning/error semantics;
+- application icon set for executable/window/taskbar/installer/desktop shortcut with consistent ZDeployPet branding;
+- an actual ZDeployPet companion/pet presence, implemented as a non-authoritative status/feedback layer that can reflect READY/LOCKED/RUNNING/ERROR states but can never bypass confirmations or initiate deployments;
+- a built-in Console / Activity view that exposes sanitized application logs, probe/session/deployment lifecycle messages and diagnostics, with copy support and clear separation from secrets;
+- log view must redact private-key material, passphrases, tokens and any configured secret fields before rendering or export;
+- view-model/service separation so session, execution, reporting and pet/UI behavior do not accumulate in `MainWindow`;
+- preserve responsive async behavior and avoid dispatcher deadlocks.
 
-## 9.2 Acceptance
+Acceptance gate:
 
-- [ ] only one application instance owns a profile/session;
-- [ ] no app-owned secret input field exists;
-- [ ] status text remains complete without color or animation;
-- [ ] window placement survives normal display changes safely;
-- [ ] companion state exactly reflects the underlying state machine;
-- [ ] UI/rendering failure cannot unlock, execute or alter report truth.
+- shell remains single-instance and responsive across setup/session/deployment states;
+- dark/red visual identity is consistent and accessible;
+- icons appear correctly in window chrome, executable, taskbar and packaged shortcut contexts;
+- About contents report the actual build metadata and repository accurately;
+- pet state mirrors application state but cannot trigger privileged actions;
+- Console / Activity view shows useful sanitized diagnostics with no credential leakage;
+- keyboard navigation and screen-reader labels cover all primary controls.
 
 ---
 
-# 10. PDA-4 — Read-only report monitor
+# 10. PDA-4 — Structured deployment-report monitor
 
 **Status:** ⬜ QUEUED
 
-The Millenova deployment reporter remains authoritative for Millenova. Generic profiles may declare another supported reporter adapter or no structured reporter.
+Required outcomes:
 
-## 10.1 Required implementation
+- consume the project/reporter structured JSON as authoritative deployment truth;
+- watch configured report root read-only;
+- display summary, timestamps, target/mode/release, outcome and links/paths to bounded artifacts;
+- canonicalize all report/artifact paths and reject escapes outside configured report root;
+- handle partially-written reports safely;
+- never infer success from process exit code when reporter truth disagrees.
 
-- parse supported schema versions explicitly;
-- display latest run and bounded history;
-- show deployment ID, source/release transition, target, mode, result, exit status and duration;
-- show checks, test totals, per-target transfer/activation/health and bounded failure detail;
-- open/copy known-safe summary and full-log artifacts;
-- canonicalize every artifact beneath the configured report root;
-- fail closed on malformed/unsupported JSON;
-- never infer success from process exit or UI completion when reporter truth disagrees.
+Acceptance gate:
 
-## 10.2 Acceptance
-
-- [ ] valid success/failure fixtures render correctly;
-- [ ] malformed/unknown schema fails closed;
-- [ ] path traversal/symlink escape fixtures cannot open arbitrary files;
-- [ ] missing reporter is shown distinctly from deployment failure;
-- [ ] monitoring does not mutate reports or target state.
+- valid reports render correctly;
+- path escapes and malformed reports fail closed;
+- monitor performs no deployment-side write.
 
 ---
 
-# 11. PDA-5 — Dry-run executor
+# 11. PDA-5 — Allowlisted dry-run executor
 
 **Status:** ⬜ QUEUED
 
-## 11.1 Required implementation
+Required outcomes:
 
-- choose only profile-declared targets, release inputs and dry/live modes;
-- display immutable pre-run review;
-- launch the fixed, contained script from the approved WSL project directory;
-- inject only the dedicated `SSH_AUTH_SOCK` and declared reporter environment;
-- allocate a pseudo-terminal only when required;
-- drive only an explicit prompt contract;
-- fail closed on unknown prompts and all password prompts;
-- prevent concurrent deployment processes;
-- support cancellation without bypassing reporter cleanup;
-- stream bounded output while treating final reporter JSON as truth;
-- never synthesize file-transfer or destination behavior independently of the script.
+- execute only the configured/approved deployment script;
+- expose only known target/mode/release inputs and required fixed actions;
+- validate script fingerprint before execution;
+- use the bounded session from PDA-2;
+- prevent concurrent deployment execution;
+- capture sanitized lifecycle diagnostics for PDA-3 Console / Activity and PDA-4 reports;
+- dry run performs no live activation beyond what the authoritative project script defines as dry-run behavior.
 
-## 11.2 Acceptance
+Acceptance gate:
 
-- [ ] Hostinger-only, VPS-only and combined dry runs select the intended script paths;
-- [ ] no account-password prompt appears after one valid unlock;
-- [ ] unknown/password prompt stops safely;
-- [ ] second concurrent run is rejected;
-- [ ] cancellation is explicit and report cleanup completes;
-- [ ] dry run cannot cross into live confirmation/execution.
+- only allowlisted script/action/input combinations can run;
+- changed script fingerprint blocks execution;
+- dry-run evidence is visible and attributable.
 
 ---
 
-# 12. PDA-6 — Live executor
-
-**Status:** ⬜ QUEUED / GATED BY PDA-5 DRY-RUN ACCEPTANCE
-
-## 12.1 Required implementation
-
-- require an immutable review of profile, commit, target, release and live mode;
-- require the exact profile-declared live confirmation phrase in the UI;
-- preserve the deployment script's own confirmation gate;
-- never auto-fill or bypass either authorization boundary;
-- prevent stale review state from authorizing a changed repository/profile;
-- never automatically retry a partial live deployment;
-- surface reporter failure and next safe action without guessing recovery.
-
-## 12.2 Acceptance
-
-- [ ] incorrect/empty phrase blocks execution;
-- [ ] changed repository/profile invalidates prior review;
-- [ ] combined live deployment completes after one unlock with no account-password prompts;
-- [ ] only the explicit live authorization stops the expected flow;
-- [ ] partial failure is reported and never auto-retried;
-- [ ] final UI state agrees with reporter JSON.
-
----
-
-# 13. PDA-7 — Incident bundle and agent handoff
+# 12. PDA-6 — Live executor and exact confirmation
 
 **Status:** ⬜ QUEUED
 
-GitHub carries source. A sanitized bundle carries failure evidence. Credentials and deployment authority remain local.
+Required outcomes:
 
-```text
-ZDeployPetIncidents/<deployment-id>/
-├── incident.json
-├── report.json
-├── report.summary.txt
-├── failure-excerpt.txt
-├── repository-state.txt
-├── git-status.txt
-├── committed-changes.patch
-├── staged-changes.patch
-├── working-tree.patch
-├── untracked-files-manifest.txt
-└── README_FOR_AGENT.md
-```
+- immutable pre-deployment review of project/profile/target/destination/release/script fingerprint;
+- exact human confirmation phrase displayed and entered by operator;
+- app never auto-types or supplies the live confirmation phrase;
+- pass confirmation only to the fixed project script in its expected bounded form;
+- do not auto-retry partial live deployments;
+- single-instance execution lock spans the full live run;
+- authoritative structured reporter result closes the run.
 
-## 13.1 Required implementation
+Acceptance gate:
 
-- create bundles outside source repositories and private by default;
-- include bounded repository/branch/HEAD/upstream/ahead-behind and deployment context;
-- include unpushed commit patches when remote state is known;
-- include staged/working-tree diffs separately and binary-capably where safe;
-- include untracked files only by explicit allowlist plus secret scan;
-- make redacted full-log inclusion explicit and previewable;
-- offer `Open in local Codex`, `Create ChatGPT upload ZIP`, `Copy failure summary`, and optional private diagnostic branch;
-- preserve a ZIP path when GitHub push is unavailable;
-- import returned patches only through check → review → explicit apply → tests → new deployment authorization.
-
-## 13.2 Acceptance
-
-- [ ] simulated deployment failure produces a useful sanitized bundle;
-- [ ] simulated push failure remains diagnosable without GitHub;
-- [ ] secret fixtures are redacted or block export;
-- [ ] invalid/path-escaping returned patches are rejected;
-- [ ] valid returned patches still require human review;
-- [ ] no bundle contains keys, agent state, tokens or production configuration.
+- wrong or incomplete confirmation cannot start live deployment;
+- review data cannot silently change between approval and execution;
+- cancelled/failed/partial results remain explicit.
 
 ---
 
-# 14. PDA-8 — Hardening, public repository and release
+# 13. PDA-7 — Sanitized incident bundle and agent handoff
 
-**Status:** ⬜ QUEUED; some groundwork complete
+**Status:** ⬜ QUEUED
 
-## 14.1 Groundwork already complete
+Required outcomes:
 
-- source and local release output are separated;
-- `scripts/publish-local.ps1` builds, runs both test projects and publishes one self-contained win-x64 EXE;
-- generated artifacts are ignored;
-- VS Code workspace exists;
-- profile example is sanitized;
-- GitPet project scope and hygiene were configured;
-- repository has a clean `main` history except the deliberately untracked local operator note.
+- create bounded incident bundles from selected logs/reports/state;
+- redact/deny credentials, secrets, keys, agent sockets and unsafe paths;
+- preview bundle before export;
+- support local coding-agent handoff or explicit export without granting deployment authority;
+- any returned patch remains untrusted until human diff review, tests and a fresh deployment authorization.
 
-## 14.2 Remaining implementation
+Acceptance gate:
 
-- create/verify the repository's own public GitHub origin;
-- audit complete history and release tree for secrets/personal infrastructure;
-- add `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, threat model and incident-handoff documentation;
-- add clean-clone CI for build/tests and secret/path audits;
-- isolate all build/test/publish artifact roots;
-- implement distinct DEV/portable/installed identities;
-- implement a versioned release builder separate from `publish-local.ps1`;
-- produce portable and installer artifacts;
-- generate checksums and a machine-readable manifest tied to an exact clean commit;
-- restrict self-update to installed builds and verify installer hashes;
-- test clean install, upgrade, portable use and uninstall without deleting user profiles unexpectedly;
-- ensure a clean clone builds/tests without Millenova or production access.
+- exported bundle passes redaction/secret checks;
+- no remote handoff receives deployment credentials or capability;
+- evidence is sufficient for debugging common deployment failures.
 
-## 14.3 Acceptance
+---
 
-- [ ] public GitHub repository is connected and correctly described;
-- [ ] clean clone builds/tests on a supported Windows host;
-- [ ] no private binding, key, host, account, report or incident evidence exists in source/history/artifacts;
-- [ ] self-contained portable EXE works without the .NET SDK;
-- [ ] installer and portable artifacts match published SHA-256/manifest;
-- [ ] packages come from an exact clean named-branch commit;
-- [ ] auth/session failure matrix passes;
-- [ ] Hostinger-only, VPS-only and combined dry/live matrix passes for the private Millenova profile;
-- [ ] project deployment script fingerprint and reporter DR-0 through DR-6 remain unchanged/green;
-- [ ] public docs explain safe onboarding without exposing private infrastructure.
+# 14. PDA-8 — Hardening, packaging and public launch
+
+**Status:** ⬜ QUEUED
+
+Required outcomes:
+
+- clean-clone build/test CI;
+- release secret scan and artifact audit;
+- versioned portable package;
+- Windows installer with normal install/uninstall lifecycle;
+- installer-created Start Menu entry and optional desktop shortcut;
+- verify packaged/installed app behavior against the known-good local publish, including profile storage location, WSL discovery, window/taskbar icons, About/build metadata, dark/red theme, Console / Activity logging and all security boundaries;
+- verify shortcut launch uses the intended installed binary and working-directory assumptions;
+- validate upgrade/reinstall behavior without losing local profiles/drafts/suggestions unless explicitly requested;
+- license/public policy/repository hygiene finalized;
+- release notes and public launch documentation.
+
+Packaging parity requirement:
+
+The installed and portable builds must behave the same as the validated development/local-current build for all security and core workflow behavior. Packaging may change installation paths and update mechanics only; it must not alter profile semantics, WSL/SSH behavior, authorization gates, logging/redaction, session lifetime or deployment execution rules.
+
+ZomniverseGitPet may be used as a UX/release-quality reference for installer behavior, desktop/start-menu integration, About transparency and packaged-app polish, but ZDeployPet remains an independent product with its own red-accent identity and deployment-specific security contract.
+
+Acceptance gate:
+
+- clean-clone CI passes;
+- installer and portable package pass the same core smoke matrix as local current;
+- desktop shortcut and Start Menu launch correctly;
+- icons/theme/About/log console render correctly in packaged builds;
+- upgrade preserves intended local user state;
+- release package contains no secrets/private infrastructure;
+- public documentation matches shipped behavior.
 
 ---
 
 # 15. Validation matrix
 
-| Area | Case | Expected status |
-| --- | --- | --- |
-| Discovery | Windows/.NET/WSL/OpenSSH available | ✅ PDA-0 accepted |
-| Discovery | WSL argument forwarding | ✅ automated regression covered |
-| Profile | First run without validated profile | 🟡 implemented; final smoke pending |
-| Profile | Incomplete draft save/close/reopen | 🟡 deadlock fix implemented; operator smoke pending |
-| Profile | Script outside approved root | ✅ automated rejection |
-| Profile | Unsafe `/`, home root or traversal destination | ✅ automated rejection |
-| Profile | Multiple destinations for one target | ✅ model/tests implemented; restart smoke pending |
-| Profile | Suggestions/forget behavior | 🟡 implemented; operator smoke pending |
-| Public source | Sanitized example contract | ✅ present |
-| Public source | Own GitHub origin | ⬜ not verified/pending |
-| Authentication | Dedicated keys/fingerprints | ⬜ PDA-1 |
-| Authentication | Host-key enrollment/mismatch | ⬜ PDA-1 |
-| Session | Unlock once/repeat probes/lock | ⬜ PDA-2 |
-| Session | Close/expiry/reboot/WSL restart | ⬜ PDA-2/PDA-8 |
-| Shell | Single instance/accessibility/companion | ⬜ PDA-3 |
-| Reporter | Valid/malformed/path escape | ⬜ PDA-4 |
-| Dry execution | Target combinations/no password prompts | ⬜ PDA-5 |
-| Dry execution | Unknown prompt/concurrency/cancel | ⬜ PDA-5 |
-| Live execution | Exact confirmation/stale review | ⬜ PDA-6 |
-| Live execution | Partial failure/no auto-retry | ⬜ PDA-6 |
-| Incident | Deploy failure/push failure/secret fixture | ⬜ PDA-7 |
-| Release | Clean clone/portable/installer/manifest/hash | ⬜ PDA-8 |
-
-Current automated suites:
-
-```powershell
-dotnet build ZDeployPet.sln -c Release
-dotnet run --project tests\ZDeployPet.Core.Tests\ZDeployPet.Core.Tests.csproj -c Release
-dotnet run --project tests\ZDeployPet.Infrastructure.Tests\ZDeployPet.Infrastructure.Tests.csproj -c Release
-```
-
-Normal visual-smoke build:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\publish-local.ps1
-```
+| Area | Automated | Operator smoke | Production/private target smoke |
+| --- | --- | --- | --- |
+| PDA-0 discovery | ✅ | ✅ | N/A |
+| PDA-0A profile onboarding | ✅ | ✅ 2026-10-09 | N/A |
+| PDA-1 key/host onboarding | Required | Required | Required non-writing probe |
+| PDA-2 bounded agent | Required | Required | Required |
+| PDA-3 shell/pet/theme/menu/log UI | Required where practical | Required | N/A |
+| PDA-4 report monitor | Required | Required | Required against real reporter output |
+| PDA-5 dry-run | Required | Required | Required |
+| PDA-6 live execution | Required | Required | Required explicit live smoke |
+| PDA-7 incident bundle | Required | Required | Required sanitized handoff smoke |
+| PDA-8 packaging | CI/release automation | Required installed + portable smoke | Security parity with validated workflows |
 
 ---
 
-# 16. Explicit non-goals
+# 16. Current handoff snapshot
 
-Do not implement unless the product direction changes explicitly:
+**Repository:** `wilderruiz/zdeploypet`  
+**Branch:** `main`  
+**Baseline:** `21084eaa8829521ff456dd2ddbb8aeb18b83520c`  
+**Repository state at handoff:** local and GitHub `main` aligned; previous standalone-publishing history preserved on `pre-migration-standalone`  
+**Completed:** PDA-0 and PDA-0A  
+**Active:** PDA-1
 
-- ❌ a browser OAuth imitation for SSH authentication;
-- ❌ storage of remote account passwords or private-key passphrases;
-- ❌ a built-in private-key vault in v1;
-- ❌ a public web deployment endpoint;
-- ❌ a generic terminal or arbitrary-command runner;
-- ❌ automatic invention of rsync/source/destination rules;
-- ❌ modification of a project's deployment script merely to fit ZDeployPet;
-- ❌ implicit `StrictHostKeyChecking=no` or automatic host-key replacement;
-- ❌ automatic live confirmation, retry, rollback or deployment;
-- ❌ granting ChatGPT/Codex/another remote agent production credentials or an agent socket;
-- ❌ requiring a successful Git push before a deployment failure can be diagnosed;
-- ❌ committing private profiles, reports or incident bundles to a public repository;
-- ❌ making mascot animation or visual styling a dependency of security/execution state;
-- ❌ embedding ZDeployPet into ZomniverseGitPet or Millenova as a tightly coupled feature;
-- ❌ claiming universal deployment-engine support before a declared adapter/contract exists;
-- ❌ publishing an installer or release artifact from a dirty/unidentified source state.
+Recent acceptance evidence:
 
----
+- corrected PDA-0A smoke passed from `C:\Dev\ZDeployPet_Releases\current\ZDeployPet.exe`;
+- incomplete draft behavior, close/restart recovery, `i`-only help and suggestion-history clearing verified;
+- GitHub repository migration completed with old standalone history preserved on `pre-migration-standalone`;
+- ZomniverseGitPet now guards against unrelated-history reconciliation before attempting a merge.
 
-# 17. Agent implementation order
+Next concrete implementation target:
 
-```text
-PDA-0 standalone discovery ✅
-  ↓
-PDA-0A community profile onboarding 🟡 acceptance smoke
-  ├─ schema/store ✅
-  ├─ project/WSL/script validation ✅
-  ├─ multiple targets/destinations ✅
-  ├─ friendly help/suggestions/draft recovery ✅ code
-  ├─ local publish workflow ✅
-  └─ corrected close/restart + full-profile smoke ⬜
-  ↓
-PDA-1 key onboarding + host identity
-  ↓
-PDA-2 bounded one-session SSH-agent broker
-  ↓
-PDA-3 stable single-instance shell + accessible companion
-  ↓
-PDA-4 read-only structured report monitor
-  ↓
-PDA-5 allowlisted dry-run executor
-  ↓
-PDA-6 live executor + exact human authorization
-  ↓
-PDA-7 sanitized incident/agent handoff
-  ↓
-PDA-8 hardening + clean-clone CI + portable/installer public release
-```
+1. design the PDA-1 local key/host fingerprint records;
+2. implement public-key fingerprint extraction without passphrase capture;
+3. implement explicit host-key enrollment and mismatch hard-block;
+4. add allowlisted non-writing target probes;
+5. add tests and complete the owning private-profile smoke.
 
-PDA-1 may design key onboarding, but it must not be accepted or used against production before PDA-0A's local profile lifecycle is proven. PDA-6 cannot begin before PDA-5 dry-run behavior is accepted. PDA-8 release packaging cannot claim readiness while any security/production smoke remains open.
+Future product-shell requirements already committed to the roadmap:
+
+- ZDeployPet icon set and packaged shortcut integration;
+- actual companion/pet UI;
+- top menu and About dialog with version/build/platform/license/repository information;
+- primary dark theme with red accent;
+- sanitized Console / Activity log view;
+- installer/portable parity verification against the validated local build.
 
 ---
 
-# 18. Current handoff snapshot
+# 17. Restart instructions
 
-```text
-CURRENT PHASE:                 PDA-0A — Community profile onboarding
-REVIEWED BASE:                 main@219336a
-LAST CHECKPOINT:               checkpoint: 2026-10-08 11:57
-GITHUB ORIGIN:                 not present at review time; verify after GitPet creation
-LOCAL-ONLY UNTRACKED FILE:     docs/Wilder_Notes.md (not normative; do not publish by default)
+When resuming work:
 
-PDA-0 RESULT:                 ACCEPTED — Discovery passed
-PDA-0A CODE STATE:            implemented through profile/destination UX,
-                               suggestions, draft recovery and local publish loop
-PDA-0A ACCEPTANCE STATE:      pending corrected operator smoke
-
-LATEST FIX:                   close-path async deadlock removed
-                               close now uses synchronous atomic local draft persistence
-                               unique temp files prevent overlapping-save collisions
-
-DEVELOPMENT COMMAND:          powershell -ExecutionPolicy Bypass -File scripts\publish-local.ps1
-SMOKE EXECUTABLE:             C:\Dev\ZDeployPet_Releases\current\ZDeployPet.exe
-
-NEXT CONCRETE ACTION:         1. publish latest local build
-                               2. enter profile name only
-                               3. Check settings and save
-                               4. confirm draft-required status
-                               5. close immediately
-                               6. reopen and confirm restoration
-                               7. complete valid private profile
-                               8. restart and confirm Discovery passed
-                               9. verify GitHub origin/public contents
-                               10. mark PDA-0A accepted; begin PDA-1
-
-DO NOT SKIP:                  no server contact during PDA-0A,
-                               no credentials in profile/history/source,
-                               no WPF sync-over-async,
-                               no script mutation,
-                               no public real infrastructure defaults
-```
-
----
-
-# 19. Crash/restart instructions
-
-If the app, terminal or chat stops, read this file first.
-
-```powershell
-cd C:\Dev\ZDeployPet
-git status --short
-git log -5 --oneline
-git remote -v
-git show --stat --oneline HEAD
-
-dotnet build ZDeployPet.sln -c Release
-dotnet run --project tests\ZDeployPet.Core.Tests\ZDeployPet.Core.Tests.csproj -c Release
-dotnet run --project tests\ZDeployPet.Infrastructure.Tests\ZDeployPet.Infrastructure.Tests.csproj -c Release
-```
-
-For normal visual testing:
-
-```powershell
-Get-Process -Name ZDeployPet -ErrorAction SilentlyContinue |
-    Select-Object Id,ProcessName,Path
-
-Stop-Process -Name ZDeployPet -Force -ErrorAction SilentlyContinue
-powershell -ExecutionPolicy Bypass -File scripts\publish-local.ps1
-C:\Dev\ZDeployPet_Releases\current\ZDeployPet.exe
-```
-
-Before changing anything after a restart:
-
-1. confirm the current phase and next action in §§17–18;
-2. inspect the working tree and preserve unrelated/user-owned files;
-3. do not add `docs/Wilder_Notes.md` to the public project without explicit intent;
-4. verify the GitHub origin rather than assuming GitPet completed creation;
-5. do not contact a remote target while PDA-0A is active;
-6. do not create keys or an agent until PDA-1/PDA-2 begins;
-7. never modify the Millenova deployment script as part of ZDeployPet work;
-8. use the published development EXE for operator smoke, not a stale `dotnet run` process;
-9. update this plan before ending any phase transition.
-
-This file is the durable ZDeployPet handoff record. A phase is unfinished until its code, automated validation, operator smoke, documentation and compact status agree.
+1. read this file first;
+2. confirm repository `main` and current checkpoint;
+3. inspect the active phase only after reading its acceptance gate;
+4. preserve all security invariants before expanding UI behavior;
+5. keep real infrastructure data outside the public repository;
+6. update this plan in the same change that materially changes phase status or acceptance evidence.
