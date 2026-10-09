@@ -19,7 +19,7 @@ public partial class DeploymentSessionWindow : Window
         ProfileSummaryText.Text = $"Profile: {profile.Name}   •   WSL: {profile.WslDistribution}   •   Lease: 8 hours";
 
         HelpTipFactory.AttachToButton(
-            UnlockHelpButton,
+            UnlockButton,
             new HelpTipSpec(
                 "Start a bounded deployment-access session.",
                 "Unlock creates a dedicated ZDeployPet ssh-agent and opens a trusted WSL/OpenSSH terminal that runs ssh-add with an eight-hour key lifetime.",
@@ -29,7 +29,7 @@ public partial class DeploymentSessionWindow : Window
                 Safety: "Unlock does not deploy anything. READY is not granted until Check session verifies the exact approved SHA-256 fingerprint inside the dedicated agent."));
 
         HelpTipFactory.AttachToButton(
-            CheckHelpButton,
+            CheckButton,
             new HelpTipSpec(
                 "Verify the running ZDeployPet ssh-agent before trusting it.",
                 "Check session inspects only the app-owned agent and compares its loaded fingerprints with the profile's approved deployment key.",
@@ -38,7 +38,7 @@ public partial class DeploymentSessionWindow : Window
                 Safety: "Missing, foreign, expired, stale, or unverifiable state fails closed instead of silently becoming READY."));
 
         HelpTipFactory.AttachToButton(
-            LockHelpButton,
+            LockButton,
             new HelpTipSpec(
                 "Immediately remove ZDeployPet deployment access.",
                 "Lock verifies the app-owned ssh-agent identity and then terminates that dedicated agent.",
