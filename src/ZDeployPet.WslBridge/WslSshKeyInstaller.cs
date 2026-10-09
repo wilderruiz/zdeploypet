@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using ZDeployPet.Core;
 
 namespace ZDeployPet.WslBridge;
@@ -16,6 +17,7 @@ public sealed class WslSshKeyInstaller
         user="$3"
         public_key="$4"
         expected_fingerprint="$5"
+        host_key_line="$6"
 
         if [ ! -f "$public_key" ]; then
           echo "ZDeployPet blocked installation: the approved public key is missing."
@@ -31,34 +33,13 @@ public sealed class WslSshKeyInstaller
           exit 21
         fi
 
-        echo "ZDeployPet is re-checking the SSH host identity before installing the public key..."
-        line="$(ssh-keyscan -T 6 -p "$port" "$host" 2>/dev/null | head -n 1 || true)"
-        if [ -z "$line" ]; then
-          echo "ZDeployPet blocked installation: the server did not return an SSH host key."
-          echo "Press Enter to close."
-          read _
-          exit 22
-        fi
-
-        info="$(echo "$line" | ssh-keygen -lf - -E sha256 2>/dev/null || true)"
-        observed_fingerprint="$(echo "$info" | awk '{print $2}')"
-        if [ -z "$observed_fingerprint" ] || [ "$observed_fingerprint" != "$expected_fingerprint" ]; then
-          echo "ZDeployPet blocked installation because the server host fingerprint does not match the enrolled fingerprint."
-          echo "Expected: $expected_fingerprint"
-          echo "Observed: ${observed_fingerprint:-unavailable}"
-          echo "Do not bypass this warning. Re-scan and independently verify the server identity first."
-          echo "Press Enter to close."
-          read _
-          exit 23
-        fi
-
         known_hosts="$(mktemp)"
         trap 'rm -f "$known_hosts"' EXIT HUP INT TERM
-        echo "$line" > "$known_hosts"
+        echo "$host_key_line" > "$known_hosts"
         chmod 600 "$known_hosts"
 
         echo
-        echo "Host identity verified: $expected_fingerprint"
+        echo "Host identity verified by ZDeployPet: $expected_fingerprint"
         echo "Installing only the approved PUBLIC key on $user@$host:$port."
         echo "Your SSH account password may be requested once by ssh-copy-id."
         echo "ZDeployPet does not receive or store that password."
@@ -110,21 +91,13 @@ public sealed class WslSshKeyInstaller
             return new(false, "The approved deployment key fingerprint changed. Approve the key again before installing it on a target.");
         }
 
-        HostKeyScanResult scan = await _diagnostics.ScanHostKeyAsync(
+        HostKeyVerificationResult hostVerification = await VerifyEnrolledHostKeyAsync(
             distribution,
-            target.Host,
-            target.Port,
+            target,
+            enrolledHostKey,
             cancellationToken);
-        if (!scan.Success || string.IsNullOrWhiteSpace(scan.Fingerprint))
-            return new(false, scan.Error ?? "The selected target did not return a usable SSH host key.");
-
-        if (!string.Equals(
-                scan.Fingerprint.Trim(),
-                enrolledHostKey.Fingerprint.Trim(),
-                StringComparison.Ordinal))
-        {
-            return new(false, "The selected target's SSH host fingerprint no longer matches the enrolled fingerprint. Installation was blocked.");
-        }
+        if (!hostVerification.Success || string.IsNullOrWhiteSpace(hostVerification.HostKeyLine))
+            return new(false, hostVerification.Message);
 
         string normalizedInstallScript = InstallScript
             .Replace("\r\n", "\n", StringComparison.Ordinal)
@@ -150,6 +123,7 @@ public sealed class WslSshKeyInstaller
         process.StartInfo.ArgumentList.Add(target.User.Trim());
         process.StartInfo.ArgumentList.Add(deploymentKey.PublicKeyPath);
         process.StartInfo.ArgumentList.Add(enrolledHostKey.Fingerprint.Trim());
+        process.StartInfo.ArgumentList.Add(hostVerification.HostKeyLine);
 
         try
         {
@@ -163,6 +137,111 @@ public sealed class WslSshKeyInstaller
 
         return new(
             true,
-            "The interactive SSH public-key installer was opened. Enter the target account password only in that SSH/WSL prompt if requested, then return to ZDeployPet and run the non-writing probe.");
+            "The enrolled SSH host identity was re-verified using the same key type and fingerprint, and the interactive public-key installer was opened. Enter the target account password only in that SSH/WSL prompt if requested, then return to ZDeployPet and run the non-writing probe.");
     }
+
+    private static async Task<HostKeyVerificationResult> VerifyEnrolledHostKeyAsync(
+        string distribution,
+        DeploymentTarget target,
+        TargetHostIdentity enrolledHostKey,
+        CancellationToken cancellationToken)
+    {
+        string? scanType = MapSshKeyscanType(enrolledHostKey.KeyType);
+        if (scanType is null)
+        {
+            return new(false, null,
+                $"ZDeployPet does not know how to re-scan the enrolled SSH host key type '{enrolledHostKey.KeyType}'. Re-scan the target before installation.");
+        }
+
+        using Process process = new();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = "wsl.exe",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        process.StartInfo.ArgumentList.Add("--distribution");
+        process.StartInfo.ArgumentList.Add(distribution);
+        process.StartInfo.ArgumentList.Add("--exec");
+        process.StartInfo.ArgumentList.Add("/usr/bin/ssh-keyscan");
+        process.StartInfo.ArgumentList.Add("-T");
+        process.StartInfo.ArgumentList.Add("6");
+        process.StartInfo.ArgumentList.Add("-p");
+        process.StartInfo.ArgumentList.Add(target.Port.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        process.StartInfo.ArgumentList.Add("-t");
+        process.StartInfo.ArgumentList.Add(scanType);
+        process.StartInfo.ArgumentList.Add(target.Host.Trim());
+
+        try
+        {
+            process.Start();
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+            Task<string> errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken);
+            string output = await outputTask;
+            string error = await errorTask;
+
+            if (process.ExitCode != 0 && string.IsNullOrWhiteSpace(output))
+            {
+                return new(false, null,
+                    string.IsNullOrWhiteSpace(error)
+                        ? "The selected target did not return the enrolled SSH host-key type."
+                        : "SSH host-key re-scan failed: " + error.Trim());
+            }
+
+            string? line = output
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+                .Select(item => item.Trim())
+                .FirstOrDefault(item => item.Length > 0 && !item.StartsWith('#'));
+            if (string.IsNullOrWhiteSpace(line))
+                return new(false, null, "The selected target did not return the enrolled SSH host-key type.");
+
+            string[] parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3)
+                return new(false, null, "The selected target returned an SSH host key that ZDeployPet could not parse.");
+
+            byte[] keyBlob;
+            try
+            {
+                keyBlob = Convert.FromBase64String(parts[2]);
+            }
+            catch (FormatException)
+            {
+                return new(false, null, "The selected target returned an SSH host key with invalid key data.");
+            }
+
+            string observedFingerprint = "SHA256:" +
+                Convert.ToBase64String(SHA256.HashData(keyBlob)).TrimEnd('=');
+            if (!string.Equals(
+                    observedFingerprint,
+                    enrolledHostKey.Fingerprint.Trim(),
+                    StringComparison.Ordinal))
+            {
+                return new(false, null,
+                    "The selected target's SSH host fingerprint no longer matches the enrolled fingerprint. " +
+                    $"Expected {enrolledHostKey.Fingerprint.Trim()}, observed {observedFingerprint}. Installation was blocked.");
+            }
+
+            return new(true, line, "Host identity verified.");
+        }
+        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return new(false, null, "Windows could not run the SSH host-key verification: " + exception.Message);
+        }
+    }
+
+    private static string? MapSshKeyscanType(string keyType) => keyType.Trim().ToUpperInvariant() switch
+    {
+        "ED25519" or "SSH-ED25519" => "ed25519",
+        "ECDSA" or "ECDSA-SHA2-NISTP256" => "ecdsa",
+        "RSA" or "SSH-RSA" => "rsa",
+        _ => null
+    };
+
+    private sealed record HostKeyVerificationResult(
+        bool Success,
+        string? HostKeyLine,
+        string Message);
 }
