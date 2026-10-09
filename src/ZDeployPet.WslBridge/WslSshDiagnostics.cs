@@ -1,24 +1,11 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using ZDeployPet.Core;
 
 namespace ZDeployPet.WslBridge;
 
 public sealed class WslSshDiagnostics
 {
-    private const string ListKeysScript = """
-        set -eu
-        ssh_dir="$HOME/.ssh"
-        [ -d "$ssh_dir" ] || exit 0
-        find "$ssh_dir" -maxdepth 1 -type f -name '*.pub' -print | sort | while IFS= read -r f; do
-          [ -f "$f" ] || continue
-          line="$(ssh-keygen -lf "$f" -E sha256 2>/dev/null || true)"
-          [ -n "$line" ] || continue
-          echo "path=$f"
-          echo "info=$line"
-          echo "--"
-        done
-        """;
-
     private const string ScanHostKeyScript = """
         set -eu
         host="$1"
@@ -81,9 +68,123 @@ public sealed class WslSshDiagnostics
         string distribution,
         CancellationToken cancellationToken = default)
     {
-        CommandResult result = await RunWslAsync(distribution, ListKeysScript, [], cancellationToken);
-        if (!result.Started || result.ExitCode != 0) return [];
-        return ParsePublicKeys(result.Output);
+        string? home = await GetWslHomeAsync(distribution, cancellationToken);
+        if (string.IsNullOrWhiteSpace(home)) return [];
+
+        string sshDirectory = home.TrimEnd('/') + "/.ssh";
+        CommandResult find = await RunWslExecutableAsync(
+            distribution,
+            "/usr/bin/find",
+            [sshDirectory, "-maxdepth", "1", "-type", "f", "-name", "*.pub", "-print"],
+            cancellationToken);
+        if (!find.Started || find.ExitCode != 0) return [];
+
+        List<SshPublicKeyCandidate> candidates = [];
+        foreach (string path in find.Output
+                     .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+                     .Select(item => item.Trim())
+                     .Where(item => item.Length > 0)
+                     .Distinct(StringComparer.Ordinal)
+                     .OrderBy(item => item, StringComparer.Ordinal))
+        {
+            CommandResult read = await RunWslExecutableAsync(
+                distribution,
+                "/bin/cat",
+                [path],
+                cancellationToken);
+            if (!read.Started || read.ExitCode != 0) continue;
+
+            SshPublicKeyCandidate? candidate = ParsePublicKeyFile(path, read.Output);
+            if (candidate is not null) candidates.Add(candidate);
+        }
+
+        return candidates;
+    }
+
+    public async Task<SshKeyCreationResult> CreateDeploymentKeyAsync(
+        string distribution,
+        string profileName,
+        CancellationToken cancellationToken = default)
+    {
+        string? home = await GetWslHomeAsync(distribution, cancellationToken);
+        if (string.IsNullOrWhiteSpace(home))
+            return new(false, false, null, "The WSL home directory could not be resolved.");
+
+        string slug = SlugifyProfileName(profileName);
+        string sshDirectory = home.TrimEnd('/') + "/.ssh";
+        string privateKeyPath = $"{sshDirectory}/zdeploypet_{slug}_ed25519";
+        string publicKeyPath = privateKeyPath + ".pub";
+
+        CommandResult mkdir = await RunWslExecutableAsync(
+            distribution,
+            "/bin/mkdir",
+            ["-p", sshDirectory],
+            cancellationToken);
+        if (!mkdir.Started || mkdir.ExitCode != 0)
+            return new(false, false, null, "ZDeployPet could not create the WSL ~/.ssh directory.");
+
+        await RunWslExecutableAsync(distribution, "/bin/chmod", ["700", sshDirectory], cancellationToken);
+
+        CommandResult privateExists = await RunWslExecutableAsync(
+            distribution,
+            "/usr/bin/test",
+            ["-e", privateKeyPath],
+            cancellationToken);
+        CommandResult publicExists = await RunWslExecutableAsync(
+            distribution,
+            "/usr/bin/test",
+            ["-e", publicKeyPath],
+            cancellationToken);
+
+        bool hasPrivate = privateExists.Started && privateExists.ExitCode == 0;
+        bool hasPublic = publicExists.Started && publicExists.ExitCode == 0;
+        if (hasPrivate || hasPublic)
+        {
+            if (!(hasPrivate && hasPublic))
+                return new(false, false, null, "A partial ZDeployPet key already exists. ZDeployPet will not overwrite it automatically.");
+
+            CommandResult existingRead = await RunWslExecutableAsync(
+                distribution,
+                "/bin/cat",
+                [publicKeyPath],
+                cancellationToken);
+            SshPublicKeyCandidate? existing = existingRead.Started && existingRead.ExitCode == 0
+                ? ParsePublicKeyFile(publicKeyPath, existingRead.Output)
+                : null;
+            return existing is null
+                ? new(false, false, null, "The existing ZDeployPet public key could not be read or parsed.")
+                : new(true, false, existing);
+        }
+
+        string comment = $"zdeploypet:{profileName.Trim()}";
+        CommandResult create = await RunWslExecutableAsync(
+            distribution,
+            "/usr/bin/ssh-keygen",
+            ["-q", "-t", "ed25519", "-f", privateKeyPath, "-N", string.Empty, "-C", comment],
+            cancellationToken);
+        if (!create.Started || create.ExitCode != 0)
+        {
+            string error = string.IsNullOrWhiteSpace(create.Error)
+                ? "ssh-keygen could not create the dedicated deployment key."
+                : create.Error.Trim();
+            return new(false, false, null, error);
+        }
+
+        await RunWslExecutableAsync(distribution, "/bin/chmod", ["600", privateKeyPath], cancellationToken);
+        await RunWslExecutableAsync(distribution, "/bin/chmod", ["644", publicKeyPath], cancellationToken);
+
+        CommandResult read = await RunWslExecutableAsync(
+            distribution,
+            "/bin/cat",
+            [publicKeyPath],
+            cancellationToken);
+        if (!read.Started || read.ExitCode != 0)
+            return new(false, true, null, "The deployment key was created, but its public half could not be read.");
+
+        SshPublicKeyCandidate? candidate = ParsePublicKeyFile(publicKeyPath, read.Output);
+        return candidate is null
+            ? new(false, true, null, "The deployment key was created, but its public half could not be parsed.")
+            : new(true, true, candidate);
     }
 
     public async Task<HostKeyScanResult> ScanHostKeyAsync(
@@ -256,6 +357,33 @@ public sealed class WslSshDiagnostics
         return new(fingerprint, algorithm, string.IsNullOrWhiteSpace(comment) ? null : comment);
     }
 
+    private static SshPublicKeyCandidate? ParsePublicKeyFile(string path, string contents)
+    {
+        string? line = contents
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(item => item.Trim())
+            .FirstOrDefault(item => item.Length > 0);
+        if (string.IsNullOrWhiteSpace(line)) return null;
+
+        string[] parts = line.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2) return null;
+
+        try
+        {
+            byte[] keyBlob = Convert.FromBase64String(parts[1]);
+            byte[] hash = SHA256.HashData(keyBlob);
+            string fingerprint = "SHA256:" + Convert.ToBase64String(hash).TrimEnd('=');
+            string? comment = parts.Length == 3 && !string.IsNullOrWhiteSpace(parts[2])
+                ? parts[2].Trim()
+                : null;
+            return new(path, fingerprint, parts[0], comment);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
     private static Dictionary<string, string> ParseKeyValues(string output)
     {
         Dictionary<string, string> values = new(StringComparer.OrdinalIgnoreCase);
@@ -270,9 +398,47 @@ public sealed class WslSshDiagnostics
 
     private static string NormalizeFingerprint(string value) => value.Trim();
 
+    private static string SlugifyProfileName(string value)
+    {
+        string source = string.IsNullOrWhiteSpace(value) ? "profile" : value.Trim().ToLowerInvariant();
+        char[] chars = source.Select(character =>
+            char.IsLetterOrDigit(character) || character is '-' or '_'
+                ? character
+                : '_').ToArray();
+        string slug = new(chars).Trim('_');
+        return string.IsNullOrWhiteSpace(slug) ? "profile" : slug;
+    }
+
+    private static async Task<string?> GetWslHomeAsync(
+        string distribution,
+        CancellationToken cancellationToken)
+    {
+        CommandResult env = await RunWslExecutableAsync(
+            distribution,
+            "/usr/bin/env",
+            [],
+            cancellationToken);
+        if (!env.Started || env.ExitCode != 0) return null;
+
+        string? homeLine = env.Output
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault(line => line.StartsWith("HOME=", StringComparison.Ordinal));
+        return homeLine is null ? null : homeLine[5..].Trim();
+    }
+
     private static async Task<CommandResult> RunWslAsync(
         string distribution,
         string script,
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken)
+    {
+        List<string> commandArguments = ["-c", script, "zdeploypet-pda1", .. arguments];
+        return await RunWslExecutableAsync(distribution, "/bin/sh", commandArguments, cancellationToken);
+    }
+
+    private static async Task<CommandResult> RunWslExecutableAsync(
+        string distribution,
+        string executable,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken)
     {
@@ -288,10 +454,7 @@ public sealed class WslSshDiagnostics
         process.StartInfo.ArgumentList.Add("--distribution");
         process.StartInfo.ArgumentList.Add(distribution);
         process.StartInfo.ArgumentList.Add("--exec");
-        process.StartInfo.ArgumentList.Add("sh");
-        process.StartInfo.ArgumentList.Add("-c");
-        process.StartInfo.ArgumentList.Add(script);
-        process.StartInfo.ArgumentList.Add("zdeploypet-pda1");
+        process.StartInfo.ArgumentList.Add(executable);
         foreach (string argument in arguments) process.StartInfo.ArgumentList.Add(argument);
 
         try
