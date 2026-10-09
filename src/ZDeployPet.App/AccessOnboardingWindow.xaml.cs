@@ -148,8 +148,8 @@ public partial class AccessOnboardingWindow : Window
     private void TargetComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         _lastScan = null;
+        _installerLaunchedTargetId = null;
         ScannedHostFingerprintText.Text = "Not scanned";
-        EnrollHostButton.IsEnabled = false;
         RefreshIdentityPresentation();
     }
 
@@ -169,14 +169,12 @@ public partial class AccessOnboardingWindow : Window
             if (!_lastScan.Success || _lastScan.Fingerprint is null)
             {
                 ScannedHostFingerprintText.Text = "Not available";
-                EnrollHostButton.IsEnabled = false;
                 StatusText.Text = "Host-key scan failed.";
                 ResultTextBox.Text = _lastScan.Error ?? "The server did not return a host key.";
                 return;
             }
 
             ScannedHostFingerprintText.Text = $"{_lastScan.Fingerprint} ({_lastScan.KeyType})";
-            EnrollHostButton.IsEnabled = true;
             StatusText.Text = "Host key scanned — verify it independently before enrolling.";
             ResultTextBox.Text =
                 $"Server: {target.Label}\r\n" +
@@ -224,6 +222,7 @@ public partial class AccessOnboardingWindow : Window
                 _profile.Id,
                 new TargetHostIdentity(target.Id, _lastScan.Fingerprint, _lastScan.KeyType));
             _identity = await _identityStore.LoadAsync(_profile.Id);
+            _installerLaunchedTargetId = null;
             RefreshIdentityPresentation();
             StatusText.Text = "Expected server host fingerprint enrolled locally.";
             ResultTextBox.Text =
@@ -265,6 +264,8 @@ public partial class AccessOnboardingWindow : Window
                 target,
                 _identity.DeploymentKey,
                 hostKey);
+            if (!result.Success && result.Status == SshProbeStatus.AuthenticationRejected)
+                _installerLaunchedTargetId = null;
             StatusText.Text = result.Success ? "Authenticated probe passed." : "Probe blocked or failed.";
             ResultTextBox.Text =
                 $"Status: {result.Status}\r\n" +
@@ -295,6 +296,7 @@ public partial class AccessOnboardingWindow : Window
         {
             TargetEndpointText.Text = string.Empty;
             EnrolledHostFingerprintText.Text = "Not enrolled";
+            UpdateGuidedActionState();
             return;
         }
 
@@ -303,16 +305,13 @@ public partial class AccessOnboardingWindow : Window
         EnrolledHostFingerprintText.Text = hostKey is null
             ? "Not enrolled"
             : $"{hostKey.Fingerprint} ({hostKey.KeyType})";
+        UpdateGuidedActionState();
     }
 
     private void SetBusy(bool busy, string? status = null)
     {
-        RefreshKeysButton.IsEnabled = !busy;
-        UseKeyButton.IsEnabled = !busy;
-        ScanHostButton.IsEnabled = !busy;
-        ProbeButton.IsEnabled = !busy;
-        if (busy) EnrollHostButton.IsEnabled = false;
-        else EnrollHostButton.IsEnabled = _lastScan?.Success == true;
+        _guidedBusy = busy;
+        UpdateGuidedActionState();
         if (!string.IsNullOrWhiteSpace(status)) StatusText.Text = status;
     }
 
