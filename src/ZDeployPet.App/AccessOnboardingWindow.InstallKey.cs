@@ -8,9 +8,9 @@ public partial class AccessOnboardingWindow
 {
     private readonly WslSshKeyInstaller _keyInstaller = new();
 
-    private void InstallKeyHelpButton_Loaded(object sender, RoutedEventArgs e)
+    private void InstallKeyButton_Loaded(object sender, RoutedEventArgs e)
     {
-        HelpTipFactory.AttachToButton(InstallKeyHelpButton, new HelpTipSpec(
+        HelpTipFactory.AttachToButton(InstallKeyButton, new HelpTipSpec(
             "Install only the approved ZDeployPet public key on the selected target.",
             "This is the one-time authorization step that lets later SSH probes and deployments use the dedicated key instead of repeatedly asking for the server account password.",
             WhenToUse: "Use this only after approving the ZDeployPet deployment key and independently verifying and enrolling the selected server's SSH host fingerprint.",
