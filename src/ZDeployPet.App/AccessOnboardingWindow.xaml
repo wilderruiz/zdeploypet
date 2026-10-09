@@ -32,7 +32,7 @@
             <GroupBox Header="1 — Dedicated deployment key" Padding="12">
                 <StackPanel>
                     <TextBlock TextWrapping="Wrap" Text="Use an existing dedicated SSH public key, or let ZDeployPet create one for this profile inside WSL ~/.ssh. Unrelated personal/tunnel keys should not be reused." />
-                    <ComboBox x:Name="KeyComboBox" Margin="0,10,0,6" Padding="6" DisplayMemberPath="DisplayName" />
+                    <ComboBox x:Name="KeyComboBox" Margin="0,10,0,6" Padding="6" DisplayMemberPath="DisplayName" SelectionChanged="KeyComboBox_SelectionChanged" />
                     <WrapPanel>
                         <Button x:Name="RefreshKeysButton" Padding="12,6" Margin="0,0,8,6" Click="RefreshKeys_Click" Content="Refresh keys" />
                         <Button x:Name="CreateKeyButton" Padding="12,6" Margin="0,0,6,6" Click="CreateKey_Click" Content="Create ZDeployPet key" />
