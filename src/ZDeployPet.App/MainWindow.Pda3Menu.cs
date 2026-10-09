@@ -32,7 +32,7 @@ public partial class MainWindow
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        MenuItem project = new() { Header = "_Project / Profile" };
+        MenuItem project = new() { Header = "_Project / Profile", Padding = new Thickness(10, 5, 10, 5) };
         project.Items.Add(CreateMenuItem("_Edit profile", (_, _) => EditProfile_Click(this, new RoutedEventArgs())));
         project.Items.Add(new Separator());
         project.Items.Add(CreateMenuItem("Deployment _access…", (_, _) => AccessOnboarding_Click(this, new RoutedEventArgs())));
@@ -41,10 +41,10 @@ public partial class MainWindow
         project.Items.Add(new Separator());
         project.Items.Add(CreateMenuItem("E_xit", (_, _) => Close()));
 
-        MenuItem view = new() { Header = "_View" };
+        MenuItem view = new() { Header = "_View", Padding = new Thickness(10, 5, 10, 5) };
         view.Items.Add(CreateMenuItem("Console / _Activity…", (_, _) => Activity_Click(this, new RoutedEventArgs())));
 
-        MenuItem help = new() { Header = "_Help" };
+        MenuItem help = new() { Header = "_Help", Padding = new Thickness(10, 5, 10, 5) };
         help.Items.Add(CreateMenuItem("_About ZDeployPet…", (_, _) => OpenAboutWindow()));
 
         menu.Items.Add(project);
@@ -55,7 +55,12 @@ public partial class MainWindow
 
     private static MenuItem CreateMenuItem(string header, RoutedEventHandler handler)
     {
-        MenuItem item = new() { Header = header };
+        MenuItem item = new()
+        {
+            Header = header,
+            MinWidth = 230,
+            Padding = new Thickness(14, 8, 14, 8)
+        };
         item.Click += handler;
         return item;
     }
