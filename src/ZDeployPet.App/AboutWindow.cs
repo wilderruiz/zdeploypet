@@ -24,8 +24,8 @@ public sealed class AboutWindow : Window
         ResizeMode = ResizeMode.CanResize;
 
         Version version = Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 0, 0, 0);
-        string executablePath = Environment.ProcessPath ?? Assembly.GetEntryAssembly()?.Location ?? string.Empty;
-        string buildDate = File.Exists(executablePath)
+        string executablePath = Environment.ProcessPath ?? string.Empty;
+        string buildDate = !string.IsNullOrWhiteSpace(executablePath) && File.Exists(executablePath)
             ? File.GetLastWriteTime(executablePath).ToString("yyyy-MM-dd HH:mm")
             : "Unavailable";
 
