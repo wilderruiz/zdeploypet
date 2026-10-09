@@ -37,6 +37,17 @@ public partial class MainWindow
                 Tip: "This step establishes identity and trust only. It does not deploy project files."));
 
         HelpTipFactory.AttachToButton(
+            GitSafetyButton,
+            new HelpTipSpec(
+                "Check that deployment private keys cannot accidentally enter Git.",
+                "Git safety scans tracked files and unignored untracked files for common private-key material and can add a narrow ZDeployPet-managed .gitignore safety block.",
+                WhenToUse: "Run this before push/release-oriented work and after changing deployment credentials or local repository files.",
+                WhatItDoes: "The scan is read-only. The optional .gitignore action updates only a clearly marked ZDeployPet block and preserves the rest of the project's ignore rules.",
+                Example: "The private zdeploypet_millenova_ed25519 key stays in WSL ~/.ssh. If a copy ever appears under the Git project, this check reports and blocks readiness.",
+                Safety: "Adding .gitignore does not make an already tracked secret safe and does not delete files. Any detected private-key material must be removed from the repository explicitly.",
+                Tip: "Public .pub files are not blanket-ignored because they are not secret material."));
+
+        HelpTipFactory.AttachToButton(
             EditProfileButton,
             new HelpTipSpec(
                 "Return to the saved deployment profile and change its layout.",
@@ -61,10 +72,12 @@ public partial class MainWindow
 
     private void RefreshPda1ActionVisibility()
     {
-        AccessOnboardingButton.Visibility =
+        Visibility actionVisibility =
             DiscoveryPanel.Visibility == Visibility.Visible && _activeProfile is not null
                 ? Visibility.Visible
                 : Visibility.Collapsed;
+        AccessOnboardingButton.Visibility = actionVisibility;
+        GitSafetyButton.Visibility = actionVisibility;
     }
 
     private void AccessOnboarding_Click(object sender, RoutedEventArgs e)
@@ -76,6 +89,21 @@ public partial class MainWindow
         }
 
         AccessOnboardingWindow window = new(_activeProfile)
+        {
+            Owner = this
+        };
+        window.ShowDialog();
+    }
+
+    private void GitSafety_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeProfile is null)
+        {
+            StatusText.Text = "Save and validate a deployment profile before running Git safety checks.";
+            return;
+        }
+
+        GitSafetyWindow window = new(_activeProfile)
         {
             Owner = this
         };
