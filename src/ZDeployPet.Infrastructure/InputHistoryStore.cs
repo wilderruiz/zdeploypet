@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using ZDeployPet.Core;
 
@@ -39,6 +40,8 @@ public sealed class InputHistoryStore
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true
     };
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> WriteLocks =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly string _historyPath;
     private readonly string _draftPath;
 
@@ -129,43 +132,64 @@ public sealed class InputHistoryStore
 
     private static async Task WriteAtomicAsync<T>(string path, T value, CancellationToken cancellationToken)
     {
-        string? directory = Path.GetDirectoryName(path);
-        if (directory is null) throw new InvalidOperationException("Local data path has no parent directory.");
-        Directory.CreateDirectory(directory);
-        string temporaryPath = path + ".tmp." + Guid.NewGuid().ToString("N");
+        SemaphoreSlim gate = GetWriteLock(path);
+        await gate.WaitAsync(cancellationToken);
         try
         {
-            await using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            string? directory = Path.GetDirectoryName(path);
+            if (directory is null) throw new InvalidOperationException("Local data path has no parent directory.");
+            Directory.CreateDirectory(directory);
+            string temporaryPath = path + ".tmp." + Guid.NewGuid().ToString("N");
+            try
             {
-                await JsonSerializer.SerializeAsync(stream, value, JsonOptions, cancellationToken);
-                await stream.FlushAsync(cancellationToken);
+                await using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    await JsonSerializer.SerializeAsync(stream, value, JsonOptions, cancellationToken);
+                    await stream.FlushAsync(cancellationToken);
+                }
+                File.Move(temporaryPath, path, true);
             }
-            File.Move(temporaryPath, path, true);
+            finally
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
         }
         finally
         {
-            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            gate.Release();
         }
     }
 
     private static void WriteAtomic<T>(string path, T value)
     {
-        string? directory = Path.GetDirectoryName(path);
-        if (directory is null) throw new InvalidOperationException("Local data path has no parent directory.");
-        Directory.CreateDirectory(directory);
-        string temporaryPath = path + ".tmp." + Guid.NewGuid().ToString("N");
+        SemaphoreSlim gate = GetWriteLock(path);
+        gate.Wait();
         try
         {
-            using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            string? directory = Path.GetDirectoryName(path);
+            if (directory is null) throw new InvalidOperationException("Local data path has no parent directory.");
+            Directory.CreateDirectory(directory);
+            string temporaryPath = path + ".tmp." + Guid.NewGuid().ToString("N");
+            try
             {
-                JsonSerializer.Serialize(stream, value, JsonOptions);
-                stream.Flush(true);
+                using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    JsonSerializer.Serialize(stream, value, JsonOptions);
+                    stream.Flush(true);
+                }
+                File.Move(temporaryPath, path, true);
             }
-            File.Move(temporaryPath, path, true);
+            finally
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
         }
         finally
         {
-            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            gate.Release();
         }
     }
+
+    private static SemaphoreSlim GetWriteLock(string path) =>
+        WriteLocks.GetOrAdd(Path.GetFullPath(path), static _ => new SemaphoreSlim(1, 1));
 }
