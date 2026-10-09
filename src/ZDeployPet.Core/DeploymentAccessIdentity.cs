@@ -31,6 +31,7 @@ public enum SshProbeStatus
 {
     Success,
     MissingKey,
+    KeyMismatch,
     HostUnreachable,
     HostKeyNotEnrolled,
     HostKeyMismatch,
