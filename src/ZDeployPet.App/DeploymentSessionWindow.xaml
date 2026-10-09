@@ -1,0 +1,67 @@
+<Window x:Class="ZDeployPet.App.DeploymentSessionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Deployment session — ZDeployPet"
+        Width="760" Height="500"
+        MinWidth="700" MinHeight="450"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock FontSize="28" FontWeight="SemiBold" Text="Bounded deployment session" />
+            <TextBlock x:Name="ProfileSummaryText" Margin="0,6,0,0" Foreground="#555" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Margin="0,20,0,0" Padding="14" Background="#FFF6E5" BorderBrush="#E6C46A" BorderThickness="1">
+            <TextBlock TextWrapping="Wrap"
+                       Text="PDA-2 uses a dedicated app-owned ssh-agent. Unlocking loads only the approved deployment key for a bounded eight-hour lease. Any key passphrase is entered only in the trusted OpenSSH terminal; ZDeployPet does not receive or store it." />
+        </Border>
+
+        <Border Grid.Row="2" Margin="0,20,0,0" Padding="18" BorderBrush="#C9D7E5" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="190" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock FontWeight="Bold" Text="Session state" />
+                    <TextBlock x:Name="StateText" Margin="0,8,0,0" FontSize="26" FontWeight="Bold" Text="LOCKED" />
+                    <TextBlock x:Name="ExpiryText" Margin="0,8,0,0" Foreground="#666" Text="No active lease" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="20,0,0,0">
+                    <TextBlock x:Name="MessageText" TextWrapping="Wrap" Text="Deployment access is locked." />
+                    <StackPanel Margin="0,18,0,0" Orientation="Horizontal">
+                        <Button x:Name="UnlockButton" Padding="18,9" Content="Unlock for 8 hours" Click="Unlock_Click" />
+                        <Button x:Name="UnlockHelpButton" Margin="6,0,14,0" Width="34" Content="i" />
+                        <Button x:Name="CheckButton" Padding="18,9" Content="Check session" Click="Check_Click" />
+                        <Button x:Name="CheckHelpButton" Margin="6,0,14,0" Width="34" Content="i" />
+                        <Button x:Name="LockButton" Padding="18,9" Content="Lock" Click="Lock_Click" />
+                        <Button x:Name="LockHelpButton" Margin="6,0,0,0" Width="34" Content="i" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="3" Margin="0,20,0,0" Padding="16" BorderBrush="#D8D8D8" BorderThickness="1">
+            <StackPanel>
+                <TextBlock FontWeight="Bold" Text="How this step works" />
+                <TextBlock Margin="0,8,0,0" TextWrapping="Wrap"
+                           Text="1. Unlock starts a fresh ZDeployPet-owned ssh-agent and opens a trusted WSL/OpenSSH terminal.  2. Complete ssh-add there.  3. Return here and click Check session.  4. ZDeployPet declares READY only if the exact approved fingerprint is the only key loaded.  5. Lock stops that agent immediately." />
+                <TextBlock Margin="0,12,0,0" Foreground="#555" TextWrapping="Wrap"
+                           Text="Closing the main ZDeployPet app also locks the bounded deployment session. A stale, foreign, expired, or unverifiable agent is never treated as READY." />
+            </StackPanel>
+        </Border>
+
+        <DockPanel Grid.Row="4" Margin="0,20,0,0">
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#555" />
+            <Button DockPanel.Dock="Right" Width="90" Padding="12,8" Content="Close" Click="Close_Click" />
+        </DockPanel>
+    </Grid>
+</Window>
