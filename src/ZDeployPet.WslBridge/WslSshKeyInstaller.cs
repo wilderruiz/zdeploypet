@@ -18,6 +18,7 @@ public sealed class WslSshKeyInstaller
         public_key="$4"
         expected_fingerprint="$5"
         host_key_line="$6"
+        target_label="$7"
 
         if [ ! -f "$public_key" ]; then
           echo "ZDeployPet blocked installation: the approved public key is missing."
@@ -39,10 +40,24 @@ public sealed class WslSshKeyInstaller
         chmod 600 "$known_hosts"
 
         echo
+        echo "============================================================"
+        echo " ZDEPLOYPET PASSWORD PROMPT — CHECK THE TARGET BEFORE TYPING"
+        echo "============================================================"
+        echo "Friendly server name : $target_label"
+        echo "SSH username         : $user"
+        echo "SSH host             : $host"
+        echo "SSH port             : $port"
+        echo "Account              : $user@$host:$port"
+        echo
+        echo "Use the SSH account password for '$target_label'."
+        echo "Do NOT enter the password for another configured target."
+        echo "For example, if this says Hostinger, do not enter the VPS/root password."
+        echo "ZDeployPet does not receive or store the password you type here."
+        echo "============================================================"
+        echo
         echo "Host identity verified by ZDeployPet: $expected_fingerprint"
         echo "Installing only the approved PUBLIC key on $user@$host:$port."
-        echo "Your SSH account password may be requested once by ssh-copy-id."
-        echo "ZDeployPet does not receive or store that password."
+        echo "The password may be requested once below by ssh-copy-id."
         echo
 
         set +e
@@ -58,9 +73,9 @@ public sealed class WslSshKeyInstaller
 
         echo
         if [ "$code" -eq 0 ]; then
-          echo "ZDeployPet public-key installation completed. Return to ZDeployPet and run Probe selected target."
+          echo "ZDeployPet public-key installation completed for '$target_label'. Return to ZDeployPet and run Probe selected target."
         else
-          echo "ZDeployPet public-key installation did not complete. ssh-copy-id exit code: $code"
+          echo "ZDeployPet public-key installation did not complete for '$target_label'. ssh-copy-id exit code: $code"
         fi
         echo "Press Enter to close."
         read _
@@ -124,6 +139,7 @@ public sealed class WslSshKeyInstaller
         process.StartInfo.ArgumentList.Add(deploymentKey.PublicKeyPath);
         process.StartInfo.ArgumentList.Add(enrolledHostKey.Fingerprint.Trim());
         process.StartInfo.ArgumentList.Add(hostVerification.HostKeyLine);
+        process.StartInfo.ArgumentList.Add(target.Label.Trim());
 
         try
         {
@@ -137,7 +153,7 @@ public sealed class WslSshKeyInstaller
 
         return new(
             true,
-            "The enrolled SSH host identity was re-verified using the same key type and fingerprint, and the interactive public-key installer was opened. Enter the target account password only in that SSH/WSL prompt if requested, then return to ZDeployPet and run the non-writing probe.");
+            $"The enrolled SSH host identity for '{target.Label}' was re-verified and the interactive public-key installer was opened. Enter only the SSH account password for '{target.Label}' in that terminal prompt if requested, then return to ZDeployPet and run the non-writing probe.");
     }
 
     private static async Task<HostKeyVerificationResult> VerifyEnrolledHostKeyAsync(
