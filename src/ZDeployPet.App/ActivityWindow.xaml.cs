@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Text;
 using System.Windows;
@@ -13,25 +12,24 @@ public sealed record ActivityRow(
 
 public partial class ActivityWindow : Window
 {
-    private readonly ObservableCollection<ActivityRow> _rows = [];
+    private readonly List<ActivityRow> _rows = [];
 
     public ActivityWindow()
     {
         InitializeComponent();
-        ActivityList.ItemsSource = _rows;
 
         HelpTipFactory.AttachToButton(
             CopySelectedButton,
             new HelpTipSpec(
-                "Copy only the activity rows you selected.",
-                "The copied text comes from the already-sanitized activity stream shown in this window.",
-                WhenToUse: "Use this when you want to paste a focused diagnostic into an issue, note, or debugging conversation.",
+                "Copy the text currently selected in the activity console.",
+                "The copied text comes from the already-sanitized console output shown in this window.",
+                WhenToUse: "Drag across the console to select only the lines or text you want to share, then use Copy selection.",
                 Safety: "ZDeployPet redacts common secret-bearing assignments and private-key markers before entries reach this view, but you should still review copied text before sharing it externally."));
 
         HelpTipFactory.AttachToButton(
             CopyAllButton,
             new HelpTipSpec(
-                "Copy the complete visible activity history.",
+                "Copy the complete visible activity console.",
                 "This copies the bounded in-memory ZDeployPet activity buffer in timestamp order.",
                 WhenToUse: "Use this when a longer sequence of profile, session, target-probe, or application lifecycle events is useful for debugging.",
                 Safety: "The stream is sanitized before display and copy. It intentionally does not expose private-key contents, passphrases, passwords, agent sockets, or deployment authorization."));
@@ -39,10 +37,11 @@ public partial class ActivityWindow : Window
         foreach (ShellActivityEntry entry in ShellRuntime.Activity.Snapshot())
             _rows.Add(ToRow(entry));
 
+        RefreshConsole();
         ShellRuntime.Activity.EntryAdded += Activity_EntryAdded;
         ShellRuntime.State.PropertyChanged += State_PropertyChanged;
         RefreshStateHeader();
-        StatusText.Text = $"{_rows.Count} activit{(_rows.Count == 1 ? "y" : "ies")} in memory.";
+        RefreshStatus();
     }
 
     private void Activity_EntryAdded(object? sender, ShellActivityEntry entry)
@@ -50,8 +49,11 @@ public partial class ActivityWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             _rows.Add(ToRow(entry));
-            ActivityList.ScrollIntoView(_rows[^1]);
-            StatusText.Text = $"{_rows.Count} activit{(_rows.Count == 1 ? "y" : "ies")} in memory.";
+            if (ConsoleTextBox.Text.Length > 0)
+                ConsoleTextBox.AppendText(Environment.NewLine);
+            ConsoleTextBox.AppendText(FormatRow(_rows[^1]));
+            ConsoleTextBox.ScrollToEnd();
+            RefreshStatus();
         });
     }
 
@@ -69,28 +71,38 @@ public partial class ActivityWindow : Window
             : ShellRuntime.State.SessionState.ToString().ToUpperInvariant();
     }
 
+    private void RefreshConsole()
+    {
+        ConsoleTextBox.Text = FormatRows(_rows);
+        ConsoleTextBox.ScrollToEnd();
+    }
+
+    private void RefreshStatus() =>
+        StatusText.Text = $"{_rows.Count} activit{(_rows.Count == 1 ? "y" : "ies")} in memory.";
+
     private void CopySelected_Click(object sender, RoutedEventArgs e)
     {
-        IReadOnlyList<ActivityRow> selected = ActivityList.SelectedItems.Cast<ActivityRow>().ToArray();
-        if (selected.Count == 0)
+        string selected = ConsoleTextBox.SelectedText;
+        if (string.IsNullOrEmpty(selected))
         {
-            StatusText.Text = "Select one or more activity rows first.";
+            StatusText.Text = "Select text in the console first.";
+            ConsoleTextBox.Focus();
             return;
         }
 
-        Clipboard.SetText(FormatRows(selected));
-        StatusText.Text = $"Copied {selected.Count} selected activit{(selected.Count == 1 ? "y" : "ies")}.";
+        Clipboard.SetText(selected);
+        StatusText.Text = "Copied selected console text.";
     }
 
     private void CopyAll_Click(object sender, RoutedEventArgs e)
     {
-        if (_rows.Count == 0)
+        if (string.IsNullOrWhiteSpace(ConsoleTextBox.Text))
         {
             StatusText.Text = "There is no activity to copy yet.";
             return;
         }
 
-        Clipboard.SetText(FormatRows(_rows));
+        Clipboard.SetText(ConsoleTextBox.Text);
         StatusText.Text = $"Copied all {_rows.Count} activities.";
     }
 
@@ -98,10 +110,12 @@ public partial class ActivityWindow : Window
     {
         StringBuilder text = new();
         foreach (ActivityRow row in rows)
-            text.Append(row.LocalTime).Append("  [").Append(row.Level).Append("]  ")
-                .Append(row.Category).Append("  —  ").AppendLine(row.Message);
+            text.AppendLine(FormatRow(row));
         return text.ToString().TrimEnd();
     }
+
+    private static string FormatRow(ActivityRow row) =>
+        $"{row.LocalTime}  [{row.Level,-7}]  {row.Category,-14}  {row.Message}";
 
     private static ActivityRow ToRow(ShellActivityEntry entry) => new(
         entry.TimestampUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
