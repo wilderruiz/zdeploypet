@@ -3,12 +3,126 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
+        <SolidColorBrush x:Key="AppBackgroundBrush" Color="#17191E" />
+        <SolidColorBrush x:Key="AppSurfaceBrush" Color="#22252C" />
+        <SolidColorBrush x:Key="AppSurfaceRaisedBrush" Color="#2B2F37" />
+        <SolidColorBrush x:Key="AppBorderBrush" Color="#484E59" />
+        <SolidColorBrush x:Key="AppTextBrush" Color="#F4F5F7" />
+        <SolidColorBrush x:Key="AppMutedTextBrush" Color="#AEB4BE" />
+        <SolidColorBrush x:Key="AppAccentBrush" Color="#E94858" />
+        <SolidColorBrush x:Key="AppAccentHoverBrush" Color="#FF5A69" />
+        <SolidColorBrush x:Key="AppWarningBackgroundBrush" Color="#342B18" />
+        <SolidColorBrush x:Key="AppWarningBorderBrush" Color="#B98A35" />
+        <SolidColorBrush x:Key="AppSelectionBrush" Color="#5B2A35" />
+
+        <Style TargetType="{x:Type Window}">
+            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type TextBlock}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type Label}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AppAccentHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AppAccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#70757F" />
+                    <Setter Property="Background" Value="#202228" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="{x:Type TextBox}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="CaretBrush" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="SelectionBrush" Value="{StaticResource AppSelectionBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type ComboBox}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type GroupBox}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type ListView}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type ListViewItem}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AppSelectionBrush}" />
+                    <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="{x:Type DataGrid}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="RowBackground" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="AlternatingRowBackground" Value="#1D2026" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="GridLinesVisibility" Value="Horizontal" />
+            <Setter Property="HorizontalGridLinesBrush" Value="#343943" />
+            <Setter Property="VerticalGridLinesBrush" Value="#343943" />
+        </Style>
+
+        <Style TargetType="{x:Type DataGridColumnHeader}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type Menu}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type MenuItem}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+        </Style>
+
+        <Style TargetType="{x:Type Hyperlink}">
+            <Setter Property="Foreground" Value="{StaticResource AppAccentHoverBrush}" />
+        </Style>
+
         <Style x:Key="SharedToolTipStyle" TargetType="{x:Type ToolTip}">
             <Setter Property="MaxWidth" Value="560" />
             <Setter Property="Padding" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
         </Style>
 
-        <Style x:Key="SharedInfoButtonStyle" TargetType="{x:Type Button}">
+        <Style x:Key="SharedInfoButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Width" Value="25" />
             <Setter Property="Height" Value="25" />
             <Setter Property="Padding" Value="0" />
