@@ -432,7 +432,8 @@ public sealed class WslSshDiagnostics
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken)
     {
-        List<string> commandArguments = ["-c", script, "zdeploypet-pda1", .. arguments];
+        string normalizedScript = script.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        List<string> commandArguments = ["-c", normalizedScript, "zdeploypet-pda1", .. arguments];
         return await RunWslExecutableAsync(distribution, "/bin/sh", commandArguments, cancellationToken);
     }
 
