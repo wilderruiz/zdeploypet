@@ -57,12 +57,14 @@ public partial class DeploymentSessionWindow : Window
                 WhatItDoes: "The bounded agent is stopped and the current in-memory lease is discarded.",
                 Safety: "Lock never deletes your SSH key files. It only removes the temporary agent session that was holding the approved key."));
 
+        PublishShellState();
         RefreshUi();
     }
 
     private async void Unlock_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Session", $"Unlock requested for '{_profile.Name}'.");
         await RunBusyAsync(async () =>
         {
             await _controller.BeginUnlockAsync(_profile);
@@ -70,6 +72,10 @@ public partial class DeploymentSessionWindow : Window
             StatusText.Text = _controller.HasOwnedAgent
                 ? "Trusted unlock terminal opened — complete ssh-add, then click Check session."
                 : "Unlock could not start.";
+            ShellRuntime.Activity.Add(
+                _controller.HasOwnedAgent ? ShellActivityLevel.Info : ShellActivityLevel.Warning,
+                "Session",
+                _controller.Message);
         });
     }
 
@@ -79,15 +85,21 @@ public partial class DeploymentSessionWindow : Window
         await RunBusyAsync(async () =>
         {
             await _controller.CheckAsync(_profile);
-            StatusText.Text = _controller.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring
+            bool ready = _controller.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring;
+            StatusText.Text = ready
                 ? "Deployment session verified."
                 : "Deployment session is not READY.";
+            ShellRuntime.Activity.Add(
+                ready ? ShellActivityLevel.Success : ShellActivityLevel.Warning,
+                "Session",
+                _controller.Message);
         });
     }
 
     private async void ProbeTargets_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Probe", $"Bounded-agent target probe started for '{_profile.Name}'.");
         await RunBusyAsync(async () =>
         {
             IReadOnlyList<DeploymentSessionProbeResult> results = await _controller.ProbeReadyTargetsAsync(_profile);
@@ -95,6 +107,7 @@ public partial class DeploymentSessionWindow : Window
             {
                 ProbeResultsTextBox.Text = _controller.Message;
                 StatusText.Text = "Bounded-agent probe did not run.";
+                ShellRuntime.Activity.Add(ShellActivityLevel.Warning, "Probe", _controller.Message);
                 return;
             }
 
@@ -115,6 +128,11 @@ public partial class DeploymentSessionWindow : Window
                     .AppendLine();
                 if (!item.Result.Success)
                     text.AppendLine("      " + item.Result.Message);
+
+                ShellRuntime.Activity.Add(
+                    item.Result.Success ? ShellActivityLevel.Success : ShellActivityLevel.Warning,
+                    "Probe",
+                    $"{item.Target.Label}: {item.Result.Status} — {item.Result.Message}");
             }
 
             ProbeResultsTextBox.Text = text.ToString().TrimEnd();
@@ -132,6 +150,7 @@ public partial class DeploymentSessionWindow : Window
             await _controller.LockAsync();
             ProbeResultsTextBox.Text = "No bounded-agent target probe has run yet.";
             StatusText.Text = "Deployment session locked.";
+            ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Session", _controller.Message);
         });
     }
 
@@ -149,12 +168,23 @@ public partial class DeploymentSessionWindow : Window
         {
             StatusText.Text = "Session operation failed.";
             MessageText.Text = exception.Message;
+            ShellRuntime.Activity.Add(ShellActivityLevel.Error, "Session", exception.Message);
         }
         finally
         {
             _busy = false;
+            PublishShellState();
             RefreshUi();
         }
+    }
+
+    private void PublishShellState()
+    {
+        ShellRuntime.State.UpdateProfile(_profile.Name);
+        ShellRuntime.State.UpdateSession(
+            _controller.State,
+            _controller.Message,
+            _controller.ExpiresAtUtc);
     }
 
     private void RefreshUi()
