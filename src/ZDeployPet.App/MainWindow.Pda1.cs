@@ -7,6 +7,7 @@ public partial class MainWindow
 {
     private bool _pda1ShellHooked;
     private bool _discoveryActionHelpAttached;
+    private Button? _gitSafetyButton;
 
     private void InitializePda1Shell()
     {
@@ -16,13 +17,31 @@ public partial class MainWindow
             DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda1ActionVisibility();
         }
 
+        EnsureGitSafetyButton();
         AttachDiscoveryActionHelp();
         RefreshPda1ActionVisibility();
     }
 
+    private void EnsureGitSafetyButton()
+    {
+        if (_gitSafetyButton is not null) return;
+        if (AccessOnboardingButton.Parent is not StackPanel actions) return;
+
+        _gitSafetyButton = new Button
+        {
+            Content = "Git safety…",
+            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(16, 9, 16, 9),
+            Visibility = Visibility.Collapsed
+        };
+        _gitSafetyButton.Click += GitSafety_Click;
+        int accessIndex = actions.Children.IndexOf(AccessOnboardingButton);
+        actions.Children.Insert(accessIndex + 1, _gitSafetyButton);
+    }
+
     private void AttachDiscoveryActionHelp()
     {
-        if (_discoveryActionHelpAttached) return;
+        if (_discoveryActionHelpAttached || _gitSafetyButton is null) return;
         _discoveryActionHelpAttached = true;
 
         HelpTipFactory.AttachToButton(
@@ -37,7 +56,7 @@ public partial class MainWindow
                 Tip: "This step establishes identity and trust only. It does not deploy project files."));
 
         HelpTipFactory.AttachToButton(
-            GitSafetyButton,
+            _gitSafetyButton,
             new HelpTipSpec(
                 "Check that deployment private keys cannot accidentally enter Git.",
                 "Git safety scans tracked files and unignored untracked files for common private-key material and can add a narrow ZDeployPet-managed .gitignore safety block.",
@@ -77,7 +96,7 @@ public partial class MainWindow
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         AccessOnboardingButton.Visibility = actionVisibility;
-        GitSafetyButton.Visibility = actionVisibility;
+        if (_gitSafetyButton is not null) _gitSafetyButton.Visibility = actionVisibility;
     }
 
     private void AccessOnboarding_Click(object sender, RoutedEventArgs e)
