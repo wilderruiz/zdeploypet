@@ -12,14 +12,20 @@ public partial class MainWindow
     /// That stale process keeps the published executable locked and prevents the
     /// local publish workflow from replacing it.
     ///
-    /// Window_Closing in MainWindow.xaml.cs runs before this hook and remains the
-    /// place for graceful close work such as saving an unfinished setup draft.
-    /// PDA-2 must likewise perform deployment-session lock/cleanup during Closing
-    /// before this final process boundary is reached.
+    /// The PDA-2 deployment session is also owned by this main-window lifetime.
+    /// Closing ZDeployPet therefore performs a best-effort verified shutdown of
+    /// the dedicated app-owned ssh-agent before the final process boundary.
     /// </summary>
     protected override void OnClosed(EventArgs e)
     {
-        base.OnClosed(e);
+        try
+        {
+            _deploymentSession.LockSynchronouslyBestEffort();
+        }
+        finally
+        {
+            base.OnClosed(e);
+        }
 
         try
         {
