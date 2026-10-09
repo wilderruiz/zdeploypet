@@ -108,7 +108,18 @@ public sealed class WslSshAgentSession
         if (pid is null || pid <= 0)
             return new(false, null, "ssh-agent started, but its process ID could not be parsed.");
 
-        return new(true, new(distribution.Trim(), pid.Value, socket, DateTimeOffset.UtcNow));
+        WslSshAgentRuntime runtime = new(distribution.Trim(), pid.Value, socket, DateTimeOffset.UtcNow);
+        CommandResult verification = await ValidateOwnedAgentAsync(runtime, cancellationToken);
+        if (!verification.Started || verification.ExitCode != 0)
+        {
+            return new(
+                false,
+                null,
+                "ssh-agent started but failed ZDeployPet ownership verification: " +
+                FirstError(verification, $"verification exit code {verification.ExitCode}."));
+        }
+
+        return new(true, runtime);
     }
 
     public async Task<WslSshAgentUnlockLaunchResult> LaunchUnlockAsync(
@@ -120,7 +131,11 @@ public sealed class WslSshAgentSession
     {
         CommandResult identity = await ValidateOwnedAgentAsync(runtime, cancellationToken);
         if (!identity.Started || identity.ExitCode != 0)
-            return new(false, "ZDeployPet refused to unlock because the app-owned ssh-agent could not be verified.");
+        {
+            return new(false,
+                "ZDeployPet refused to unlock because the app-owned ssh-agent could not be verified: " +
+                FirstError(identity, $"verification exit code {identity.ExitCode}."));
+        }
 
         TimeSpan duration = lifetime ?? DeploymentAccessSessionLease.DefaultLifetime;
         if (duration <= TimeSpan.Zero || duration > TimeSpan.FromHours(24))
@@ -183,7 +198,9 @@ public sealed class WslSshAgentSession
         if (!keys.Started)
             return new(false, [], "ssh-add could not be started.");
 
-        if (keys.ExitCode == 1 && keys.Output.Contains("no identities", StringComparison.OrdinalIgnoreCase))
+        if (keys.ExitCode == 1 &&
+            (keys.Output.Contains("no identities", StringComparison.OrdinalIgnoreCase) ||
+             keys.Error.Contains("no identities", StringComparison.OrdinalIgnoreCase)))
             return new(true, []);
 
         if (keys.ExitCode != 0)
@@ -198,7 +215,7 @@ public sealed class WslSshAgentSession
     {
         CommandResult identity = await ValidateOwnedAgentAsync(runtime, cancellationToken);
         if (!identity.Started || identity.ExitCode != 0)
-            return new(false, "ZDeployPet refused to terminate an agent whose ownership/process identity could not be verified.");
+            return new(false, "ZDeployPet refused to terminate an agent whose ownership/process identity could not be verified: " + FirstError(identity, $"verification exit code {identity.ExitCode}."));
 
         CommandResult result = await RunWithAgentEnvironmentAsync(
             runtime,
@@ -265,14 +282,54 @@ public sealed class WslSshAgentSession
         CancellationToken cancellationToken)
     {
         const string script = """
-            set -eu
+            set -u
             pid="$1"
             socket="$2"
-            [ -S "$socket" ] || exit 21
-            [ -r "/proc/$pid/comm" ] || exit 22
-            comm="$(cat "/proc/$pid/comm")"
-            [ "$comm" = "ssh-agent" ] || exit 23
-            kill -0 "$pid" 2>/dev/null || exit 24
+
+            if [ ! -S "$socket" ]; then
+              echo "The expected ZDeployPet agent socket does not exist: $socket" >&2
+              exit 21
+            fi
+
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "The expected ZDeployPet agent process is not running: PID $pid" >&2
+              exit 22
+            fi
+
+            if [ -r "/proc/$pid/exe" ]; then
+              exe="$(readlink "/proc/$pid/exe" 2>/dev/null || true)"
+              case "$exe" in
+                */ssh-agent) ;;
+                *)
+                  echo "PID $pid is not ssh-agent (executable: ${exe:-unknown})." >&2
+                  exit 23
+                  ;;
+              esac
+            elif [ -r "/proc/$pid/comm" ]; then
+              comm="$(cat "/proc/$pid/comm" 2>/dev/null || true)"
+              case "$comm" in
+                ssh-agent|ssh-agent*) ;;
+                *)
+                  echo "PID $pid is not ssh-agent (process name: ${comm:-unknown})." >&2
+                  exit 24
+                  ;;
+              esac
+            else
+              echo "ZDeployPet cannot inspect PID $pid in /proc." >&2
+              exit 25
+            fi
+
+            export SSH_AUTH_SOCK="$socket"
+            export SSH_AGENT_PID="$pid"
+            set +e
+            probe="$(ssh-add -l -E sha256 2>&1)"
+            code=$?
+            set -e
+            if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
+              echo "The expected ZDeployPet agent socket did not answer ssh-add: $probe" >&2
+              exit 26
+            fi
+            exit 0
             """;
 
         return await RunWslShellAsync(
@@ -313,7 +370,10 @@ public sealed class WslSshAgentSession
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken)
     {
-        List<string> allArguments = ["-d", distribution, "--exec", "/bin/sh", "-c", script, "zdeploypet-pda2"];
+        string normalizedScript = script
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        List<string> allArguments = ["-d", distribution, "--exec", "/bin/sh", "-c", normalizedScript, "zdeploypet-pda2"];
         allArguments.AddRange(arguments);
         return await RunProcessAsync("wsl.exe", allArguments, cancellationToken);
     }
