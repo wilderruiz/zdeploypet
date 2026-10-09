@@ -7,17 +7,16 @@ public sealed class WslSshDiagnostics
 {
     private const string ListKeysScript = """
         set -eu
-        found=0
-        for f in "$HOME"/.ssh/*.pub; do
+        ssh_dir="$HOME/.ssh"
+        [ -d "$ssh_dir" ] || exit 0
+        find "$ssh_dir" -maxdepth 1 -type f -name '*.pub' -print | sort | while IFS= read -r f; do
           [ -f "$f" ] || continue
           line="$(ssh-keygen -lf "$f" -E sha256 2>/dev/null || true)"
           [ -n "$line" ] || continue
-          found=1
           echo "path=$f"
           echo "info=$line"
           echo "--"
         done
-        [ "$found" -eq 1 ] || true
         """;
 
     private const string ScanHostKeyScript = """
