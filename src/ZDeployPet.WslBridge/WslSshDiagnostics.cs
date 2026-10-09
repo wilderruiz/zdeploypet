@@ -134,6 +134,21 @@ public sealed class WslSshDiagnostics
         if (string.IsNullOrWhiteSpace(deploymentKey.PublicKeyPath))
             return new(SshProbeStatus.MissingKey, "No dedicated deployment public key is selected.");
 
+        IReadOnlyList<SshPublicKeyCandidate> currentKeys = await ListPublicKeysAsync(distribution, cancellationToken);
+        SshPublicKeyCandidate? currentKey = currentKeys.FirstOrDefault(candidate =>
+            string.Equals(candidate.PublicKeyPath, deploymentKey.PublicKeyPath, StringComparison.Ordinal));
+        if (currentKey is null)
+            return new(SshProbeStatus.MissingKey, "The selected deployment public key no longer exists in WSL.");
+        if (!string.Equals(
+                NormalizeFingerprint(currentKey.Fingerprint),
+                NormalizeFingerprint(deploymentKey.Fingerprint),
+                StringComparison.Ordinal))
+        {
+            return new(
+                SshProbeStatus.KeyMismatch,
+                "The selected deployment public key changed since enrollment. ZDeployPet blocked the probe. Select and approve the key again before continuing.");
+        }
+
         HostKeyScanResult scan = await ScanHostKeyAsync(
             distribution, target.Host, target.Port, cancellationToken);
         if (!scan.Success || scan.Fingerprint is null || scan.HostKeyLine is null)
