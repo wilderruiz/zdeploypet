@@ -116,6 +116,8 @@ public partial class MainWindow : Window
                 User = target.User
             });
         }
+        if (_targetDrafts.Count == 0) _targetDrafts.Add(new TargetDraft { Port = 22 });
+
         _destinationDrafts.Clear();
         foreach (DeploymentDestination destination in profile.Destinations)
         {
@@ -127,6 +129,7 @@ public partial class MainWindow : Window
                 RemotePath = destination.RemotePath
             });
         }
+        if (_destinationDrafts.Count == 0) _destinationDrafts.Add(new DestinationDraft());
     }
 
     private void PopulateDraft(SetupDraft draft)
@@ -187,7 +190,7 @@ public partial class MainWindow : Window
     {
         SaveProfileButton.IsEnabled = false;
         SetupValidationText.Text = string.Empty;
-        StatusText.Text = "Checking setup…";
+        StatusText.Text = "Saving profile JSON and checking setup…";
         try
         {
             TargetsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
@@ -199,44 +202,63 @@ public partial class MainWindow : Window
             await _inputHistoryStore.SaveDraftAsync(draft);
             await _inputHistoryStore.RememberDraftAsync(draft);
 
-            if (string.IsNullOrWhiteSpace(draft.ProjectPath) || !Directory.Exists(draft.ProjectPath))
+            if (string.IsNullOrWhiteSpace(draft.ProfileName))
             {
-                await LoadSuggestionsAsync();
-                ShowDraftNeedsAttention([
-                    "Choose an existing project folder."
-                ], "project folder required");
+                ShowDraftNeedsAttention(["Enter a profile name so ZDeployPet knows which JSON profile to create or replace."], "profile name required", jsonSaved: false);
                 return;
             }
 
-            string distribution = draft.WslDistribution;
-            WslPathResolution resolution = await _profileDiscovery.ResolveAndVerifyProjectPathAsync(
-                distribution, draft.ProjectPath);
-            if (!resolution.Success || resolution.WslPath is null)
+            string verifiedWslPath = string.Empty;
+            WslPathResolution? resolution = null;
+            if (!string.IsNullOrWhiteSpace(draft.ProjectPath) && Directory.Exists(draft.ProjectPath) && !string.IsNullOrWhiteSpace(draft.WslDistribution))
             {
-                await LoadSuggestionsAsync();
+                resolution = await _profileDiscovery.ResolveAndVerifyProjectPathAsync(draft.WslDistribution, draft.ProjectPath);
+                if (resolution.Success && resolution.WslPath is not null)
+                {
+                    verifiedWslPath = resolution.WslPath;
+                    WslPathTextBox.Text = verifiedWslPath;
+                }
+                else
+                {
+                    WslPathTextBox.Text = string.Empty;
+                }
+            }
+            else
+            {
+                WslPathTextBox.Text = string.Empty;
+            }
+
+            // Every named Save is a full replacement of that profile's JSON snapshot.
+            // Incomplete fields are intentionally preserved so Load profile restores exactly what the operator entered.
+            await _profileStore.SaveSetupSnapshotAsync(draft, verifiedWslPath);
+            await RefreshSavedProfileChoicesAsync();
+
+            if (string.IsNullOrWhiteSpace(draft.ProjectPath) || !Directory.Exists(draft.ProjectPath))
+            {
+                ShowDraftNeedsAttention(["Choose an existing project folder."], "profile incomplete");
+                return;
+            }
+
+            if (resolution is null || !resolution.Success || resolution.WslPath is null)
+            {
                 ShowDraftNeedsAttention([
-                    resolution.Error ?? "ZDeployPet could not verify the project path in the selected WSL environment."
+                    resolution?.Error ?? "ZDeployPet could not verify the project path in the selected WSL environment."
                 ], "WSL path could not be verified");
                 return;
             }
 
-            // Keep the successful Windows -> WSL verification visible even when later sections are incomplete.
-            WslPathTextBox.Text = resolution.WslPath;
-
-            DeploymentProfile profile = BuildProfile(distribution, resolution.WslPath);
+            DeploymentProfile profile = BuildProfile(draft.WslDistribution, resolution.WslPath);
             ProfileValidationResult validation = _validator.Validate(profile);
             if (!validation.IsValid)
             {
-                await LoadSuggestionsAsync();
                 ShowDraftNeedsAttention(validation.Errors, "profile incomplete");
                 return;
             }
 
             WslScriptValidation scriptValidation = await _profileDiscovery.VerifyScriptContainmentAsync(
-                distribution, resolution.WslPath, profile.ScriptRelativePath);
+                draft.WslDistribution, resolution.WslPath, profile.ScriptRelativePath);
             if (!scriptValidation.Success)
             {
-                await LoadSuggestionsAsync();
                 ShowDraftNeedsAttention([
                     scriptValidation.Error ?? "The deployment script could not be verified inside the selected project."
                 ], "deployment script needs attention");
@@ -247,7 +269,7 @@ public partial class MainWindow : Window
             await _inputHistoryStore.RememberAsync(profile);
             _activeProfile = profile;
             await LoadSuggestionsAsync();
-            ShowDiscovery(profile, $"Profile saved locally as JSON under {_profileStore.Root}. No server was contacted.");
+            ShowDiscovery(profile, $"Profile JSON replaced with the current settings and validated under {_profileStore.Root}. No server was contacted.");
         }
         catch (Exception exception)
         {
@@ -261,7 +283,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ShowDraftNeedsAttention(IReadOnlyList<string> requirements, string summary)
+    private void ShowDraftNeedsAttention(IReadOnlyList<string> requirements, string summary, bool jsonSaved = true)
     {
         List<string> uniqueRequirements = requirements
             .Where(requirement => !string.IsNullOrWhiteSpace(requirement))
@@ -269,7 +291,9 @@ public partial class MainWindow : Window
             .ToList();
 
         StringBuilder message = new();
-        message.AppendLine("Draft saved. Complete these items before ZDeployPet creates the reusable JSON profile:");
+        message.AppendLine(jsonSaved
+            ? "Profile JSON saved. This save completely replaced the previous JSON for this profile. Complete these items when ready:"
+            : "The setup draft is kept locally, but a named profile JSON has not been created yet:");
         foreach (string requirement in uniqueRequirements)
             message.AppendLine("• " + FriendlySetupRequirement(requirement));
 
@@ -281,7 +305,7 @@ public partial class MainWindow : Window
         }
 
         SetupValidationText.Text = message.ToString().TrimEnd();
-        StatusText.Text = $"Draft saved — {summary}";
+        StatusText.Text = jsonSaved ? $"Profile JSON saved — {summary}" : $"Draft saved — {summary}";
         SetupValidationText.BringIntoView();
     }
 
@@ -460,12 +484,13 @@ public partial class MainWindow : Window
         string confirmationPhrase = ConfirmationTextBox.Text;
 
         InputHistory history = await _inputHistoryStore.LoadAsync();
-        IReadOnlyList<DeploymentProfile> savedProfiles = await _profileStore.LoadAllAsync();
+        IReadOnlyList<string> setupProfileNames = await _profileStore.LoadSetupProfileNamesAsync();
+        IReadOnlyList<DeploymentProfile> completeProfiles = await _profileStore.LoadAllAsync();
 
         ReplaceSuggestions(
             (ObservableCollection<string>)ProfileNameTextBox.ItemsSource,
-            savedProfiles
-                .Select(profile => profile.Name)
+            setupProfileNames
+                .Concat(completeProfiles.Select(profile => profile.Name))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
         ReplaceSuggestions((ObservableCollection<string>)ProjectPathTextBox.ItemsSource, history.ProjectPaths);
@@ -479,7 +504,6 @@ public partial class MainWindow : Window
         ReplaceSuggestions(DestinationLabels, history.DestinationLabels);
         ReplaceSuggestions(RemotePaths, history.RemotePaths);
 
-        // Refreshing editable ComboBox item sources must never erase the form being validated/saved.
         ProfileNameTextBox.Text = profileName;
         ProjectPathTextBox.Text = projectPath;
         ScriptPathTextBox.Text = scriptPath;
@@ -499,7 +523,7 @@ public partial class MainWindow : Window
 
         await _inputHistoryStore.ClearAsync();
         await LoadSuggestionsAsync();
-        StatusText.Text = "Remembered suggestions were cleared. The saved profile was not changed.";
+        StatusText.Text = "Remembered suggestions were cleared. Saved JSON profiles were not changed.";
     }
 
     private static void ReplaceSuggestions(ObservableCollection<string> destination, IEnumerable<string> values)
