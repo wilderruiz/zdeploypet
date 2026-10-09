@@ -6,14 +6,14 @@ public partial class MainWindow
 {
     private bool _pda1ShellHooked;
 
-    protected override void OnContentRendered(EventArgs e)
+    private void InitializePda1Shell()
     {
-        base.OnContentRendered(e);
         if (!_pda1ShellHooked)
         {
             _pda1ShellHooked = true;
             DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda1ActionVisibility();
         }
+
         RefreshPda1ActionVisibility();
     }
 
