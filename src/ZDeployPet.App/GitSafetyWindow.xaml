@@ -13,10 +13,11 @@
 
         <StackPanel>
             <TextBlock FontSize="24" FontWeight="SemiBold" Text="Repository Git safety" />
-            <TextBlock x:Name="ProfileText" Margin="0,6,0,0" Foreground="#555" TextWrapping="Wrap" />
+            <TextBlock x:Name="ProfileText" Margin="0,6,0,0" Foreground="{StaticResource AppMutedTextBrush}" TextWrapping="Wrap" />
         </StackPanel>
 
-        <Border Grid.Row="1" Margin="0,16,0,12" Padding="12" Background="#FFF5E6" BorderBrush="#E6C77A" BorderThickness="1">
+        <Border Grid.Row="1" Margin="0,16,0,12" Padding="12" Background="{StaticResource AppWarningBackgroundBrush}"
+                BorderBrush="{StaticResource AppWarningBorderBrush}" BorderThickness="1">
             <TextBlock TextWrapping="Wrap"
                        Text="ZDeployPet deployment private keys belong only in WSL ~/.ssh, never inside the project repository. This check looks for private-key material in tracked and unignored files and can add a narrow defense-in-depth .gitignore block without changing your existing Git rules." />
         </Border>
@@ -37,7 +38,7 @@
         </Grid>
 
         <DockPanel Grid.Row="3" Margin="0,16,0,0" LastChildFill="False">
-            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#555" DockPanel.Dock="Left" TextWrapping="Wrap" />
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{StaticResource AppMutedTextBrush}" DockPanel.Dock="Left" TextWrapping="Wrap" />
             <Button DockPanel.Dock="Right" Padding="16,8" Click="Close_Click" Content="Close" />
         </DockPanel>
     </Grid>
