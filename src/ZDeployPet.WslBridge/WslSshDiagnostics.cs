@@ -405,7 +405,7 @@ public sealed class WslSshDiagnostics
             char.IsLetterOrDigit(character) || character is '-' or '_'
                 ? character
                 : '_').ToArray();
-        string slug = new(chars).Trim('_');
+        string slug = new string(chars).Trim('_');
         return string.IsNullOrWhiteSpace(slug) ? "profile" : slug;
     }
 
