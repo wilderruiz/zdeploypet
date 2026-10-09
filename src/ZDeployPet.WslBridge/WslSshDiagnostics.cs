@@ -220,6 +220,60 @@ public sealed class WslSshDiagnostics
         return new(true, parsed.Fingerprint, parsed.Algorithm, keyLine, null);
     }
 
+    private async Task<HostKeyScanResult> ScanHostKeyAsync(
+        string distribution,
+        string host,
+        int port,
+        string enrolledKeyType,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(host) || port is < 1 or > 65535)
+            return new(false, null, null, null, "The target host or SSH port is invalid.");
+
+        string? scanType = MapSshKeyscanType(enrolledKeyType);
+        if (scanType is null)
+            return new(false, null, null, null, $"Unsupported enrolled SSH host-key type '{enrolledKeyType}'.");
+
+        CommandResult result = await RunWslExecutableAsync(
+            distribution,
+            "/usr/bin/ssh-keyscan",
+            [
+                "-T", "6",
+                "-p", port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                "-t", scanType,
+                host.Trim()
+            ],
+            cancellationToken);
+
+        string? keyLine = result.Output
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(item => item.Trim())
+            .FirstOrDefault(item => item.Length > 0 && !item.StartsWith('#'));
+        if (!result.Started || string.IsNullOrWhiteSpace(keyLine))
+        {
+            string error = string.IsNullOrWhiteSpace(result.Error)
+                ? "The SSH host did not return the enrolled host-key type."
+                : result.Error.Trim();
+            return new(false, null, null, null, error);
+        }
+
+        string[] parts = keyLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 3)
+            return new(false, null, null, null, "The SSH host key returned by the server could not be parsed.");
+
+        try
+        {
+            byte[] keyBlob = Convert.FromBase64String(parts[2]);
+            string fingerprint = "SHA256:" + Convert.ToBase64String(SHA256.HashData(keyBlob)).TrimEnd('=');
+            string algorithm = parts[1];
+            return new(true, fingerprint, algorithm, keyLine, null);
+        }
+        catch (FormatException)
+        {
+            return new(false, null, null, null, "The SSH host key returned by the server contained invalid key data.");
+        }
+    }
+
     public async Task<SshProbeResult> ProbeAsync(
         string distribution,
         DeploymentTarget target,
@@ -250,7 +304,11 @@ public sealed class WslSshDiagnostics
         }
 
         HostKeyScanResult scan = await ScanHostKeyAsync(
-            distribution, target.Host, target.Port, cancellationToken);
+            distribution,
+            target.Host,
+            target.Port,
+            enrolledHostKey.KeyType,
+            cancellationToken);
         if (!scan.Success || scan.Fingerprint is null || scan.HostKeyLine is null)
             return new(SshProbeStatus.HostUnreachable, scan.Error ?? "The SSH host could not be reached.");
 
@@ -397,6 +455,14 @@ public sealed class WslSshDiagnostics
     }
 
     private static string NormalizeFingerprint(string value) => value.Trim();
+
+    private static string? MapSshKeyscanType(string keyType) => keyType.Trim().ToUpperInvariant() switch
+    {
+        "ED25519" or "SSH-ED25519" => "ed25519",
+        "ECDSA" or "ECDSA-SHA2-NISTP256" => "ecdsa",
+        "RSA" or "SSH-RSA" => "rsa",
+        _ => null
+    };
 
     private static string SlugifyProfileName(string value)
     {
