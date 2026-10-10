@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using ZDeployPet.Core;
 
 namespace ZDeployPet.WslBridge;
@@ -25,16 +26,29 @@ public sealed record WslDeploymentArtifactReadResult(
         new(false, null, null, error);
 }
 
+public sealed record WslDeploymentHistoryListResult(
+    bool Success,
+    string? CanonicalReportRoot,
+    IReadOnlyList<string> JsonPaths,
+    int CandidateCount,
+    bool Truncated,
+    string? Error)
+{
+    public static WslDeploymentHistoryListResult Failed(string error) =>
+        new(false, null, Array.Empty<string>(), 0, false, error);
+}
+
 /// <summary>
 /// Read-only reader for deployment reporter artifacts inside the selected WSL distribution.
 /// Paths are resolved with direct WSL utility invocations, containment is enforced in managed code,
-/// payload sizes are bounded, and no operation writes to the report tree.
+/// payload sizes are bounded, text is decoded explicitly as UTF-8, and no operation writes to the report tree.
 /// </summary>
 public sealed class WslDeploymentReportReader
 {
     public const int MaximumReportBytes = 2 * 1024 * 1024;
     public const int MaximumSummaryBytes = 2 * 1024 * 1024;
     public const int MaximumFullLogBytes = 8 * 1024 * 1024;
+    public const int MaximumHistoryCandidates = 90;
 
     public async Task<WslDeploymentReportReadResult> ReadLatestAsync(
         string distribution,
@@ -78,6 +92,64 @@ public sealed class WslDeploymentReportReader
             canonicalRoot,
             read.CanonicalPath,
             read.Text,
+            null);
+    }
+
+    public async Task<WslDeploymentHistoryListResult> ListHistoryJsonAsync(
+        string distribution,
+        string reportRoot,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(distribution))
+            return WslDeploymentHistoryListResult.Failed("A WSL distribution is required.");
+        if (string.IsNullOrWhiteSpace(reportRoot) || !reportRoot.StartsWith('/'))
+            return WslDeploymentHistoryListResult.Failed("A safe absolute WSL report root is required.");
+
+        WslCommandResult rootResult = await RunWslCommandAsync(
+            distribution,
+            ["realpath", "-e", "--", reportRoot],
+            cancellationToken);
+        if (!rootResult.Success)
+            return WslDeploymentHistoryListResult.Failed(
+                FriendlyFailure(rootResult, "report root does not exist or cannot be resolved"));
+
+        string canonicalRoot = rootResult.Output.Trim();
+        if (!DeploymentReportPathBoundary.TryNormalizeCanonicalPosixPath(canonicalRoot, out canonicalRoot))
+            return WslDeploymentHistoryListResult.Failed("The configured report root did not resolve to a safe absolute WSL path.");
+
+        WslCommandResult findResult = await RunWslCommandAsync(
+            distribution,
+            ["find", canonicalRoot, "-mindepth", "2", "-maxdepth", "2", "-type", "f", "-name", "*.json", "-print0"],
+            cancellationToken);
+        if (!findResult.Success)
+            return WslDeploymentHistoryListResult.Failed(
+                FriendlyFailure(findResult, "deployment history could not be enumerated"));
+
+        string[] discovered = findResult.Output
+            .Split('\0', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        List<string> safe = [];
+        foreach (string path in discovered)
+        {
+            if (!DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, path))
+                continue;
+            if (path.EndsWith("/latest.json", StringComparison.Ordinal))
+                continue;
+            safe.Add(path);
+        }
+
+        safe.Sort((left, right) => StringComparer.Ordinal.Compare(right, left));
+        int candidateCount = safe.Count;
+        bool truncated = candidateCount > MaximumHistoryCandidates;
+        if (truncated)
+            safe = safe.Take(MaximumHistoryCandidates).ToList();
+
+        return new WslDeploymentHistoryListResult(
+            true,
+            canonicalRoot,
+            safe,
+            candidateCount,
+            truncated,
             null);
     }
 
@@ -181,6 +253,8 @@ public sealed class WslDeploymentReportReader
             FileName = "wsl.exe",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true
         };
