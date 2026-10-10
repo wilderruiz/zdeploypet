@@ -88,7 +88,6 @@ public partial class MainWindow
 
         _latestReportDetailsText = new TextBlock
         {
-            Grid.ColumnSpan = 2,
             Margin = new Thickness(0, 10, 0, 0),
             TextWrapping = TextWrapping.Wrap,
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray),
