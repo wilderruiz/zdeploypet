@@ -36,6 +36,7 @@ public partial class MainWindow
         InitializeOperatorAccessControl();
         EnsureResponsiveActionPanel();
         EnsureActivityButton();
+        ApplyResponsiveActionSpacing();
         RefreshPda3ActionVisibility();
     }
 
@@ -144,7 +145,8 @@ public partial class MainWindow
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(12, 0, 0, 0)
         };
         DockPanel.SetDock(responsive, dock);
 
@@ -161,6 +163,19 @@ public partial class MainWindow
         _responsiveActionsPanel = responsive;
     }
 
+    private void ApplyResponsiveActionSpacing()
+    {
+        if (_responsiveActionsPanel is null) return;
+
+        foreach (UIElement child in _responsiveActionsPanel.Children)
+        {
+            if (child is not FrameworkElement element) continue;
+            element.Margin = child is Button button && string.Equals(button.Content?.ToString(), "i", StringComparison.Ordinal)
+                ? new Thickness(0, 0, 10, 10)
+                : new Thickness(0, 0, 12, 10);
+        }
+    }
+
     private void EnsureActivityButton()
     {
         if (_activityButton is not null || AccessOnboardingButton.Parent is not Panel actions) return;
@@ -168,7 +183,6 @@ public partial class MainWindow
         _activityButton = new Button
         {
             Content = "Console",
-            Margin = new Thickness(0, 0, 8, 6),
             Padding = new Thickness(16, 9, 16, 9),
             Visibility = Visibility.Collapsed
         };
