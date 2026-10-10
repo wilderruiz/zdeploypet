@@ -152,7 +152,13 @@ public sealed class DryRunPromptProtocol
 
             DryModeConfirmed = true;
             Stage = DryRunPromptStage.RunningDry;
-            _rolling = string.Empty;
+
+            if (Contains("DRY RUN COMPLETE"))
+            {
+                Stage = DryRunPromptStage.Complete;
+                _rolling = string.Empty;
+            }
+
             return null;
         }
 
