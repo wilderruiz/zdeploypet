@@ -10,6 +10,7 @@ public partial class MainWindow
 {
     private const double MinimumActivityPaneWidth = 220;
     private const double MinimumOperatorPaneWidth = 420;
+    private const string RawDeploymentScriptCategory = "deploy_millenova.sh";
 
     private ColumnDefinition? _activityPaneColumn;
     private ColumnDefinition? _activitySplitterColumn;
@@ -332,8 +333,16 @@ public partial class MainWindow
         entry.Category,
         entry.Message);
 
-    private static string FormatEmbeddedActivityRow(ActivityRow row) =>
-        $"{row.LocalTime} | {row.Level} | {row.Category} | {row.Message}";
+    private static string FormatEmbeddedActivityRow(ActivityRow row)
+    {
+        // Deployment-script output is already a console stream. Render it as the script
+        // printed it instead of wrapping every line in ZDeployPet's activity metadata.
+        // The message has still passed through ShellRuntime sanitization before arriving here.
+        if (string.Equals(row.Category, RawDeploymentScriptCategory, StringComparison.OrdinalIgnoreCase))
+            return row.Message;
+
+        return $"{row.LocalTime} | {row.Level} | {row.Category} | {row.Message}";
+    }
 
     private void ToggleEmbeddedActivityPane()
     {
