@@ -15,6 +15,15 @@ public partial class GitSafetyWindow : Window
         InitializeComponent();
         _profile = profile;
         ProfileText.Text = $"Profile: {profile.Name}   •   Repository: {profile.WindowsProjectPath}";
+
+        HelpTipFactory.AttachToButton(ApplyIgnoreButton, new HelpTipSpec(
+            "Keep deployment private keys outside Git.",
+            "ZDeployPet checks tracked files and unignored untracked files for common private-key markers and for ZDeployPet-style private-key filenames.",
+            WhenToUse: "Run this before release/push-oriented work and whenever deployment credentials or local project files change.",
+            WhatItDoes: "The scan is read-only. The separate .gitignore action adds a narrowly scoped managed block for ZDeployPet local/private paths and managed-key filenames while preserving the rest of your .gitignore.",
+            Example: "A managed key such as zdeploypet_millenova_ed25519 must remain in WSL ~/.ssh. Its .pub half may be installed on a server, but the private file must never appear in the project repository.",
+            Safety: "The scanner never copies, uploads, stages or deletes keys. A finding blocks readiness; adding .gitignore does not untrack a file that Git already knows about.",
+            Tip: "Public .pub files are deliberately not blanket-ignored because public keys are not secrets and some projects intentionally version them."));
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e) => await RunScanAsync();
@@ -119,18 +128,6 @@ public partial class GitSafetyWindow : Window
         }
 
         ResultTextBox.Text = text.ToString();
-    }
-
-    private void ScanHelpButton_Loaded(object sender, RoutedEventArgs e)
-    {
-        HelpTipFactory.AttachToButton(ScanHelpButton, new HelpTipSpec(
-            "Keep deployment private keys outside Git.",
-            "ZDeployPet checks tracked files and unignored untracked files for common private-key markers and for ZDeployPet-style private-key filenames.",
-            WhenToUse: "Run this before release/push-oriented work and whenever deployment credentials or local project files change.",
-            WhatItDoes: "The scan is read-only. The separate .gitignore action adds a narrowly scoped managed block for ZDeployPet local/private paths and managed-key filenames while preserving the rest of your .gitignore.",
-            Example: "A managed key such as zdeploypet_millenova_ed25519 must remain in WSL ~/.ssh. Its .pub half may be installed on a server, but the private file must never appear in the project repository.",
-            Safety: "The scanner never copies, uploads, stages or deletes keys. A finding blocks readiness; adding .gitignore does not untrack a file that Git already knows about.",
-            Tip: "Public .pub files are deliberately not blanket-ignored because public keys are not secrets and some projects intentionally version them."));
     }
 
     private void SetBusy(bool busy, string? status = null)
