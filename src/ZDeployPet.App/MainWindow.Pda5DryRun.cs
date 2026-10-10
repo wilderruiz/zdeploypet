@@ -55,7 +55,7 @@ public partial class MainWindow
             _activeProfile,
             _deploymentSession,
             targetsReady: () =>
-                _operatorAccessTargetsPassed &&
+                _deploymentSession.TargetsReady &&
                 _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring,
             refreshReports: async () => await RefreshLatestDeploymentReportAsync(),
             executionStateChanged: busy =>
