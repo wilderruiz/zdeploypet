@@ -64,18 +64,33 @@ The execution service uses `ProcessStartInfo.ArgumentList` / direct argument vec
 
 For the current interactive Millenova script, the narrow executor feeds only bounded numeric prompt choices. PDA-5 always appends deployment mode `1` (dry run); there is no code path in this executor that can submit live mode `2`. The app-owned `SSH_AUTH_SOCK` and `SSH_AGENT_PID` values are injected through `/usr/bin/env` as fixed environment assignments before `/usr/bin/bash` executes the configured relative script from the verified WSL project directory.
 
+## Current implementation slice
+
+Implemented on `main`:
+
+- Core dry-run guard rejects changed/missing script fingerprints, non-READY access, unsafe release tokens, non-allowlisted targets and concurrent execution;
+- per-user script approval records exact profile/script/SHA-256/timestamp and must match the current file immediately before launch;
+- direct WSL executor uses `ProcessStartInfo.ArgumentList`, verified WSL project directory, fixed app-owned agent environment and `/usr/bin/bash` on the configured relative script;
+- controller exposes a revalidated execution runtime only after live agent inspection plus a fresh comparison between the currently approved deployment key and the bounded lease fingerprint;
+- a Core single-execution gate prevents a second deployment execution from acquiring authority concurrently;
+- the shell now exposes **Dry run…** and a dedicated operator window with exact script fingerprint approval, allowlisted target selection and PATCH/MINOR/MAJOR release choices;
+- the current Millenova adapter exposes `hostinger`, `vps`, and when both are configured, `all`; VPS-only omits the release-choice prompt while every PDA-5 path fixes deployment mode to dry run;
+- ZPet switches to RUNNING while a dry-run process is executing;
+- after process completion ZDeployPet records bounded PASS/FAIL/completion highlights in the sanitized Console / Activity stream and explicitly refreshes PDA-4 latest/history reporter truth;
+- user-reported Release test run on 2026-10-10 passed 74 Core tests and 21 Infrastructure tests before the UI/controller execution slice; a fresh build/test run is required for the new shell slice.
+
 ## Initial implementation sequence
 
 1. ✅ define immutable Core dry-run request, guard context, state and validation contracts;
 2. ✅ add Core tests for changed script fingerprint, non-READY access, invalid target/release, concurrent execution and shell-like input rejection;
 3. ✅ add separate per-user deployment-script approval contract/store plus matching validation and persistence tests;
 4. ✅ add a narrow WSL executor using direct argument vectors, verified WSL working directory, fixed agent environment and bounded interactive prompt choices; no operator input is interpolated into `sh -c`;
-5. 🟡 revalidate the PDA-2 session immediately before launch; executor-side agent distribution/runtime validation exists, full controller wiring remains pending;
-6. add a single in-process execution lease/lock;
-7. add a shell dry-run surface with allowlisted target and bounded release controls; no arbitrary command field;
-8. stream sanitized lifecycle/status output to Console / Activity;
-9. refresh PDA-4 latest/history after completion and display reporter truth as the authoritative outcome;
-10. run the published-development Millenova dry-run smoke from ZDeployPet with no manual terminal script invocation.
+5. ✅ revalidate the PDA-2 session immediately before launch, including current approved-key fingerprint versus the live bounded lease;
+6. ✅ add a single in-process execution lease/lock with Core coverage;
+7. ✅ add a shell dry-run surface with allowlisted target and bounded release controls; no arbitrary command field;
+8. 🟡 sanitized start/exit/highlight lifecycle is wired to Console / Activity; true line-by-line streaming remains optional follow-up if operator smoke shows it is needed;
+9. ✅ refresh PDA-4 latest/history after process completion and direct the operator to reporter truth as the authoritative outcome;
+10. 🟡 published-development Millenova dry-run smoke from ZDeployPet remains pending.
 
 ## Acceptance gate
 
