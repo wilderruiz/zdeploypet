@@ -20,9 +20,6 @@ public partial class MainWindow
     {
         if (_operatorAccessCard is not null) return;
 
-        // Discovery originally owns rows 0 (profile summary) and 1 (results).
-        // Insert the simple daily deployment-access surface between them without
-        // disturbing the existing discovery implementation.
         if (DiscoveryPanel.RowDefinitions.Count < 2) return;
         DiscoveryPanel.RowDefinitions.Insert(1, new RowDefinition { Height = GridLength.Auto });
         Grid.SetRow(ResultsTextBox, 2);
@@ -32,12 +29,13 @@ public partial class MainWindow
         cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         StackPanel copy = new();
-        TextBlock label = new()
+        copy.Children.Add(new TextBlock
         {
             Text = "Deployment access",
             FontWeight = FontWeights.SemiBold,
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
-        };
+        });
+
         _operatorAccessStateText = new TextBlock
         {
             Text = "OFF",
@@ -53,7 +51,6 @@ public partial class MainWindow
             TextWrapping = TextWrapping.Wrap,
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
         };
-        copy.Children.Add(label);
         copy.Children.Add(_operatorAccessStateText);
         copy.Children.Add(_operatorAccessMessageText);
         cardGrid.Children.Add(copy);
@@ -130,9 +127,6 @@ public partial class MainWindow
         {
             _operatorAccessTargetsPassed = false;
 
-            // If a trusted terminal is already open for this app-owned agent, do not
-            // throw it away. Re-check it first so the one-button flow can finish as
-            // soon as ssh-add has completed.
             if (_deploymentSession.HasOwnedAgent)
                 await _deploymentSession.CheckAsync(_activeProfile);
             else
@@ -149,8 +143,6 @@ public partial class MainWindow
                 "Session",
                 "Turn on requested. Waiting for the trusted OpenSSH key prompt to complete.");
 
-            // Poll the dedicated agent while the trusted terminal is open. No secret
-            // crosses this boundary: the passphrase remains inside OpenSSH.
             for (int attempt = 0; attempt < 120; attempt++)
             {
                 await Task.Delay(TimeSpan.FromSeconds(1));
@@ -166,7 +158,10 @@ public partial class MainWindow
 
             if (_deploymentSession.State is not DeploymentAccessSessionState.Ready and not DeploymentAccessSessionState.Expiring)
             {
-                _deploymentSession.Message = _deploymentSession.Message;
+                ShellRuntime.Activity.Add(
+                    ShellActivityLevel.Warning,
+                    "Session",
+                    "The trusted key prompt did not complete within the automatic verification window. Use Turn on again after ssh-add finishes.");
                 return;
             }
 
