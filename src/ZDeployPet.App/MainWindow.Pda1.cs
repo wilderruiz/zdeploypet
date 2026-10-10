@@ -124,8 +124,12 @@ public partial class MainWindow
             DiscoveryPanel.Visibility == Visibility.Visible && _activeProfile is not null
                 ? Visibility.Visible
                 : Visibility.Collapsed;
-        AccessOnboardingButton.Visibility = actionVisibility;
-        if (_deploymentSessionButton is not null) _deploymentSessionButton.Visibility = actionVisibility;
+
+        // PDA-3 simple operator mode owns deployment access in the main discovery
+        // surface. Keep the detailed access/session windows available from the top
+        // menu as diagnostics, but remove their duplicate daily buttons here.
+        AccessOnboardingButton.Visibility = Visibility.Collapsed;
+        if (_deploymentSessionButton is not null) _deploymentSessionButton.Visibility = Visibility.Collapsed;
         if (_gitSafetyButton is not null) _gitSafetyButton.Visibility = actionVisibility;
 
         ShellRuntime.State.UpdateProfile(_activeProfile?.Name);
