@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -176,7 +177,7 @@ public partial class MainWindow
     {
         if (_activityConsoleTextBox is null) return;
 
-        int wrapWidth = GetEmbeddedConsoleWrapWidth();
+        double wrapWidth = GetEmbeddedConsoleWrapPixelWidth();
         StringBuilder text = new();
         foreach (ActivityRow row in _embeddedActivityRows)
         {
@@ -189,40 +190,131 @@ public partial class MainWindow
         RefreshEmbeddedActivityStatus();
     }
 
-    private int GetEmbeddedConsoleWrapWidth()
+    private double GetEmbeddedConsoleWrapPixelWidth()
     {
         if (_activityConsoleTextBox is null || _activityConsoleTextBox.ActualWidth <= 0)
-            return 78;
+            return 500;
 
-        double usableWidth = Math.Max(180, _activityConsoleTextBox.ActualWidth - 28);
-        // Cascadia Mono / Consolas at 12 px averages roughly 7.2 px per character.
-        // We still leave WPF TextWrapping enabled; this deterministic pass guarantees
-        // that long activity rows visibly reflow even on hosts where TextBox measures
-        // its internal text presenter more generously than the docked pane.
-        int characters = (int)Math.Floor(usableWidth / 7.2);
-        return Math.Clamp(characters, 28, 220);
+        // Reserve the TextBox padding plus a little room for the vertical scrollbar.
+        // Wrapping is measured using the actual console font and DPI below, so it
+        // stays correct when the operator drags the splitter or Windows scaling changes.
+        return Math.Max(120, _activityConsoleTextBox.ActualWidth - 38);
     }
 
-    private static void AppendWrappedConsoleLine(StringBuilder output, string line, int maxCharacters)
+    private void AppendWrappedConsoleLine(StringBuilder output, string line, double maxPixelWidth)
     {
-        string remaining = line.TrimEnd();
+        if (_activityConsoleTextBox is null)
+        {
+            output.Append(line);
+            return;
+        }
+
+        string[] words = line.TrimEnd().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0) return;
+
+        const string continuationIndent = "    ";
+        string current = string.Empty;
         bool continuation = false;
 
-        while (remaining.Length > maxCharacters)
+        foreach (string word in words)
         {
-            int available = continuation ? Math.Max(12, maxCharacters - 4) : maxCharacters;
-            int breakAt = remaining.LastIndexOf(' ', Math.Min(available, remaining.Length - 1), Math.Min(available, remaining.Length - 1) + 1);
-            if (breakAt < Math.Max(8, available / 2))
-                breakAt = Math.Min(available, remaining.Length);
+            string prefix = continuation ? continuationIndent : string.Empty;
+            string candidate = current.Length == 0 ? prefix + word : current + " " + word;
 
-            if (continuation) output.Append("    ");
-            output.AppendLine(remaining[..breakAt].TrimEnd());
-            remaining = remaining[breakAt..].TrimStart();
+            if (MeasureConsoleTextWidth(candidate) <= maxPixelWidth)
+            {
+                current = candidate;
+                continue;
+            }
+
+            if (current.Length > 0)
+            {
+                output.AppendLine(current);
+                continuation = true;
+                current = continuationIndent + word;
+            }
+            else
+            {
+                AppendLongConsoleToken(output, word, maxPixelWidth, continuationIndent, ref continuation, ref current);
+            }
+
+            if (MeasureConsoleTextWidth(current) > maxPixelWidth)
+                AppendLongConsoleToken(output, current.TrimStart(), maxPixelWidth, continuationIndent, ref continuation, ref current);
+        }
+
+        if (current.Length > 0)
+            output.Append(current);
+    }
+
+    private void AppendLongConsoleToken(
+        StringBuilder output,
+        string token,
+        double maxPixelWidth,
+        string continuationIndent,
+        ref bool continuation,
+        ref string current)
+    {
+        string remaining = token;
+        while (remaining.Length > 0)
+        {
+            string prefix = continuation ? continuationIndent : string.Empty;
+            int take = FindFittingConsolePrefixLength(prefix, remaining, maxPixelWidth);
+            if (take >= remaining.Length)
+            {
+                current = prefix + remaining;
+                return;
+            }
+
+            output.AppendLine(prefix + remaining[..take]);
+            remaining = remaining[take..];
             continuation = true;
         }
 
-        if (continuation) output.Append("    ");
-        output.Append(remaining);
+        current = string.Empty;
+    }
+
+    private int FindFittingConsolePrefixLength(string prefix, string value, double maxPixelWidth)
+    {
+        int low = 1;
+        int high = value.Length;
+        int best = 1;
+
+        while (low <= high)
+        {
+            int mid = low + ((high - low) / 2);
+            if (MeasureConsoleTextWidth(prefix + value[..mid]) <= maxPixelWidth)
+            {
+                best = mid;
+                low = mid + 1;
+            }
+            else
+            {
+                high = mid - 1;
+            }
+        }
+
+        return Math.Max(1, best);
+    }
+
+    private double MeasureConsoleTextWidth(string value)
+    {
+        if (_activityConsoleTextBox is null || string.IsNullOrEmpty(value)) return 0;
+
+        Typeface typeface = new(
+            _activityConsoleTextBox.FontFamily,
+            _activityConsoleTextBox.FontStyle,
+            _activityConsoleTextBox.FontWeight,
+            _activityConsoleTextBox.FontStretch);
+        double pixelsPerDip = VisualTreeHelper.GetDpi(_activityConsoleTextBox).PixelsPerDip;
+        FormattedText formatted = new(
+            value,
+            CultureInfo.CurrentUICulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            _activityConsoleTextBox.FontSize,
+            Brushes.White,
+            pixelsPerDip);
+        return formatted.WidthIncludingTrailingWhitespace;
     }
 
     private void RefreshEmbeddedActivityState()
