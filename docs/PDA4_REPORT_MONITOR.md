@@ -81,7 +81,7 @@ Requirements:
 
 ## Current implementation slice
 
-Implemented on `main`, awaiting published-development smoke:
+Implemented on `main`:
 
 - WSL history discovery scans dated `*.json` report files below the canonical report root and excludes root `latest.json`;
 - candidate enumeration is capped at 90 paths before report parsing, while the UI renders at most the newest 30 trusted deployment ids;
@@ -91,7 +91,9 @@ Implemented on `main`, awaiting published-development smoke:
 - malformed/untrusted candidates are skipped and counted in the history status line;
 - the history table shows Started, Release, Mode, Target, Result and Duration plus row-specific Summary / Full log actions;
 - row actions use the selected report's own artifact paths and the existing bounded read-only artifact viewer;
-- WSL stdout/stderr decoding is explicitly UTF-8 to correct middle-dot reporter labels.
+- WSL stdout/stderr decoding is explicitly UTF-8 to correct middle-dot reporter labels;
+- deterministic Core history selection now owns bounded candidate processing, path/artifact validation, deployment-id deduplication, newest-first ordering and row limiting;
+- automated Core tests now cover history candidate bounds, row bounds, deduplication, ordering, malformed/partial JSON, report-path escape and artifact-path escape; local test execution is still pending after this commit.
 
 ## Initial implementation sequence
 
@@ -101,12 +103,12 @@ Implemented on `main`, awaiting published-development smoke:
 4. ✅ add a narrow WSL read-only report-root reader for `latest.json` with canonical root/file containment and bounded payload size;
 5. ✅ add a shell **Latest deployment report** card showing deployment id, release, mode, target, timestamps, duration and authoritative PASS/FAILED/CANCELLED result;
 6. ✅ add read-only **View summary** / **View full log** actions for validated bounded artifacts;
-7. 🟡 explicit UTF-8 artifact decoding implemented; published-development smoke for `·` labels pending;
-8. 🟡 bounded WSL history enumerator implemented; published-development smoke pending;
-9. 🟡 **Deployment history** table implemented with newest 30 trusted runs and per-row Summary / Full log actions; published-development smoke pending;
-10. add automated tests for history enumeration bounds, deduplication, ordering, path escape and partial JSON;
+7. 🟡 explicit UTF-8 artifact decoding implemented; retain final acceptance check for special `·` labels;
+8. ✅ bounded WSL history enumerator implemented and published-development history loading reported successful on 2026-10-10;
+9. ✅ **Deployment history** table implemented; published-development table smoke reported successful on 2026-10-10;
+10. 🟡 automated Core history tests added for bounds, deduplication, ordering, path escape and partial JSON; local test run pending;
 11. 🟡 manual Refresh refreshes both latest and history; bounded watch/poll behavior remains later work without deployment-side writes;
-12. ✅ smoke the latest-report card and summary/full-log viewers against real Millenova reporter output; historical-table smoke remains pending.
+12. ✅ latest-report card, summary/full-log viewers and historical table have real Millenova published-development smoke; final PDA-4 acceptance still waits on tests and the remaining refresh/watch decision.
 
 ## Acceptance gate
 
@@ -123,5 +125,5 @@ PDA-4 is accepted when:
 - validated summary/full-log artifacts stay bounded under the configured report root;
 - UTF-8 reporter text, including middle-dot labels, renders correctly;
 - monitoring performs no deployment-side write;
-- automated parser/path-boundary/history-enumeration tests pass;
+- automated parser/path-boundary/history-selection tests pass;
 - published-development smoke passes against the Millenova report root for both latest and historical reports.
