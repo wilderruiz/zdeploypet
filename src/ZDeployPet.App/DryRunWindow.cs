@@ -379,11 +379,15 @@ public sealed class DryRunWindow : Window
             _targetCombo.IsEnabled = false;
             _releaseCombo.IsEnabled = false;
             _executionStateChanged(true);
-            SetStatus("RUNNING — the approved script is executing in WSL dry-run mode.");
+            SetStatus("RUNNING — the approved script is executing in WSL dry-run mode. Live deploy_millenova.sh output is streaming to Console / Activity.");
             ShellRuntime.Activity.Add(
                 ShellActivityLevel.Info,
                 "Dry run",
                 $"Dry run started for '{_profile.Name}', target '{target.Label}', release '{releaseToken}'. Script SHA-256 {_currentSha256}.");
+            ShellRuntime.Activity.Add(
+                ShellActivityLevel.Info,
+                _profile.ScriptRelativePath,
+                "--- live script output begins ---");
 
             try
             {
@@ -392,7 +396,16 @@ public sealed class DryRunWindow : Window
                     _profile.WslProjectPath,
                     _profile.ScriptRelativePath,
                     runtime,
-                    plan);
+                    plan,
+                    outputLine: (line, isError) =>
+                    {
+                        Dispatcher.BeginInvoke(new Action(() => AddLiveScriptLine(line, isError)));
+                    });
+
+                ShellRuntime.Activity.Add(
+                    ShellActivityLevel.Info,
+                    _profile.ScriptRelativePath,
+                    "--- live script output ends ---");
 
                 if (!result.Started)
                 {
@@ -406,7 +419,6 @@ public sealed class DryRunWindow : Window
                     "Dry run",
                     $"Dry-run process exited with code {result.ExitCode}. Reporter truth will now be refreshed and remains authoritative.");
 
-                AddExecutionHighlights(result.StandardOutput, result.StandardError);
                 SetStatus($"PROCESS COMPLETE — exit code {result.ExitCode}. Refreshing authoritative deployment report…");
                 await _refreshReports();
                 SetStatus($"PROCESS COMPLETE — exit code {result.ExitCode}. Review Latest deployment report / Deployment history for authoritative reporter truth.", result.ExitCode != 0);
@@ -432,34 +444,24 @@ public sealed class DryRunWindow : Window
         }
     }
 
-    private void AddExecutionHighlights(string stdout, string stderr)
+    private void AddLiveScriptLine(string line, bool isError)
     {
-        IEnumerable<string> lines = stdout
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-            .Concat(stderr.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries));
+        string trimmed = line.TrimEnd();
+        if (trimmed.Length == 0)
+            return;
 
-        string[] highlights = lines
-            .Select(line => line.Trim())
-            .Where(line =>
-                line.StartsWith("PASS", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("FAIL", StringComparison.OrdinalIgnoreCase) ||
-                line.Contains("DRY RUN COMPLETE", StringComparison.OrdinalIgnoreCase) ||
-                line.Contains("PREFLIGHT BLOCKER", StringComparison.OrdinalIgnoreCase) ||
-                line.Contains("DEPLOYMENT FAILURE", StringComparison.OrdinalIgnoreCase))
-            .Take(40)
-            .ToArray();
-
-        foreach (string line in highlights)
-        {
-            ShellActivityLevel level = line.StartsWith("FAIL", StringComparison.OrdinalIgnoreCase) ||
-                                       line.Contains("BLOCKER", StringComparison.OrdinalIgnoreCase) ||
-                                       line.Contains("FAILURE", StringComparison.OrdinalIgnoreCase)
+        ShellActivityLevel level = isError
+            ? ShellActivityLevel.Warning
+            : trimmed.StartsWith("FAIL", StringComparison.OrdinalIgnoreCase) ||
+              trimmed.Contains("BLOCKER", StringComparison.OrdinalIgnoreCase) ||
+              trimmed.Contains("FAILURE", StringComparison.OrdinalIgnoreCase)
                 ? ShellActivityLevel.Warning
-                : line.Contains("DRY RUN COMPLETE", StringComparison.OrdinalIgnoreCase)
+                : trimmed.StartsWith("PASS", StringComparison.OrdinalIgnoreCase) ||
+                  trimmed.Contains("DRY RUN COMPLETE", StringComparison.OrdinalIgnoreCase)
                     ? ShellActivityLevel.Success
                     : ShellActivityLevel.Info;
-            ShellRuntime.Activity.Add(level, "Dry run", line);
-        }
+
+        ShellRuntime.Activity.Add(level, _profile.ScriptRelativePath, trimmed);
     }
 
     private List<TargetOption> BuildTargetOptions()
