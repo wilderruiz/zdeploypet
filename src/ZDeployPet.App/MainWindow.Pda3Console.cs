@@ -1,8 +1,8 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 
 namespace ZDeployPet.App;
@@ -13,7 +13,7 @@ public partial class MainWindow
     private ColumnDefinition? _activitySplitterColumn;
     private GridSplitter? _activityPaneSplitter;
     private Border? _activityPane;
-    private TextBox? _activityConsoleTextBox;
+    private RichTextBox? _activityConsoleTextBox;
     private TextBlock? _activityProfileText;
     private TextBlock? _activitySessionText;
     private TextBlock? _activityStatusText;
@@ -98,23 +98,29 @@ public partial class MainWindow
             BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
             BorderThickness = new Thickness(1)
         };
-        _activityConsoleTextBox = new TextBox
+
+        FlowDocument document = new()
+        {
+            PagePadding = new Thickness(0),
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 12,
+            Foreground = new SolidColorBrush(Color.FromRgb(0xD8, 0xDE, 0xE9)),
+            Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x0D, 0x10))
+        };
+
+        _activityConsoleTextBox = new RichTextBox(document)
         {
             IsReadOnly = true,
-            AcceptsReturn = true,
-            AcceptsTab = true,
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = 12,
             Foreground = new SolidColorBrush(Color.FromRgb(0xD8, 0xDE, 0xE9)),
             Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x0D, 0x10)),
             BorderThickness = new Thickness(0),
             Padding = new Thickness(10),
-            TextWrapping = TextWrapping.Wrap,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             SelectionBrush = FindBrush("AppSelectionBrush", Brushes.DimGray)
         };
-        _activityConsoleTextBox.SizeChanged += EmbeddedConsoleTextBox_SizeChanged;
         consoleBorder.Child = _activityConsoleTextBox;
         Grid.SetRow(consoleBorder, 2);
         root.Children.Add(consoleBorder);
@@ -167,154 +173,30 @@ public partial class MainWindow
     private void EmbeddedActivity_StateChanged(object? sender, PropertyChangedEventArgs e) =>
         Dispatcher.InvokeAsync(RefreshEmbeddedActivityState);
 
-    private void EmbeddedConsoleTextBox_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) < 2) return;
-        RefreshEmbeddedActivityConsole();
-    }
-
     private void RefreshEmbeddedActivityConsole()
     {
         if (_activityConsoleTextBox is null) return;
 
-        double wrapWidth = GetEmbeddedConsoleWrapPixelWidth();
-        StringBuilder text = new();
+        FlowDocument document = _activityConsoleTextBox.Document;
+        document.Blocks.Clear();
+
+        Brush textBrush = new SolidColorBrush(Color.FromRgb(0xD8, 0xDE, 0xE9));
         foreach (ActivityRow row in _embeddedActivityRows)
         {
-            AppendWrappedConsoleLine(text, FormatEmbeddedActivityRow(row), wrapWidth);
-            text.AppendLine();
+            Paragraph paragraph = new(new Run(FormatEmbeddedActivityRow(row)))
+            {
+                Margin = new Thickness(0),
+                Padding = new Thickness(0),
+                FontFamily = _activityConsoleTextBox.FontFamily,
+                FontSize = _activityConsoleTextBox.FontSize,
+                Foreground = textBrush,
+                TextAlignment = TextAlignment.Left
+            };
+            document.Blocks.Add(paragraph);
         }
 
-        _activityConsoleTextBox.Text = text.ToString().TrimEnd();
         _activityConsoleTextBox.ScrollToEnd();
         RefreshEmbeddedActivityStatus();
-    }
-
-    private double GetEmbeddedConsoleWrapPixelWidth()
-    {
-        if (_activityConsoleTextBox is null || _activityConsoleTextBox.ActualWidth <= 0)
-            return 500;
-
-        // Reserve the TextBox padding plus a little room for the vertical scrollbar.
-        // Wrapping is measured using the actual console font and DPI below, so it
-        // stays correct when the operator drags the splitter or Windows scaling changes.
-        return Math.Max(120, _activityConsoleTextBox.ActualWidth - 38);
-    }
-
-    private void AppendWrappedConsoleLine(StringBuilder output, string line, double maxPixelWidth)
-    {
-        if (_activityConsoleTextBox is null)
-        {
-            output.Append(line);
-            return;
-        }
-
-        string[] words = line.TrimEnd().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length == 0) return;
-
-        const string continuationIndent = "    ";
-        string current = string.Empty;
-        bool continuation = false;
-
-        foreach (string word in words)
-        {
-            string prefix = continuation ? continuationIndent : string.Empty;
-            string candidate = current.Length == 0 ? prefix + word : current + " " + word;
-
-            if (MeasureConsoleTextWidth(candidate) <= maxPixelWidth)
-            {
-                current = candidate;
-                continue;
-            }
-
-            if (current.Length > 0)
-            {
-                output.AppendLine(current);
-                continuation = true;
-                current = continuationIndent + word;
-            }
-            else
-            {
-                AppendLongConsoleToken(output, word, maxPixelWidth, continuationIndent, ref continuation, ref current);
-            }
-
-            if (MeasureConsoleTextWidth(current) > maxPixelWidth)
-                AppendLongConsoleToken(output, current.TrimStart(), maxPixelWidth, continuationIndent, ref continuation, ref current);
-        }
-
-        if (current.Length > 0)
-            output.Append(current);
-    }
-
-    private void AppendLongConsoleToken(
-        StringBuilder output,
-        string token,
-        double maxPixelWidth,
-        string continuationIndent,
-        ref bool continuation,
-        ref string current)
-    {
-        string remaining = token;
-        while (remaining.Length > 0)
-        {
-            string prefix = continuation ? continuationIndent : string.Empty;
-            int take = FindFittingConsolePrefixLength(prefix, remaining, maxPixelWidth);
-            if (take >= remaining.Length)
-            {
-                current = prefix + remaining;
-                return;
-            }
-
-            output.AppendLine(prefix + remaining[..take]);
-            remaining = remaining[take..];
-            continuation = true;
-        }
-
-        current = string.Empty;
-    }
-
-    private int FindFittingConsolePrefixLength(string prefix, string value, double maxPixelWidth)
-    {
-        int low = 1;
-        int high = value.Length;
-        int best = 1;
-
-        while (low <= high)
-        {
-            int mid = low + ((high - low) / 2);
-            if (MeasureConsoleTextWidth(prefix + value[..mid]) <= maxPixelWidth)
-            {
-                best = mid;
-                low = mid + 1;
-            }
-            else
-            {
-                high = mid - 1;
-            }
-        }
-
-        return Math.Max(1, best);
-    }
-
-    private double MeasureConsoleTextWidth(string value)
-    {
-        if (_activityConsoleTextBox is null || string.IsNullOrEmpty(value)) return 0;
-
-        Typeface typeface = new(
-            _activityConsoleTextBox.FontFamily,
-            _activityConsoleTextBox.FontStyle,
-            _activityConsoleTextBox.FontWeight,
-            _activityConsoleTextBox.FontStretch);
-        double pixelsPerDip = VisualTreeHelper.GetDpi(_activityConsoleTextBox).PixelsPerDip;
-        FormattedText formatted = new(
-            value,
-            CultureInfo.CurrentUICulture,
-            FlowDirection.LeftToRight,
-            typeface,
-            _activityConsoleTextBox.FontSize,
-            Brushes.White,
-            pixelsPerDip);
-        return formatted.WidthIncludingTrailingWhitespace;
     }
 
     private void RefreshEmbeddedActivityState()
@@ -334,24 +216,26 @@ public partial class MainWindow
 
     private void EmbeddedCopySelection_Click(object sender, RoutedEventArgs e)
     {
-        if (_activityConsoleTextBox is null || string.IsNullOrEmpty(_activityConsoleTextBox.SelectedText))
+        if (_activityConsoleTextBox is null || string.IsNullOrEmpty(_activityConsoleTextBox.Selection.Text))
         {
             if (_activityStatusText is not null) _activityStatusText.Text = "Select console text first.";
             _activityConsoleTextBox?.Focus();
             return;
         }
-        Clipboard.SetText(_activityConsoleTextBox.SelectedText);
+
+        Clipboard.SetText(_activityConsoleTextBox.Selection.Text);
         if (_activityStatusText is not null) _activityStatusText.Text = "Copied selection.";
     }
 
     private void EmbeddedCopyAll_Click(object sender, RoutedEventArgs e)
     {
-        if (_activityConsoleTextBox is null || string.IsNullOrWhiteSpace(_activityConsoleTextBox.Text))
+        if (_embeddedActivityRows.Count == 0)
         {
             if (_activityStatusText is not null) _activityStatusText.Text = "No activity to copy yet.";
             return;
         }
-        Clipboard.SetText(_activityConsoleTextBox.Text);
+
+        Clipboard.SetText(string.Join(Environment.NewLine, _embeddedActivityRows.Select(FormatEmbeddedActivityRow)));
         if (_activityStatusText is not null) _activityStatusText.Text = $"Copied all {_embeddedActivityRows.Count} activities.";
     }
 
