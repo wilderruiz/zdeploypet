@@ -113,6 +113,7 @@ public partial class MainWindow
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             SelectionBrush = FindBrush("AppSelectionBrush", Brushes.DimGray)
         };
+        _activityConsoleTextBox.SizeChanged += EmbeddedConsoleTextBox_SizeChanged;
         consoleBorder.Child = _activityConsoleTextBox;
         Grid.SetRow(consoleBorder, 2);
         root.Children.Add(consoleBorder);
@@ -157,29 +158,71 @@ public partial class MainWindow
     {
         Dispatcher.InvokeAsync(() =>
         {
-            ActivityRow row = ToEmbeddedActivityRow(entry);
-            _embeddedActivityRows.Add(row);
-            if (_activityConsoleTextBox is null) return;
-            if (_activityConsoleTextBox.Text.Length > 0)
-                _activityConsoleTextBox.AppendText(Environment.NewLine);
-            _activityConsoleTextBox.AppendText(FormatEmbeddedActivityRow(row));
-            _activityConsoleTextBox.ScrollToEnd();
-            RefreshEmbeddedActivityStatus();
+            _embeddedActivityRows.Add(ToEmbeddedActivityRow(entry));
+            RefreshEmbeddedActivityConsole();
         });
     }
 
     private void EmbeddedActivity_StateChanged(object? sender, PropertyChangedEventArgs e) =>
         Dispatcher.InvokeAsync(RefreshEmbeddedActivityState);
 
+    private void EmbeddedConsoleTextBox_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) < 2) return;
+        RefreshEmbeddedActivityConsole();
+    }
+
     private void RefreshEmbeddedActivityConsole()
     {
         if (_activityConsoleTextBox is null) return;
+
+        int wrapWidth = GetEmbeddedConsoleWrapWidth();
         StringBuilder text = new();
         foreach (ActivityRow row in _embeddedActivityRows)
-            text.AppendLine(FormatEmbeddedActivityRow(row));
+        {
+            AppendWrappedConsoleLine(text, FormatEmbeddedActivityRow(row), wrapWidth);
+            text.AppendLine();
+        }
+
         _activityConsoleTextBox.Text = text.ToString().TrimEnd();
         _activityConsoleTextBox.ScrollToEnd();
         RefreshEmbeddedActivityStatus();
+    }
+
+    private int GetEmbeddedConsoleWrapWidth()
+    {
+        if (_activityConsoleTextBox is null || _activityConsoleTextBox.ActualWidth <= 0)
+            return 78;
+
+        double usableWidth = Math.Max(180, _activityConsoleTextBox.ActualWidth - 28);
+        // Cascadia Mono / Consolas at 12 px averages roughly 7.2 px per character.
+        // We still leave WPF TextWrapping enabled; this deterministic pass guarantees
+        // that long activity rows visibly reflow even on hosts where TextBox measures
+        // its internal text presenter more generously than the docked pane.
+        int characters = (int)Math.Floor(usableWidth / 7.2);
+        return Math.Clamp(characters, 28, 220);
+    }
+
+    private static void AppendWrappedConsoleLine(StringBuilder output, string line, int maxCharacters)
+    {
+        string remaining = line.TrimEnd();
+        bool continuation = false;
+
+        while (remaining.Length > maxCharacters)
+        {
+            int available = continuation ? Math.Max(12, maxCharacters - 4) : maxCharacters;
+            int breakAt = remaining.LastIndexOf(' ', Math.Min(available, remaining.Length - 1), Math.Min(available, remaining.Length - 1) + 1);
+            if (breakAt < Math.Max(8, available / 2))
+                breakAt = Math.Min(available, remaining.Length);
+
+            if (continuation) output.Append("    ");
+            output.AppendLine(remaining[..breakAt].TrimEnd());
+            remaining = remaining[breakAt..].TrimStart();
+            continuation = true;
+        }
+
+        if (continuation) output.Append("    ");
+        output.Append(remaining);
     }
 
     private void RefreshEmbeddedActivityState()
