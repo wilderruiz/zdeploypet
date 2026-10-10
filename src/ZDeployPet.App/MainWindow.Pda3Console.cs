@@ -8,6 +8,9 @@ namespace ZDeployPet.App;
 
 public partial class MainWindow
 {
+    private const double MinimumActivityPaneWidth = 220;
+    private const double MinimumOperatorPaneWidth = 420;
+
     private ColumnDefinition? _activityPaneColumn;
     private ColumnDefinition? _activitySplitterColumn;
     private GridSplitter? _activityPaneSplitter;
@@ -25,14 +28,19 @@ public partial class MainWindow
         Grid root = new()
         {
             Margin = new Thickness(14),
-            Background = FindBrush("AppBackgroundBrush", Brushes.Black)
+            Background = FindBrush("AppBackgroundBrush", Brushes.Black),
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        DockPanel header = new() { LastChildFill = true };
+        DockPanel header = new()
+        {
+            LastChildFill = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
         Button help = HelpTipFactory.Create(new HelpTipSpec(
             "Read the live ZDeployPet activity console.",
             "This pane follows application, profile, session, probe and Git-safety activity as it happens.",
@@ -45,7 +53,10 @@ public partial class MainWindow
         DockPanel.SetDock(help, Dock.Right);
         header.Children.Add(help);
 
-        StackPanel heading = new();
+        StackPanel heading = new()
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
         heading.Children.Add(new TextBlock
         {
             Text = "Console / Activity",
@@ -69,7 +80,8 @@ public partial class MainWindow
             Padding = new Thickness(10, 6, 10, 6),
             Background = FindBrush("AppSurfaceBrush", Brushes.DarkSlateGray),
             BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
-            BorderThickness = new Thickness(1)
+            BorderThickness = new Thickness(1),
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
         WrapPanel state = new()
         {
@@ -128,7 +140,8 @@ public partial class MainWindow
             Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x0D, 0x10)),
             BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
             BorderThickness = new Thickness(1),
-            ClipToBounds = true
+            ClipToBounds = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
         _activityConsoleTextBox = new TextBox
@@ -143,24 +156,22 @@ public partial class MainWindow
             BorderThickness = new Thickness(0),
             Padding = new Thickness(10),
             TextWrapping = TextWrapping.Wrap,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Top,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             SelectionBrush = FindBrush("AppSelectionBrush", Brushes.DimGray)
         };
-        consoleBorder.SizeChanged += (_, e) =>
-        {
-            if (_activityConsoleTextBox is null) return;
-            double width = Math.Max(120, e.NewSize.Width - 2);
-            _activityConsoleTextBox.Width = width;
-            _activityConsoleTextBox.MaxWidth = width;
-        };
         consoleBorder.Child = _activityConsoleTextBox;
         Grid.SetRow(consoleBorder, 2);
         root.Children.Add(consoleBorder);
 
-        Grid footer = new() { Margin = new Thickness(0, 10, 0, 0) };
+        Grid footer = new()
+        {
+            Margin = new Thickness(0, 10, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
         footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -176,13 +187,13 @@ public partial class MainWindow
         WrapPanel footerActions = new()
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
         Button copyAll = new()
         {
             Content = "Copy all",
             Padding = new Thickness(10, 6, 10, 6),
-            Margin = new Thickness(4, 2, 4, 2),
+            Margin = new Thickness(0, 2, 8, 2),
             MinWidth = 72
         };
         copyAll.Click += EmbeddedCopyAll_Click;
@@ -192,7 +203,7 @@ public partial class MainWindow
         {
             Content = "Copy selection",
             Padding = new Thickness(10, 6, 10, 6),
-            Margin = new Thickness(4, 2, 0, 2),
+            Margin = new Thickness(0, 2, 0, 2),
             MinWidth = 96
         };
         copySelection.Click += EmbeddedCopySelection_Click;
@@ -203,6 +214,38 @@ public partial class MainWindow
 
         Grid.SetRow(footer, 3);
         root.Children.Add(footer);
+
+        // WPF can otherwise keep Auto-sized descendants at their previous desired
+        // width after a GridSplitter move. Constrain every responsive surface to the
+        // live console viewport so header, state strip, console and footer all obey
+        // the pane edge immediately.
+        root.SizeChanged += (_, e) =>
+        {
+            double available = Math.Max(0, e.NewSize.Width);
+            header.Width = available;
+            header.MaxWidth = available;
+            heading.MaxWidth = Math.Max(0, available - help.ActualWidth - 16);
+            stateBorder.Width = available;
+            stateBorder.MaxWidth = available;
+            state.Width = Math.Max(0, available - stateBorder.Padding.Left - stateBorder.Padding.Right - 2);
+            state.MaxWidth = state.Width;
+            consoleBorder.Width = available;
+            consoleBorder.MaxWidth = available;
+            footer.Width = available;
+            footer.MaxWidth = available;
+            footerActions.Width = available;
+            footerActions.MaxWidth = available;
+            footerActions.HorizontalAlignment = available < 360
+                ? HorizontalAlignment.Left
+                : HorizontalAlignment.Right;
+
+            if (_activityConsoleTextBox is not null)
+            {
+                double textWidth = Math.Max(80, available - 2);
+                _activityConsoleTextBox.Width = textWidth;
+                _activityConsoleTextBox.MaxWidth = textWidth;
+            }
+        };
 
         if (!_embeddedActivityHooked)
         {
@@ -301,7 +344,7 @@ public partial class MainWindow
         if (visible)
         {
             if (_activityPaneColumn.ActualWidth > 0)
-                _rememberedActivityPaneWidth = new GridLength(Math.Max(300, _activityPaneColumn.ActualWidth));
+                _rememberedActivityPaneWidth = new GridLength(Math.Max(MinimumActivityPaneWidth, _activityPaneColumn.ActualWidth));
             _activityPaneColumn.MinWidth = 0;
             _activityPane.Visibility = Visibility.Collapsed;
             _activityPaneSplitter.Visibility = Visibility.Collapsed;
@@ -311,7 +354,7 @@ public partial class MainWindow
         }
         else
         {
-            _activityPaneColumn.MinWidth = 300;
+            _activityPaneColumn.MinWidth = MinimumActivityPaneWidth;
             _activityPaneColumn.Width = _rememberedActivityPaneWidth;
             _activitySplitterColumn.Width = new GridLength(5);
             _activityPaneSplitter.Visibility = Visibility.Visible;
