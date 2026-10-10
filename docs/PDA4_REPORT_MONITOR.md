@@ -42,7 +42,8 @@ The generic ZDeployPet core consumes the stable run/result/artifact envelope and
 - the shell report surfaces validate all declared JSON/summary/full-log artifact paths against the canonical report root before rendering the report as trusted;
 - historical discovery may enumerate only bounded report files below the configured canonical report root and must never execute, source or interpret shell content from the report tree;
 - `latest.json` is a convenience pointer/current snapshot and must not appear as a duplicate historical deployment row when the same `deployment_id` is already represented by its dated report JSON;
-- summary/full-log text is decoded as UTF-8 so reporter labels such as `STUDIO · TRACK DNA` render without mojibake.
+- summary/full-log text is decoded as UTF-8 so reporter labels such as `STUDIO · TRACK DNA` render without mojibake;
+- automatic refresh is allowed only while the report surface is visible, remains read-only, and must stop when that surface is hidden or the app closes.
 
 ## Latest report surface
 
@@ -76,7 +77,7 @@ Requirements:
 - malformed, unsupported, partially written, escaped or otherwise untrusted report files must not become normal history rows; surface a bounded warning/count instead of crashing the table;
 - **Summary** and **Full log** actions on each row use the report's validated artifact paths and the same bounded read-only viewer as the latest card;
 - selecting a row may later open a richer report-details surface, but row selection itself grants no deployment authority and performs no write;
-- keep table refresh explicit initially; bounded polling/watch behavior can be layered later without deployment-side writes;
+- bounded polling may refresh the visible report surface, but must stop when the surface is hidden and must not create deployment-side writes;
 - future filters may include Result and Target, but they are not required for the first history-table acceptance slice.
 
 ## Current implementation slice
@@ -92,8 +93,10 @@ Implemented on `main`:
 - the history table shows Started, Release, Mode, Target, Result and Duration plus row-specific Summary / Full log actions;
 - row actions use the selected report's own artifact paths and the existing bounded read-only artifact viewer;
 - WSL stdout/stderr decoding is explicitly UTF-8 to correct middle-dot reporter labels;
-- deterministic Core history selection now owns bounded candidate processing, path/artifact validation, deployment-id deduplication, newest-first ordering and row limiting;
-- automated Core tests now cover history candidate bounds, row bounds, deduplication, ordering, malformed/partial JSON, report-path escape and artifact-path escape; local test execution is still pending after this commit.
+- deterministic Core history selection owns bounded candidate processing, path/artifact validation, deployment-id deduplication, newest-first ordering and row limiting;
+- automated Core tests cover history candidate bounds, row bounds, deduplication, ordering, malformed/partial JSON, report-path escape and artifact-path escape;
+- the user reported the Release solution test/build run successful on 2026-10-10;
+- a 15-second `DispatcherTimer` now refreshes latest + history only while the report surface is visible, stops when the surface is hidden, pauses around its own async refresh to avoid timer overlap, and stops on app close.
 
 ## Initial implementation sequence
 
@@ -106,9 +109,9 @@ Implemented on `main`:
 7. 🟡 explicit UTF-8 artifact decoding implemented; retain final acceptance check for special `·` labels;
 8. ✅ bounded WSL history enumerator implemented and published-development history loading reported successful on 2026-10-10;
 9. ✅ **Deployment history** table implemented; published-development table smoke reported successful on 2026-10-10;
-10. 🟡 automated Core history tests added for bounds, deduplication, ordering, path escape and partial JSON; local test run pending;
-11. 🟡 manual Refresh refreshes both latest and history; bounded watch/poll behavior remains later work without deployment-side writes;
-12. ✅ latest-report card, summary/full-log viewers and historical table have real Millenova published-development smoke; final PDA-4 acceptance still waits on tests and the remaining refresh/watch decision.
+10. ✅ automated Core history tests added and Release solution test/build reported successful on 2026-10-10;
+11. 🟡 bounded visible-only 15-second report polling implemented; published-development behavior smoke pending;
+12. ✅ latest-report card, summary/full-log viewers and historical table have real Millenova published-development smoke; final PDA-4 acceptance now waits only on polling/UTF-8 operator smoke and master-plan status synchronization.
 
 ## Acceptance gate
 
@@ -124,6 +127,7 @@ PDA-4 is accepted when:
 - PASS/FAILED/CANCELLED remain reporter-authoritative regardless of process/UI state;
 - validated summary/full-log artifacts stay bounded under the configured report root;
 - UTF-8 reporter text, including middle-dot labels, renders correctly;
+- bounded automatic refresh runs only while the report surface is visible and stops when hidden/app closes;
 - monitoring performs no deployment-side write;
 - automated parser/path-boundary/history-selection tests pass;
 - published-development smoke passes against the Millenova report root for both latest and historical reports.
