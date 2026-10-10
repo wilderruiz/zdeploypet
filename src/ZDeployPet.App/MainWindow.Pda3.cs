@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace ZDeployPet.App;
 
@@ -13,6 +14,7 @@ public partial class MainWindow
         if (!_pda3ShellHooked)
         {
             _pda3ShellHooked = true;
+            ApplyMainWindowThemeFixups();
             DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda3ActionVisibility();
         }
 
@@ -20,6 +22,49 @@ public partial class MainWindow
         EnsureActivityButton();
         RefreshPda3ActionVisibility();
     }
+
+    private void ApplyMainWindowThemeFixups()
+    {
+        if (Application.Current.TryFindResource("SharedToolTipStyle") is Style sharedToolTipStyle)
+            Resources[typeof(ToolTip)] = sharedToolTipStyle;
+
+        if (Application.Current.TryFindResource("SharedInfoButtonStyle") is Style sharedInfoButtonStyle)
+        {
+            Style infoButtonStyle = new(typeof(Button), sharedInfoButtonStyle);
+            infoButtonStyle.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 5, 8, 0)));
+            infoButtonStyle.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Right));
+            infoButtonStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top));
+            Resources["InfoButtonStyle"] = infoButtonStyle;
+        }
+
+        Brush shell = FindBrush("AppBackgroundBrush", Brushes.Black);
+        Brush surface = FindBrush("AppSurfaceBrush", shell);
+        Brush raised = FindBrush("AppSurfaceRaisedBrush", surface);
+        Brush text = FindBrush("AppTextBrush", Brushes.White);
+        Brush selection = FindBrush("AppSelectionBrush", raised);
+
+        Resources[SystemColors.WindowBrushKey] = surface;
+        Resources[SystemColors.WindowTextBrushKey] = text;
+        Resources[SystemColors.ControlBrushKey] = surface;
+        Resources[SystemColors.ControlTextBrushKey] = text;
+        Resources[SystemColors.ControlLightBrushKey] = surface;
+        Resources[SystemColors.ControlLightLightBrushKey] = surface;
+        Resources[SystemColors.ControlDarkBrushKey] = raised;
+        Resources[SystemColors.ControlDarkDarkBrushKey] = raised;
+        Resources[SystemColors.ScrollBarBrushKey] = surface;
+        Resources[SystemColors.InfoBrushKey] = raised;
+        Resources[SystemColors.InfoTextBrushKey] = text;
+        Resources[SystemColors.HighlightBrushKey] = selection;
+        Resources[SystemColors.HighlightTextBrushKey] = text;
+
+        TargetsGrid.HeadersVisibility = DataGridHeadersVisibility.Column;
+        TargetsGrid.RowHeaderWidth = 0;
+        DestinationsGrid.HeadersVisibility = DataGridHeadersVisibility.Column;
+        DestinationsGrid.RowHeaderWidth = 0;
+    }
+
+    private static Brush FindBrush(string key, Brush fallback)
+        => Application.Current.TryFindResource(key) as Brush ?? fallback;
 
     private void EnsureActivityButton()
     {
