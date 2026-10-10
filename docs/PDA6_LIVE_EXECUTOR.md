@@ -1,6 +1,6 @@
 # PDA-6 — Live executor and exact human confirmation
 
-**Status:** 🟡 ACTIVE — Core review/confirmation contract implemented; no live execution path enabled yet
+**Status:** 🟡 ACTIVE — immutable live review UI implemented; no live execution path enabled yet
 
 PDA-6 extends the accepted PDA-5 execution foundation to live deployment. The safety boundary is stricter than dry run: ZDeployPet may prepare and display an immutable review, but it must never synthesize, prefill, auto-type, paste, or otherwise supply the operator's live confirmation phrase.
 
@@ -22,7 +22,7 @@ PDA-6 must preserve all PDA-5 execution controls and additionally require:
 
 ## Core review snapshot
 
-The first PDA-6 slice adds deterministic Core contracts only. No live process can be launched by this slice.
+The first PDA-6 slice adds deterministic Core contracts. The review UI added in the next slice still cannot launch a live process.
 
 A review snapshot freezes:
 
@@ -74,13 +74,20 @@ Implemented on `main`:
 - exact ordinal confirmation matching;
 - confirmation invalidation on session lock, concurrent execution, profile/script/fingerprint/target/release/phrase changes;
 - bounded confirmation-phrase validation;
-- automated Core regression coverage for the above.
+- automated Core regression coverage for the above;
+- `Live deploy review…` control directly under Deployment access, enabled only while access is ON / READY;
+- modeless `LiveDeploymentReviewWindow` with allowlisted target and bounded release choices;
+- review-time revalidation of script approval/fingerprint, READY runtime and global execution gate;
+- immutable review display of profile/project, target, mapped destination summary, release transition preview, script path, SHA-256 and review id;
+- exact configured live confirmation phrase displayed separately while the operator input field always starts blank;
+- a **Validate typed confirmation** action that performs confirmation validation only and cannot launch live deployment;
+- target/release changes invalidate the existing review and clear the typed phrase;
+- the window explicitly states that live execution is unavailable in this slice.
 
 Not implemented yet:
 
-- live review WPF surface;
 - live executor;
-- wiring to the Live deploy console tab;
+- wiring natural script output to the Live deploy console tab during an actual run;
 - project-script live prompt adapter;
 - reporter refresh/closeout for a real live run;
 - production live smoke.
@@ -89,8 +96,8 @@ Not implemented yet:
 
 1. ✅ Core immutable live request/review/confirmation contracts;
 2. ✅ Core tests for exact confirmation and invalidation rules;
-3. ⬜ build immutable WPF review surface with confirmation input blank by default and no auto-fill/paste helper;
-4. ⬜ revalidate approved script/session/target/release immediately before launch;
+3. ✅ build immutable WPF review surface with confirmation input blank by default and no auto-fill helper;
+4. 🟡 revalidate approved script/session/target/release immediately before launch — review-time validation is implemented; launch-time revalidation remains required with the executor;
 5. ⬜ implement narrow live WSL executor that supplies bounded target/release/mode choices but never supplies the confirmation phrase itself;
 6. ⬜ require the operator phrase to be passed exactly once at the script's exact live-confirmation prompt;
 7. ⬜ isolate natural output in the Live deploy console tab;
