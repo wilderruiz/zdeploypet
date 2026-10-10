@@ -38,6 +38,7 @@ public partial class MainWindow
         InitializePda4ReportMonitor();
         EnsureResponsiveActionPanel();
         EnsureActivityButton();
+        InitializePda5DryRun();
         ApplyResponsiveActionSpacing();
         RefreshPda3ActionVisibility();
     }
