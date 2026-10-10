@@ -15,6 +15,7 @@ public sealed record WslDryRunExecutionResult(
 public sealed class WslDryRunExecutor
 {
     private const int MaximumCapturedCharacters = 4 * 1024 * 1024;
+    private const int MaximumLiveLineCharacters = 16 * 1024;
     private const int SafetyViolationExitCode = 97;
 
     public async Task<WslDryRunExecutionResult> ExecuteAsync(
@@ -23,6 +24,7 @@ public sealed class WslDryRunExecutor
         string scriptRelativePath,
         WslSshAgentRuntime runtime,
         DryRunPromptPlan promptPlan,
+        Action<string, bool>? outputLine = null,
         CancellationToken cancellationToken = default)
     {
         string? validationError = ValidateInvocation(
@@ -88,6 +90,8 @@ public sealed class WslDryRunExecutor
                 protocol,
                 protocolGate,
                 inputGate,
+                isError: false,
+                outputLine,
                 cancellationToken);
             Task<string> stderrTask = ReadAndDriveAsync(
                 process.StandardError,
@@ -95,6 +99,8 @@ public sealed class WslDryRunExecutor
                 protocol,
                 protocolGate,
                 inputGate,
+                isError: true,
+                outputLine,
                 cancellationToken);
 
             try
@@ -145,10 +151,13 @@ public sealed class WslDryRunExecutor
         DryRunPromptProtocol protocol,
         object protocolGate,
         SemaphoreSlim inputGate,
+        bool isError,
+        Action<string, bool>? outputLine,
         CancellationToken cancellationToken)
     {
         char[] buffer = new char[1024];
         StringBuilder captured = new();
+        StringBuilder liveLine = new();
 
         while (true)
         {
@@ -158,6 +167,7 @@ public sealed class WslDryRunExecutor
 
             string chunk = new(buffer, 0, read);
             AppendBounded(captured, chunk);
+            EmitLiveLines(chunk, liveLine, isError, outputLine);
 
             string? response;
             bool violation;
@@ -196,7 +206,57 @@ public sealed class WslDryRunExecutor
             }
         }
 
+        EmitPendingLiveLine(liveLine, isError, outputLine);
         return captured.ToString();
+    }
+
+    private static void EmitLiveLines(
+        string chunk,
+        StringBuilder liveLine,
+        bool isError,
+        Action<string, bool>? outputLine)
+    {
+        if (outputLine is null)
+            return;
+
+        foreach (char character in chunk)
+        {
+            if (character == '\n')
+            {
+                EmitPendingLiveLine(liveLine, isError, outputLine);
+                continue;
+            }
+
+            if (character == '\r')
+                continue;
+
+            if (liveLine.Length < MaximumLiveLineCharacters)
+                liveLine.Append(character);
+        }
+    }
+
+    private static void EmitPendingLiveLine(
+        StringBuilder liveLine,
+        bool isError,
+        Action<string, bool>? outputLine)
+    {
+        if (outputLine is null || liveLine.Length == 0)
+        {
+            liveLine.Clear();
+            return;
+        }
+
+        string line = liveLine.ToString();
+        liveLine.Clear();
+
+        try
+        {
+            outputLine(line, isError);
+        }
+        catch
+        {
+            // Live display is observational only and must never influence execution.
+        }
     }
 
     private static string? ValidateInvocation(
