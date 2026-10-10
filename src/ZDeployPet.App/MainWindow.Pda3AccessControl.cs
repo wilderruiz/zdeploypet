@@ -190,6 +190,7 @@ public partial class MainWindow
     {
         _operatorAccessBusy = true;
         RefreshOperatorAccessVisuals(onboardingReady: true);
+        RefreshPetCompanion();
         try
         {
             await action();
@@ -203,6 +204,7 @@ public partial class MainWindow
         {
             _operatorAccessBusy = false;
             await RefreshOperatorAccessControlAsync();
+            RefreshPetCompanion();
         }
     }
 
@@ -211,6 +213,7 @@ public partial class MainWindow
         if (_operatorAccessCard is null || _operatorAccessButton is null) return;
         bool onboardingReady = _activeProfile is not null && await IsOperatorAccessOnboardingReadyAsync(_activeProfile);
         RefreshOperatorAccessVisuals(onboardingReady);
+        RefreshPetCompanion();
     }
 
     private async Task<bool> IsOperatorAccessOnboardingReadyAsync(DeploymentProfile profile)
