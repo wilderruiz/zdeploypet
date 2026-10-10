@@ -15,6 +15,7 @@ public sealed record WslDryRunExecutionResult(
 public sealed class WslDryRunExecutor
 {
     private const int MaximumCapturedCharacters = 4 * 1024 * 1024;
+    private const int SafetyViolationExitCode = 97;
 
     public async Task<WslDryRunExecutionResult> ExecuteAsync(
         string distribution,
@@ -33,10 +34,10 @@ public sealed class WslDryRunExecutor
         if (validationError is not null)
             return new(false, -1, string.Empty, string.Empty, validationError);
 
-        IReadOnlyList<string> inputLines;
+        DryRunPromptProtocol protocol;
         try
         {
-            inputLines = promptPlan.BuildStandardInputLines();
+            protocol = new DryRunPromptProtocol(promptPlan);
         }
         catch (InvalidDataException exception)
         {
@@ -72,17 +73,29 @@ public sealed class WslDryRunExecutor
             if (!process.Start())
                 return new(false, -1, string.Empty, string.Empty, "Windows could not start the WSL dry-run process.");
 
-            // StreamWriter defaults to the Windows newline (CRLF). Bash `read -r` strips
-            // the LF delimiter but preserves the CR, turning a safe numeric choice such as
-            // `3` into `3\r` and causing Millenova's exact case match to reject it. The WSL
-            // script is a Unix process, so every synthetic prompt answer must be LF-only.
+            // Never pre-buffer synthetic answers. The earlier PDA-5 implementation wrote
+            // target/release/mode up front, which allowed commands launched during preflight
+            // to consume later answers and caused a supposed dry run to enter live mode.
+            // Answers are now emitted only after the exact approved-script prompt is observed.
             process.StandardInput.NewLine = "\n";
-            foreach (string line in inputLines)
-                await process.StandardInput.WriteLineAsync(line.AsMemory(), cancellationToken);
-            process.StandardInput.Close();
 
-            Task<string> stdoutTask = ReadBoundedAsync(process.StandardOutput, cancellationToken);
-            Task<string> stderrTask = ReadBoundedAsync(process.StandardError, cancellationToken);
+            object protocolGate = new();
+            using SemaphoreSlim inputGate = new(1, 1);
+
+            Task<string> stdoutTask = ReadAndDriveAsync(
+                process.StandardOutput,
+                process,
+                protocol,
+                protocolGate,
+                inputGate,
+                cancellationToken);
+            Task<string> stderrTask = ReadAndDriveAsync(
+                process.StandardError,
+                process,
+                protocol,
+                protocolGate,
+                inputGate,
+                cancellationToken);
 
             try
             {
@@ -90,20 +103,30 @@ public sealed class WslDryRunExecutor
             }
             catch (OperationCanceledException)
             {
-                try
-                {
-                    if (!process.HasExited)
-                        process.Kill(entireProcessTree: true);
-                }
-                catch
-                {
-                    // Best-effort cancellation cleanup only.
-                }
+                KillBestEffort(process);
                 throw;
             }
 
             string stdout = await stdoutTask;
             string stderr = await stderrTask;
+
+            lock (protocolGate)
+                protocol.MarkProcessExited(process.ExitCode);
+
+            if (protocol.SafetyViolation)
+            {
+                string reason = protocol.ViolationReason ?? "The dry-run prompt protocol failed closed.";
+                stderr = AppendBounded(stderr, $"\nFAIL [ZDeployPet safety] {reason}\n");
+                return new(true, SafetyViolationExitCode, stdout, stderr, reason);
+            }
+
+            if (!protocol.Completed || !protocol.DryModeConfirmed)
+            {
+                const string reason = "The approved script did not prove DRY RUN mode and completion; ZDeployPet failed closed.";
+                stderr = AppendBounded(stderr, $"\nFAIL [ZDeployPet safety] {reason}\n");
+                return new(true, SafetyViolationExitCode, stdout, stderr, reason);
+            }
+
             return new(true, process.ExitCode, stdout, stderr);
         }
         catch (OperationCanceledException)
@@ -114,6 +137,66 @@ public sealed class WslDryRunExecutor
         {
             return new(false, -1, string.Empty, string.Empty, exception.Message);
         }
+    }
+
+    private static async Task<string> ReadAndDriveAsync(
+        StreamReader reader,
+        Process process,
+        DryRunPromptProtocol protocol,
+        object protocolGate,
+        SemaphoreSlim inputGate,
+        CancellationToken cancellationToken)
+    {
+        char[] buffer = new char[1024];
+        StringBuilder captured = new();
+
+        while (true)
+        {
+            int read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            if (read == 0)
+                break;
+
+            string chunk = new(buffer, 0, read);
+            AppendBounded(captured, chunk);
+
+            string? response;
+            bool violation;
+            lock (protocolGate)
+            {
+                response = protocol.Observe(chunk);
+                violation = protocol.SafetyViolation;
+            }
+
+            if (violation)
+            {
+                KillBestEffort(process);
+                continue;
+            }
+
+            if (response is null)
+                continue;
+
+            await inputGate.WaitAsync(cancellationToken);
+            try
+            {
+                if (!process.HasExited)
+                {
+                    await process.StandardInput.WriteLineAsync(response.AsMemory(), cancellationToken);
+                    await process.StandardInput.FlushAsync(cancellationToken);
+                }
+            }
+            catch (IOException)
+            {
+                // The process may have exited between observing a prompt and writing the
+                // allowlisted answer. Process/report truth below remains authoritative.
+            }
+            finally
+            {
+                inputGate.Release();
+            }
+        }
+
+        return captured.ToString();
     }
 
     private static string? ValidateInvocation(
@@ -136,7 +219,7 @@ public sealed class WslDryRunExecutor
 
         try
         {
-            _ = promptPlan.BuildStandardInputLines();
+            promptPlan.Validate();
         }
         catch (InvalidDataException exception)
         {
@@ -159,24 +242,36 @@ public sealed class WslDryRunExecutor
         return true;
     }
 
-    private static async Task<string> ReadBoundedAsync(
-        StreamReader reader,
-        CancellationToken cancellationToken)
+    private static void AppendBounded(StringBuilder builder, string text)
     {
-        char[] buffer = new char[4096];
-        StringBuilder text = new();
-        while (true)
+        int remaining = MaximumCapturedCharacters - builder.Length;
+        if (remaining <= 0)
+            return;
+
+        builder.Append(text, 0, Math.Min(text.Length, remaining));
+        if (builder.Length >= MaximumCapturedCharacters)
+            builder.Append("\n[ZDeployPet output capture truncated at 4 MiB]\n");
+    }
+
+    private static string AppendBounded(string existing, string suffix)
+    {
+        if (existing.Length >= MaximumCapturedCharacters)
+            return existing;
+
+        int remaining = MaximumCapturedCharacters - existing.Length;
+        return existing + suffix[..Math.Min(suffix.Length, remaining)];
+    }
+
+    private static void KillBestEffort(Process process)
+    {
+        try
         {
-            int read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
-            if (read == 0) break;
-
-            int remaining = MaximumCapturedCharacters - text.Length;
-            if (remaining <= 0) continue;
-            text.Append(buffer, 0, Math.Min(read, remaining));
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
         }
-
-        if (text.Length >= MaximumCapturedCharacters)
-            text.Append("\n[ZDeployPet output capture truncated at 4 MiB]\n");
-        return text.ToString();
+        catch
+        {
+            // Best-effort fail-closed cleanup only.
+        }
     }
 }
