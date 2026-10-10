@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Media;
 
 namespace ZDeployPet.App;
@@ -13,7 +12,7 @@ public partial class MainWindow
     private ColumnDefinition? _activitySplitterColumn;
     private GridSplitter? _activityPaneSplitter;
     private Border? _activityPane;
-    private RichTextBox? _activityConsoleTextBox;
+    private TextBox? _activityConsoleTextBox;
     private TextBlock? _activityProfileText;
     private TextBlock? _activitySessionText;
     private TextBlock? _activityStatusText;
@@ -96,35 +95,35 @@ public partial class MainWindow
         {
             Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x0D, 0x10)),
             BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
-            BorderThickness = new Thickness(1)
+            BorderThickness = new Thickness(1),
+            ClipToBounds = true
         };
 
-        FlowDocument document = new()
-        {
-            PagePadding = new Thickness(0),
-            ColumnGap = 0,
-            ColumnWidth = double.PositiveInfinity,
-            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
-            FontSize = 12,
-            Foreground = new SolidColorBrush(Color.FromRgb(0xD8, 0xDE, 0xE9)),
-            Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x0D, 0x10))
-        };
-
-        _activityConsoleTextBox = new RichTextBox(document)
+        _activityConsoleTextBox = new TextBox
         {
             IsReadOnly = true,
+            AcceptsReturn = true,
+            AcceptsTab = false,
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = 12,
             Foreground = new SolidColorBrush(Color.FromRgb(0xD8, 0xDE, 0xE9)),
             Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x0D, 0x10)),
             BorderThickness = new Thickness(0),
             Padding = new Thickness(10),
+            TextWrapping = TextWrapping.Wrap,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Top,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             SelectionBrush = FindBrush("AppSelectionBrush", Brushes.DimGray)
         };
-        _activityConsoleTextBox.SizeChanged += EmbeddedConsoleTextBox_SizeChanged;
-        _activityConsoleTextBox.Loaded += (_, _) => UpdateEmbeddedConsolePageWidth();
+        consoleBorder.SizeChanged += (_, e) =>
+        {
+            if (_activityConsoleTextBox is null) return;
+            double width = Math.Max(120, e.NewSize.Width - 2);
+            _activityConsoleTextBox.Width = width;
+            _activityConsoleTextBox.MaxWidth = width;
+        };
         consoleBorder.Child = _activityConsoleTextBox;
         Grid.SetRow(consoleBorder, 2);
         root.Children.Add(consoleBorder);
@@ -177,49 +176,15 @@ public partial class MainWindow
     private void EmbeddedActivity_StateChanged(object? sender, PropertyChangedEventArgs e) =>
         Dispatcher.InvokeAsync(RefreshEmbeddedActivityState);
 
-    private void EmbeddedConsoleTextBox_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) < 1) return;
-        UpdateEmbeddedConsolePageWidth();
-    }
-
-    private void UpdateEmbeddedConsolePageWidth()
-    {
-        if (_activityConsoleTextBox is null || _activityConsoleTextBox.ActualWidth <= 0) return;
-
-        // RichTextBox/FlowDocument otherwise keeps a document page wider than the
-        // visible viewport on some WPF hosts. Pin the page to the live viewport so
-        // Paragraph layout must reflow whenever the splitter changes pane width.
-        double viewportWidth = Math.Max(120, _activityConsoleTextBox.ActualWidth -
-            _activityConsoleTextBox.Padding.Left - _activityConsoleTextBox.Padding.Right - 18);
-        _activityConsoleTextBox.Document.PageWidth = viewportWidth;
-        _activityConsoleTextBox.Document.MinPageWidth = viewportWidth;
-        _activityConsoleTextBox.Document.MaxPageWidth = viewportWidth;
-    }
-
     private void RefreshEmbeddedActivityConsole()
     {
         if (_activityConsoleTextBox is null) return;
 
-        FlowDocument document = _activityConsoleTextBox.Document;
-        document.Blocks.Clear();
-
-        Brush textBrush = new SolidColorBrush(Color.FromRgb(0xD8, 0xDE, 0xE9));
+        StringBuilder text = new();
         foreach (ActivityRow row in _embeddedActivityRows)
-        {
-            Paragraph paragraph = new(new Run(FormatEmbeddedActivityRow(row)))
-            {
-                Margin = new Thickness(0),
-                Padding = new Thickness(0),
-                FontFamily = _activityConsoleTextBox.FontFamily,
-                FontSize = _activityConsoleTextBox.FontSize,
-                Foreground = textBrush,
-                TextAlignment = TextAlignment.Left
-            };
-            document.Blocks.Add(paragraph);
-        }
+            text.AppendLine(FormatEmbeddedActivityRow(row));
 
-        UpdateEmbeddedConsolePageWidth();
+        _activityConsoleTextBox.Text = text.ToString().TrimEnd();
         _activityConsoleTextBox.ScrollToEnd();
         RefreshEmbeddedActivityStatus();
     }
@@ -241,14 +206,14 @@ public partial class MainWindow
 
     private void EmbeddedCopySelection_Click(object sender, RoutedEventArgs e)
     {
-        if (_activityConsoleTextBox is null || string.IsNullOrEmpty(_activityConsoleTextBox.Selection.Text))
+        if (_activityConsoleTextBox is null || string.IsNullOrEmpty(_activityConsoleTextBox.SelectedText))
         {
             if (_activityStatusText is not null) _activityStatusText.Text = "Select console text first.";
             _activityConsoleTextBox?.Focus();
             return;
         }
 
-        Clipboard.SetText(_activityConsoleTextBox.Selection.Text);
+        Clipboard.SetText(_activityConsoleTextBox.SelectedText);
         if (_activityStatusText is not null) _activityStatusText.Text = "Copied selection.";
     }
 
@@ -271,7 +236,7 @@ public partial class MainWindow
         entry.Message);
 
     private static string FormatEmbeddedActivityRow(ActivityRow row) =>
-        $"{row.LocalTime}  [{row.Level,-7}]  {row.Category,-12}  {row.Message}";
+        $"{row.LocalTime} | {row.Level} | {row.Category} | {row.Message}";
 
     private void ToggleEmbeddedActivityPane()
     {
