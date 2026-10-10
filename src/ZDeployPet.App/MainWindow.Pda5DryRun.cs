@@ -59,6 +59,7 @@ public partial class MainWindow
         _dryRunButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
         _dryRunButton.IsEnabled = shellVisible && accessReady && !_dryRunExecutionBusy;
         _dryRunButton.Content = _dryRunExecutionBusy ? "Dry run running…" : "Dry run…";
+        RefreshPda6LiveReviewVisibility();
     }
 
     private void DryRun_Click(object sender, RoutedEventArgs e)
