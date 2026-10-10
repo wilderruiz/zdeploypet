@@ -79,6 +79,20 @@ Requirements:
 - keep table refresh explicit initially; bounded polling/watch behavior can be layered later without deployment-side writes;
 - future filters may include Result and Target, but they are not required for the first history-table acceptance slice.
 
+## Current implementation slice
+
+Implemented on `main`, awaiting published-development smoke:
+
+- WSL history discovery scans dated `*.json` report files below the canonical report root and excludes root `latest.json`;
+- candidate enumeration is capped at 90 paths before report parsing, while the UI renders at most the newest 30 trusted deployment ids;
+- every historical row is parsed through the same schema-v1 Core parser used by the latest card;
+- artifact paths are revalidated against the canonical report root before a row is trusted;
+- duplicate deployment ids are suppressed;
+- malformed/untrusted candidates are skipped and counted in the history status line;
+- the history table shows Started, Release, Mode, Target, Result and Duration plus row-specific Summary / Full log actions;
+- row actions use the selected report's own artifact paths and the existing bounded read-only artifact viewer;
+- WSL stdout/stderr decoding is explicitly UTF-8 to correct middle-dot reporter labels.
+
 ## Initial implementation sequence
 
 1. ✅ add immutable Core report contracts and a schema-v1 parser/validator;
@@ -87,11 +101,11 @@ Requirements:
 4. ✅ add a narrow WSL read-only report-root reader for `latest.json` with canonical root/file containment and bounded payload size;
 5. ✅ add a shell **Latest deployment report** card showing deployment id, release, mode, target, timestamps, duration and authoritative PASS/FAILED/CANCELLED result;
 6. ✅ add read-only **View summary** / **View full log** actions for validated bounded artifacts;
-7. 🟡 correct artifact-text decoding to explicit UTF-8 and smoke special reporter labels such as `·` without mojibake;
-8. add a bounded WSL history enumerator for dated report JSON files under the canonical report root;
-9. add the **Deployment history** table, newest first, with the newest 30 trusted runs and per-row Summary / Full log actions;
-10. add malformed/untrusted-history accounting and automated tests for enumeration bounds, deduplication, ordering, path escape and partial JSON;
-11. 🟡 manual Refresh is present and automatic refresh occurs when the report surface becomes active; add bounded watch/poll behavior later without deployment-side writes;
+7. 🟡 explicit UTF-8 artifact decoding implemented; published-development smoke for `·` labels pending;
+8. 🟡 bounded WSL history enumerator implemented; published-development smoke pending;
+9. 🟡 **Deployment history** table implemented with newest 30 trusted runs and per-row Summary / Full log actions; published-development smoke pending;
+10. add automated tests for history enumeration bounds, deduplication, ordering, path escape and partial JSON;
+11. 🟡 manual Refresh refreshes both latest and history; bounded watch/poll behavior remains later work without deployment-side writes;
 12. ✅ smoke the latest-report card and summary/full-log viewers against real Millenova reporter output; historical-table smoke remains pending.
 
 ## Acceptance gate
