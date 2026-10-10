@@ -37,14 +37,15 @@ The generic ZDeployPet core consumes the stable run/result/artifact envelope and
 - malformed JSON, missing required identity/result fields, unsupported schema versions and partially-written JSON fail closed;
 - `latest.json` may be consumed only after a complete parse and validation pass;
 - reporter `result` is authoritative; process exit status never upgrades a failed/cancelled report to success;
-- no report path, content or artifact may grant deployment authority.
+- no report path, content or artifact may grant deployment authority;
+- the WSL reader resolves the configured root and `latest.json` with `realpath`, rejects symlink escapes, accepts only a regular file, and enforces a 2 MiB maximum before reading.
 
 ## Initial implementation sequence
 
-1. add immutable Core report contracts and a schema-v1 parser/validator;
-2. add Core path-boundary validation for report/artifact paths;
-3. add automated tests for valid pass/fail/cancelled reports, malformed/partial JSON, unsupported schema and path escapes;
-4. add a narrow WSL read-only report-root reader for `latest.json` and bounded artifacts;
+1. ✅ add immutable Core report contracts and a schema-v1 parser/validator;
+2. ✅ add Core path-boundary validation for report/artifact paths;
+3. ✅ add automated tests for valid pass/fail/cancelled reports, malformed/partial JSON, unsupported schema and path escapes;
+4. ✅ add a narrow WSL read-only report-root reader for `latest.json` with canonical root/file containment and bounded payload size;
 5. add a shell report-status surface showing deployment id, release, mode, target, timestamps and authoritative result;
 6. add read-only links/actions for validated summary/full-log artifacts;
 7. add safe refresh/watch behavior without deployment-side writes;
