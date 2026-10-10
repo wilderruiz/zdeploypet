@@ -26,10 +26,47 @@ public partial class MainWindow
         FrameworkElement menuBar = BuildTopMenu();
         DockPanel.SetDock(menuBar, Dock.Top);
         shell.Children.Add(menuBar);
-        shell.Children.Add(existingContent);
+
+        Grid body = new();
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 620 });
+        _activitySplitterColumn = new ColumnDefinition { Width = new GridLength(5) };
+        _activityPaneColumn = new ColumnDefinition { Width = _rememberedActivityPaneWidth, MinWidth = 300 };
+        body.ColumnDefinitions.Add(_activitySplitterColumn);
+        body.ColumnDefinitions.Add(_activityPaneColumn);
+
+        Grid.SetColumn(existingContent, 0);
+        body.Children.Add(existingContent);
+
+        _activityPaneSplitter = new GridSplitter
+        {
+            Width = 5,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Background = AppBorder,
+            ResizeDirection = GridResizeDirection.Columns,
+            ResizeBehavior = GridResizeBehavior.PreviousAndNext,
+            ShowsPreview = true
+        };
+        Grid.SetColumn(_activityPaneSplitter, 1);
+        body.Children.Add(_activityPaneSplitter);
+
+        _activityPane = new Border
+        {
+            Background = (Brush)Application.Current.Resources["AppBackgroundBrush"],
+            BorderBrush = AppBorder,
+            BorderThickness = new Thickness(1, 0, 0, 0),
+            Child = BuildEmbeddedActivityConsole()
+        };
+        Grid.SetColumn(_activityPane, 2);
+        body.Children.Add(_activityPane);
+
+        shell.Children.Add(body);
         Content = shell;
 
-        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Top application menu initialized.");
+        MinWidth = Math.Max(MinWidth, 1100);
+        if (Width < 1320) Width = 1320;
+
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Top application menu initialized with embedded Console / Activity pane.");
     }
 
     private FrameworkElement BuildTopMenu()
@@ -64,7 +101,7 @@ public partial class MainWindow
         row.Children.Add(CreatePopupMenu("View", popup =>
         {
             StackPanel panel = CreatePopupPanel();
-            panel.Children.Add(CreatePopupAction("Console / Activity…", popup, () => Activity_Click(this, new RoutedEventArgs())));
+            panel.Children.Add(CreatePopupAction("Show / hide Console / Activity", popup, ToggleEmbeddedActivityPane));
             return panel;
         }));
 
