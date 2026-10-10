@@ -23,7 +23,8 @@ The PDA-3 shell foundation now includes:
 - an **About ZDeployPet** surface with runtime version/build/platform/.NET/architecture/repository information and an explicit note that public release licensing remains PDA-8 work;
 - first-pass application-level dark/red resources applied across the main shell, Activity, Deployment Session, Deployment Access and Git Safety surfaces;
 - a reusable `PetCompanionControl` presentation component for ZPet with distinct **LOCKED / RUNNING / READY / ERROR** visual states; the main shell only maps real controller/session state into the component, and the pet remains non-interactive and non-authoritative;
-- a reusable vector `ProductIconFactory` applied automatically to every WPF window, giving the main window, secondary windows and Windows taskbar a consistent ZDeployPet pet/red identity without duplicating icon setup per window. The packaged executable/installer/desktop-shortcut binary icon remains PDA-8 release packaging work.
+- a reusable vector `ProductIconFactory` applied automatically to every WPF window, giving the main window, secondary windows and Windows taskbar a consistent ZDeployPet pet/red identity without duplicating icon setup per window. The packaged executable/installer/desktop-shortcut binary icon remains PDA-8 release packaging work;
+- a shared `AccessibilityRuntime` applied to every window to provide stable automation names for operator controls and visible keyboard-focus cues for text/selection inputs without changing controller authority; the ZPet companion is explicitly non-focusable/non-tab-stop and remains read-only presentation.
 
 The shell/menu/activity/pet surfaces are presentation and operator-visibility layers only. They do not bypass deployment-access checks, create new arbitrary execution paths, or execute a deployment script.
 
@@ -87,7 +88,7 @@ Security complexity stays in the controller/service layer and in advanced setup 
 10. ✅ seed About with real runtime/build/platform/repository information; refine packaged build metadata later in PDA-8;
 11. ✅ add reusable ZDeployPet window/taskbar icon identity; defer executable/installer/shortcut binary icon packaging to PDA-8;
 12. ✅ add the companion/pet as a non-authoritative reflection of shell state, then extract it into a reusable presentation component with distinct LOCKED / RUNNING / READY / ERROR visuals;
-13. complete keyboard/focus/accessibility smoke and ensure the pet cannot trigger privileged actions.
+13. 🟡 shared automation names, keyboard focus cues and non-focusable pet are implemented; complete the keyboard/focus/accessibility operator smoke before marking this done.
 
 ## Non-goals for PDA-3
 
