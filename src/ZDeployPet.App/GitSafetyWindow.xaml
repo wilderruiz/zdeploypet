@@ -30,7 +30,6 @@
             <WrapPanel Margin="0,0,0,10">
                 <Button x:Name="ScanButton" Padding="14,7" Margin="0,0,8,6" Click="Scan_Click" Content="Scan repository" />
                 <Button x:Name="ApplyIgnoreButton" Padding="14,7" Margin="0,0,8,6" Click="ApplyIgnore_Click" Content="Add/update .gitignore safety block" />
-                <Button x:Name="ScanHelpButton" Style="{StaticResource SharedInfoButtonStyle}" Margin="0,0,8,6" Loaded="ScanHelpButton_Loaded" />
             </WrapPanel>
             <TextBox x:Name="ResultTextBox" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto" FontFamily="Consolas" Padding="12"
