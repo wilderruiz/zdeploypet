@@ -14,7 +14,11 @@ public partial class MainWindow
     private TextBlock? _latestReportStateText;
     private TextBlock? _latestReportDetailsText;
     private Button? _latestReportRefreshButton;
+    private Button? _latestReportSummaryButton;
+    private Button? _latestReportFullLogButton;
     private int _latestReportRefreshGeneration;
+    private string? _latestReportCanonicalRoot;
+    private DeploymentReport? _latestDeploymentReport;
 
     private void InitializePda4ReportMonitor()
     {
@@ -52,6 +56,7 @@ public partial class MainWindow
         };
 
         Grid grid = new();
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -97,6 +102,36 @@ public partial class MainWindow
         Grid.SetColumnSpan(_latestReportDetailsText, 2);
         grid.Children.Add(_latestReportDetailsText);
 
+        WrapPanel reportActions = new()
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 10, 0, 0)
+        };
+
+        _latestReportSummaryButton = new Button
+        {
+            Content = "View summary",
+            Padding = new Thickness(12, 6, 12, 6),
+            Margin = new Thickness(0, 0, 10, 0),
+            Visibility = Visibility.Collapsed
+        };
+        _latestReportSummaryButton.Click += async (_, _) => await OpenLatestReportArtifactAsync(summary: true);
+        reportActions.Children.Add(_latestReportSummaryButton);
+
+        _latestReportFullLogButton = new Button
+        {
+            Content = "View full log",
+            Padding = new Thickness(12, 6, 12, 6),
+            Visibility = Visibility.Collapsed
+        };
+        _latestReportFullLogButton.Click += async (_, _) => await OpenLatestReportArtifactAsync(summary: false);
+        reportActions.Children.Add(_latestReportFullLogButton);
+
+        Grid.SetRow(reportActions, 2);
+        Grid.SetColumnSpan(reportActions, 2);
+        grid.Children.Add(reportActions);
+
         card.Child = grid;
 
         HelpTipFactory.AttachToButton(
@@ -117,6 +152,8 @@ public partial class MainWindow
 
         if (_latestReportStateText is null || _latestReportDetailsText is null || _latestReportRefreshButton is null)
             return;
+
+        ClearLatestReportArtifactState();
 
         DeploymentProfile? profile = _activeProfile;
         if (profile is null || DiscoveryPanel.Visibility != Visibility.Visible)
@@ -191,7 +228,10 @@ public partial class MainWindow
                 $"Started {report.StartedAt:yyyy-MM-dd HH:mm:ss zzz}  •  Finished {report.FinishedAt:yyyy-MM-dd HH:mm:ss zzz}  •  " +
                 $"{report.DurationSeconds}s  •  ID {report.DeploymentId}";
 
+            _latestReportCanonicalRoot = read.CanonicalReportRoot;
+            _latestDeploymentReport = report;
             SetLatestReportCard(report.Outcome.ToString().ToUpperInvariant(), details, outcomeBrush);
+            SetLatestReportArtifactButtonsVisible(true);
 
             ShellRuntime.Activity.Add(
                 ShellActivityLevel.Info,
@@ -214,10 +254,90 @@ public partial class MainWindow
         }
     }
 
+    private async Task OpenLatestReportArtifactAsync(bool summary)
+    {
+        DeploymentProfile? profile = _activeProfile;
+        DeploymentReport? report = _latestDeploymentReport;
+        string? canonicalRoot = _latestReportCanonicalRoot;
+        Button? button = summary ? _latestReportSummaryButton : _latestReportFullLogButton;
+
+        if (profile is null || report is null || canonicalRoot is null || button is null)
+            return;
+
+        string artifactPath = summary ? report.Artifacts.Summary : report.Artifacts.FullLog;
+        int limit = summary
+            ? WslDeploymentReportReader.MaximumSummaryBytes
+            : WslDeploymentReportReader.MaximumFullLogBytes;
+        string label = summary ? "Deployment summary" : "Deployment full log";
+
+        button.IsEnabled = false;
+        try
+        {
+            WslDeploymentArtifactReadResult read = await _deploymentReportReader.ReadTextArtifactAsync(
+                profile.WslDistribution,
+                canonicalRoot,
+                artifactPath,
+                limit);
+
+            if (!read.Success || read.Text is null || read.CanonicalPath is null)
+            {
+                MessageBox.Show(
+                    this,
+                    read.Error ?? $"{label} could not be read safely.",
+                    label,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            ReportArtifactWindow window = new(
+                label,
+                $"Read-only reporter artifact • {read.CanonicalPath}",
+                read.Text)
+            {
+                Owner = this
+            };
+            window.ShowDialog();
+
+            ShellRuntime.Activity.Add(
+                ShellActivityLevel.Info,
+                "Report",
+                $"Opened read-only {label.ToLowerInvariant()} for deployment {report.DeploymentId}.");
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                this,
+                exception.Message,
+                label,
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            ShellRuntime.Activity.Add(ShellActivityLevel.Error, "Report", $"Failed to open {label.ToLowerInvariant()}.");
+        }
+        finally
+        {
+            button.IsEnabled = true;
+        }
+    }
+
     private static bool ArtifactsStayInsideRoot(string canonicalRoot, DeploymentReportArtifacts artifacts)
         => DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, artifacts.FullLog)
            && DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, artifacts.Summary)
            && DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, artifacts.Json);
+
+    private void ClearLatestReportArtifactState()
+    {
+        _latestReportCanonicalRoot = null;
+        _latestDeploymentReport = null;
+        SetLatestReportArtifactButtonsVisible(false);
+    }
+
+    private void SetLatestReportArtifactButtonsVisible(bool visible)
+    {
+        Visibility visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        if (_latestReportSummaryButton is not null) _latestReportSummaryButton.Visibility = visibility;
+        if (_latestReportFullLogButton is not null) _latestReportFullLogButton.Visibility = visibility;
+    }
 
     private void SetLatestReportCard(string state, string details, Brush stateBrush)
     {
