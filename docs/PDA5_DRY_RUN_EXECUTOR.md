@@ -41,21 +41,36 @@ The guard context supplies trusted runtime evidence:
 
 The guard fails closed when any required field is missing, the script fingerprint changed, the access session is not READY, a target is not allowlisted, a release token is unsafe, or another execution is already active.
 
+## Script approval semantics
+
+Script approval is stored separately from the shareable/private deployment profile contract. A local approval records only:
+
+- profile id;
+- configured project-relative script path;
+- approved SHA-256 fingerprint;
+- approval timestamp.
+
+The approval store is per-user local application state. It contains no credentials. A changed profile/script path, missing or malformed approval, unsupported approval schema, or changed script fingerprint fails closed.
+
+The current script hash is still computed from the actual Windows project file immediately before execution; persisted approval metadata is never treated as evidence that the file is unchanged.
+
 ## Input safety
 
 A release token is intentionally narrow. Initial accepted characters are ASCII letters, digits, `.`, `_`, and `-`, with a maximum length of 64 characters and an alphanumeric first character. Whitespace, path separators, quotes, command separators, substitutions, environment syntax and control characters are rejected.
 
 Target ids are never interpreted as shell fragments. A target is valid only when it exactly matches one item from the trusted allowlist.
 
-The execution service must use `ProcessStartInfo.ArgumentList` / direct argument vectors. It must not build `sh -c` command strings from operator input.
+The execution service uses `ProcessStartInfo.ArgumentList` / direct argument vectors. It does not construct a `sh -c` command from operator input.
+
+For the current interactive Millenova script, the narrow executor feeds only bounded numeric prompt choices. PDA-5 always appends deployment mode `1` (dry run); there is no code path in this executor that can submit live mode `2`. The app-owned `SSH_AUTH_SOCK` and `SSH_AGENT_PID` values are injected through `/usr/bin/env` as fixed environment assignments before `/usr/bin/bash` executes the configured relative script from the verified WSL project directory.
 
 ## Initial implementation sequence
 
 1. ✅ define immutable Core dry-run request, guard context, state and validation contracts;
 2. ✅ add Core tests for changed script fingerprint, non-READY access, invalid target/release, concurrent execution and shell-like input rejection;
-3. add approved script-fingerprint persistence/approval semantics without weakening the existing profile boundary;
-4. add a narrow WSL execution service that runs only the configured profile script through an argument vector;
-5. revalidate the PDA-2 session immediately before launch and inject only the owned agent environment required by the approved script;
+3. ✅ add separate per-user deployment-script approval contract/store plus matching validation and persistence tests;
+4. ✅ add a narrow WSL executor using direct argument vectors, verified WSL working directory, fixed agent environment and bounded interactive prompt choices; no operator input is interpolated into `sh -c`;
+5. 🟡 revalidate the PDA-2 session immediately before launch; executor-side agent distribution/runtime validation exists, full controller wiring remains pending;
 6. add a single in-process execution lease/lock;
 7. add a shell dry-run surface with allowlisted target and bounded release controls; no arbitrary command field;
 8. stream sanitized lifecycle/status output to Console / Activity;
