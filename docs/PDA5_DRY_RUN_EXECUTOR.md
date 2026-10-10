@@ -97,7 +97,7 @@ Implemented on `main`:
 - the prompt protocol kills the process on any live-mode marker and requires both the dry-run banner and `DRY RUN COMPLETE` before it can report protocol success;
 - ZPet switches to RUNNING while a dry-run process is executing;
 - after process completion ZDeployPet records bounded PASS/FAIL/completion highlights in the sanitized Console / Activity stream and explicitly refreshes PDA-4 latest/history reporter truth;
-- user-reported Release test run on 2026-10-10 passed 74 Core tests and 21 Infrastructure tests before the later execution-protocol changes; a fresh build/test run is required for the prompt-driven safety fix.
+- user-reported Release build/tests on 2026-10-10 passed after the prompt-driven safety replacement; published-development runtime smoke is now the remaining gate.
 
 ## Initial implementation sequence
 
@@ -111,7 +111,7 @@ Implemented on `main`:
 8. 🟡 sanitized start/exit/highlight lifecycle is wired to Console / Activity; true line-by-line display remains optional follow-up;
 9. ✅ refresh PDA-4 latest/history after process completion and direct the operator to reporter truth as the authoritative outcome;
 10. ❌ first published-development Millenova dry-run smoke failed safety: stdin-prefeed shifted answers and the script entered live mode; this design is retired;
-11. 🟡 replacement prompt-driven protocol implemented with fail-closed live-marker detection and dry-mode completion proof; fresh build/tests and published-development smoke pending.
+11. 🟡 replacement prompt-driven protocol implemented and build/tests passed; published-development runtime smoke remains pending.
 
 ## Acceptance gate
 
