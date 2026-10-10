@@ -8,6 +8,8 @@ namespace ZDeployPet.App;
 
 public partial class MainWindow
 {
+    private const int MaximumHistoryRows = 30;
+
     private readonly WslDeploymentReportReader _deploymentReportReader = new();
     private bool _pda4ReportInitialized;
     private Border? _latestReportCard;
@@ -16,7 +18,11 @@ public partial class MainWindow
     private Button? _latestReportRefreshButton;
     private Button? _latestReportSummaryButton;
     private Button? _latestReportFullLogButton;
+    private Border? _deploymentHistoryCard;
+    private TextBlock? _deploymentHistoryStatusText;
+    private StackPanel? _deploymentHistoryRowsPanel;
     private int _latestReportRefreshGeneration;
+    private int _historyRefreshGeneration;
     private string? _latestReportCanonicalRoot;
     private DeploymentReport? _latestDeploymentReport;
 
@@ -28,11 +34,16 @@ public partial class MainWindow
         if (DiscoveryPanel.RowDefinitions.Count < 2) return;
 
         DiscoveryPanel.RowDefinitions.Insert(1, new RowDefinition { Height = GridLength.Auto });
-        Grid.SetRow(ResultsTextBox, 2);
+        DiscoveryPanel.RowDefinitions.Insert(2, new RowDefinition { Height = GridLength.Auto });
+        Grid.SetRow(ResultsTextBox, 3);
 
         _latestReportCard = BuildLatestReportCard();
         Grid.SetRow(_latestReportCard, 1);
         DiscoveryPanel.Children.Add(_latestReportCard);
+
+        _deploymentHistoryCard = BuildDeploymentHistoryCard();
+        Grid.SetRow(_deploymentHistoryCard, 2);
+        DiscoveryPanel.Children.Add(_deploymentHistoryCard);
 
         DiscoveryPanel.IsVisibleChanged += (_, _) =>
         {
@@ -137,13 +148,93 @@ public partial class MainWindow
         HelpTipFactory.AttachToButton(
             _latestReportRefreshButton,
             new HelpTipSpec(
-                "Refresh the latest authoritative deployment report.",
-                "ZDeployPet reads only latest.json from the configured WSL report root, validates the reporter schema and checks that all declared artifact paths remain inside that report root before showing the result.",
-                WhenToUse: "Use this after a deployment attempt or whenever you want to re-read the latest reporter truth.",
-                WhatItDoes: "The card shows reporter result, release, mode, target and timestamps. Reporter result is authoritative; process exit status or UI state cannot upgrade a failed/cancelled report to success.",
+                "Refresh deployment reports.",
+                "ZDeployPet reads latest.json and the bounded deployment history from the configured WSL report root, validates reporter schema and checks declared artifact paths before showing trusted results.",
+                WhenToUse: "Use this after a deployment attempt or whenever you want to re-read reporter truth.",
+                WhatItDoes: "Refreshes both the latest card and the read-only history table. Reporter result is authoritative; process exit status or UI state cannot upgrade a failed/cancelled report to success.",
                 Safety: "This action is read-only. It does not modify the report directory and it does not deploy anything."));
 
         return card;
+    }
+
+    private Border BuildDeploymentHistoryCard()
+    {
+        Border card = new()
+        {
+            Margin = new Thickness(0, 0, 0, 12),
+            Padding = new Thickness(14, 12, 14, 12),
+            Background = FindBrush("AppSurfaceBrush", Brushes.DimGray),
+            BorderBrush = FindBrush("AppBorderBrush", Brushes.Gray),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(4)
+        };
+
+        StackPanel body = new();
+        body.Children.Add(new TextBlock
+        {
+            Text = "Deployment history",
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 15,
+            Foreground = FindBrush("AppTextBrush", Brushes.White)
+        });
+
+        _deploymentHistoryStatusText = new TextBlock
+        {
+            Text = "WAITING",
+            Margin = new Thickness(0, 3, 0, 10),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
+        };
+        body.Children.Add(_deploymentHistoryStatusText);
+
+        StackPanel table = new();
+        table.Children.Add(BuildHistoryHeaderRow());
+        _deploymentHistoryRowsPanel = new StackPanel();
+        table.Children.Add(_deploymentHistoryRowsPanel);
+
+        ScrollViewer scroll = new()
+        {
+            Content = table,
+            MaxHeight = 320,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+        body.Children.Add(scroll);
+        card.Child = body;
+        return card;
+    }
+
+    private Grid BuildHistoryHeaderRow()
+    {
+        Grid row = CreateHistoryRowGrid();
+        string[] labels = ["Started", "Release", "Mode", "Target", "Result", "Duration", "Summary", "Full log"];
+        for (int index = 0; index < labels.Length; index++)
+        {
+            TextBlock text = new()
+            {
+                Text = labels[index],
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(4, 2, 4, 6),
+                Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
+            };
+            Grid.SetColumn(text, index);
+            row.Children.Add(text);
+        }
+        return row;
+    }
+
+    private static Grid CreateHistoryRowGrid()
+    {
+        Grid row = new() { MinWidth = 680 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(145) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(65) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(95) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+        return row;
     }
 
     private async Task RefreshLatestDeploymentReportAsync()
@@ -159,10 +250,12 @@ public partial class MainWindow
         if (profile is null || DiscoveryPanel.Visibility != Visibility.Visible)
         {
             _latestReportCard!.Visibility = Visibility.Collapsed;
+            if (_deploymentHistoryCard is not null) _deploymentHistoryCard.Visibility = Visibility.Collapsed;
             return;
         }
 
         _latestReportCard!.Visibility = Visibility.Visible;
+        if (_deploymentHistoryCard is not null) _deploymentHistoryCard.Visibility = Visibility.Visible;
 
         if (string.IsNullOrWhiteSpace(profile.ReportRoot))
         {
@@ -170,8 +263,12 @@ public partial class MainWindow
                 "NOT CONFIGURED",
                 "This profile does not define a deployment report root.",
                 FindBrush("AppMutedTextBrush", Brushes.LightGray));
+            SetDeploymentHistoryStatus("NOT CONFIGURED — add a deployment report root to this profile.");
+            ClearDeploymentHistoryRows();
             return;
         }
+
+        _ = RefreshDeploymentHistoryAsync(profile);
 
         _latestReportRefreshButton.IsEnabled = false;
         SetLatestReportCard(
@@ -216,13 +313,6 @@ public partial class MainWindow
                 return;
             }
 
-            Brush outcomeBrush = report.Outcome switch
-            {
-                DeploymentReportOutcome.Pass => Brushes.LightGreen,
-                DeploymentReportOutcome.Cancelled => FindBrush("AppWarningBorderBrush", Brushes.Goldenrod),
-                _ => FindBrush("AppAccentBrush", Brushes.IndianRed)
-            };
-
             string details =
                 $"Release {report.Release}  •  {report.Mode.ToUpperInvariant()}  •  Target {report.Target}  •  " +
                 $"Started {report.StartedAt:yyyy-MM-dd HH:mm:ss zzz}  •  Finished {report.FinishedAt:yyyy-MM-dd HH:mm:ss zzz}  •  " +
@@ -230,7 +320,7 @@ public partial class MainWindow
 
             _latestReportCanonicalRoot = read.CanonicalReportRoot;
             _latestDeploymentReport = report;
-            SetLatestReportCard(report.Outcome.ToString().ToUpperInvariant(), details, outcomeBrush);
+            SetLatestReportCard(report.Outcome.ToString().ToUpperInvariant(), details, OutcomeBrush(report.Outcome));
             SetLatestReportArtifactButtonsVisible(true);
 
             ShellRuntime.Activity.Add(
@@ -254,6 +344,158 @@ public partial class MainWindow
         }
     }
 
+    private async Task RefreshDeploymentHistoryAsync(DeploymentProfile profile)
+    {
+        int generation = ++_historyRefreshGeneration;
+        ClearDeploymentHistoryRows();
+        SetDeploymentHistoryStatus("READING… Enumerating trusted historical report JSON.");
+
+        try
+        {
+            WslDeploymentHistoryListResult list = await _deploymentReportReader.ListHistoryJsonAsync(
+                profile.WslDistribution,
+                profile.ReportRoot);
+
+            if (generation != _historyRefreshGeneration) return;
+            if (!list.Success || list.CanonicalReportRoot is null)
+            {
+                SetDeploymentHistoryStatus("UNAVAILABLE — " + (list.Error ?? "Deployment history could not be read safely."));
+                return;
+            }
+
+            List<DeploymentReport> trusted = [];
+            HashSet<string> deploymentIds = new(StringComparer.Ordinal);
+            int rejected = 0;
+
+            foreach (string jsonPath in list.JsonPaths)
+            {
+                if (trusted.Count >= MaximumHistoryRows) break;
+                if (generation != _historyRefreshGeneration) return;
+
+                WslDeploymentArtifactReadResult read = await _deploymentReportReader.ReadTextArtifactAsync(
+                    profile.WslDistribution,
+                    list.CanonicalReportRoot,
+                    jsonPath,
+                    WslDeploymentReportReader.MaximumReportBytes);
+
+                if (!read.Success || read.Text is null)
+                {
+                    rejected++;
+                    continue;
+                }
+
+                DeploymentReportParseResult parsed = DeploymentReportParser.Parse(read.Text);
+                if (!parsed.Success || parsed.Report is null ||
+                    !ArtifactsStayInsideRoot(list.CanonicalReportRoot, parsed.Report.Artifacts))
+                {
+                    rejected++;
+                    continue;
+                }
+
+                if (!deploymentIds.Add(parsed.Report.DeploymentId))
+                    continue;
+
+                trusted.Add(parsed.Report);
+            }
+
+            trusted.Sort((left, right) => right.StartedAt.CompareTo(left.StartedAt));
+            RenderDeploymentHistory(profile, list.CanonicalReportRoot, trusted);
+
+            string status = trusted.Count == 0
+                ? "No trusted historical deployment reports were found."
+                : $"Showing {trusted.Count} trusted run{(trusted.Count == 1 ? string.Empty : "s")}, newest first.";
+            if (rejected > 0)
+                status += $" {rejected} malformed or untrusted candidate{(rejected == 1 ? string.Empty : "s")} skipped.";
+            if (list.Truncated)
+                status += $" History enumeration was bounded to the newest {WslDeploymentReportReader.MaximumHistoryCandidates} of {list.CandidateCount} JSON candidates.";
+            SetDeploymentHistoryStatus(status);
+
+            ShellRuntime.Activity.Add(
+                ShellActivityLevel.Info,
+                "Report",
+                $"Deployment history loaded for '{profile.Name}': {trusted.Count} trusted rows, {rejected} rejected candidates.");
+        }
+        catch (Exception exception)
+        {
+            if (generation != _historyRefreshGeneration) return;
+            SetDeploymentHistoryStatus("ERROR — " + exception.Message);
+            ShellRuntime.Activity.Add(ShellActivityLevel.Error, "Report", "Deployment history refresh failed.");
+        }
+    }
+
+    private void RenderDeploymentHistory(
+        DeploymentProfile profile,
+        string canonicalRoot,
+        IReadOnlyList<DeploymentReport> reports)
+    {
+        if (_deploymentHistoryRowsPanel is null) return;
+        _deploymentHistoryRowsPanel.Children.Clear();
+
+        foreach (DeploymentReport report in reports)
+        {
+            Grid row = CreateHistoryRowGrid();
+            row.Margin = new Thickness(0, 0, 0, 4);
+
+            AddHistoryText(row, 0, report.StartedAt.ToString("yyyy-MM-dd HH:mm"));
+            AddHistoryText(row, 1, report.Release);
+            AddHistoryText(row, 2, report.Mode.ToUpperInvariant());
+            AddHistoryText(row, 3, report.Target);
+            AddHistoryText(row, 4, report.Outcome.ToString().ToUpperInvariant(), OutcomeBrush(report.Outcome), FontWeights.SemiBold);
+            AddHistoryText(row, 5, $"{report.DurationSeconds}s");
+
+            Button summaryButton = BuildHistoryActionButton("Summary");
+            summaryButton.Click += async (_, _) => await OpenReportArtifactAsync(
+                profile,
+                canonicalRoot,
+                report,
+                summary: true,
+                summaryButton);
+            Grid.SetColumn(summaryButton, 6);
+            row.Children.Add(summaryButton);
+
+            Button fullLogButton = BuildHistoryActionButton("Full log");
+            fullLogButton.Click += async (_, _) => await OpenReportArtifactAsync(
+                profile,
+                canonicalRoot,
+                report,
+                summary: false,
+                fullLogButton);
+            Grid.SetColumn(fullLogButton, 7);
+            row.Children.Add(fullLogButton);
+
+            _deploymentHistoryRowsPanel.Children.Add(row);
+        }
+    }
+
+    private void AddHistoryText(
+        Grid row,
+        int column,
+        string text,
+        Brush? brush = null,
+        FontWeight? weight = null)
+    {
+        TextBlock block = new()
+        {
+            Text = text,
+            Margin = new Thickness(4, 6, 4, 6),
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Foreground = brush ?? FindBrush("AppTextBrush", Brushes.White)
+        };
+        if (weight.HasValue) block.FontWeight = weight.Value;
+        Grid.SetColumn(block, column);
+        row.Children.Add(block);
+    }
+
+    private static Button BuildHistoryActionButton(string label)
+        => new()
+        {
+            Content = label,
+            Padding = new Thickness(7, 4, 7, 4),
+            Margin = new Thickness(3, 2, 3, 2),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
     private async Task OpenLatestReportArtifactAsync(bool summary)
     {
         DeploymentProfile? profile = _activeProfile;
@@ -264,6 +506,16 @@ public partial class MainWindow
         if (profile is null || report is null || canonicalRoot is null || button is null)
             return;
 
+        await OpenReportArtifactAsync(profile, canonicalRoot, report, summary, button);
+    }
+
+    private async Task OpenReportArtifactAsync(
+        DeploymentProfile profile,
+        string canonicalRoot,
+        DeploymentReport report,
+        bool summary,
+        Button button)
+    {
         string artifactPath = summary ? report.Artifacts.Summary : report.Artifacts.FullLog;
         int limit = summary
             ? WslDeploymentReportReader.MaximumSummaryBytes
@@ -320,6 +572,14 @@ public partial class MainWindow
         }
     }
 
+    private Brush OutcomeBrush(DeploymentReportOutcome outcome)
+        => outcome switch
+        {
+            DeploymentReportOutcome.Pass => Brushes.LightGreen,
+            DeploymentReportOutcome.Cancelled => FindBrush("AppWarningBorderBrush", Brushes.Goldenrod),
+            _ => FindBrush("AppAccentBrush", Brushes.IndianRed)
+        };
+
     private static bool ArtifactsStayInsideRoot(string canonicalRoot, DeploymentReportArtifacts artifacts)
         => DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, artifacts.FullLog)
            && DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, artifacts.Summary)
@@ -337,6 +597,17 @@ public partial class MainWindow
         Visibility visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         if (_latestReportSummaryButton is not null) _latestReportSummaryButton.Visibility = visibility;
         if (_latestReportFullLogButton is not null) _latestReportFullLogButton.Visibility = visibility;
+    }
+
+    private void ClearDeploymentHistoryRows()
+    {
+        _deploymentHistoryRowsPanel?.Children.Clear();
+    }
+
+    private void SetDeploymentHistoryStatus(string text)
+    {
+        if (_deploymentHistoryStatusText is not null)
+            _deploymentHistoryStatusText.Text = text;
     }
 
     private void SetLatestReportCard(string state, string details, Brush stateBrush)
