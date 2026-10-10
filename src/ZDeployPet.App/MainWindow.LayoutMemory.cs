@@ -49,12 +49,12 @@ public partial class MainWindow
             _activityPane is null || _activityPaneSplitter is null)
             return;
 
-        double consoleWidth = ClampFinite(snapshot.ConsolePaneWidth, 300, 1200, 430);
+        double consoleWidth = ClampFinite(snapshot.ConsolePaneWidth, MinimumActivityPaneWidth, 1200, 430);
         _rememberedActivityPaneWidth = new GridLength(consoleWidth);
 
         if (snapshot.ConsolePaneVisible)
         {
-            _activityPaneColumn.MinWidth = 300;
+            _activityPaneColumn.MinWidth = MinimumActivityPaneWidth;
             _activityPaneColumn.Width = _rememberedActivityPaneWidth;
             _activitySplitterColumn.Width = new GridLength(5);
             _activityPaneSplitter.Visibility = Visibility.Visible;
@@ -79,8 +79,8 @@ public partial class MainWindow
                 : RestoreBounds;
 
             double consoleWidth = _activityPaneColumn?.ActualWidth ?? _rememberedActivityPaneWidth.Value;
-            if (!IsFinite(consoleWidth) || consoleWidth < 300)
-                consoleWidth = IsFinite(_rememberedActivityPaneWidth.Value) && _rememberedActivityPaneWidth.Value >= 300
+            if (!IsFinite(consoleWidth) || consoleWidth < MinimumActivityPaneWidth)
+                consoleWidth = IsFinite(_rememberedActivityPaneWidth.Value) && _rememberedActivityPaneWidth.Value >= MinimumActivityPaneWidth
                     ? _rememberedActivityPaneWidth.Value
                     : 430;
 
