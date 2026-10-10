@@ -1,0 +1,88 @@
+<UserControl x:Class="ZDeployPet.App.PetCompanionControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="170" MaxWidth="260"
+             IsHitTestVisible="False">
+    <Border x:Name="ShellBorder"
+            Padding="9,6,10,6"
+            Background="{DynamicResource AppSurfaceBrush}"
+            BorderBrush="{DynamicResource AppBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="5">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid x:Name="FaceHost"
+                  Width="42" Height="42"
+                  Margin="0,0,10,0"
+                  VerticalAlignment="Center">
+                <Polygon x:Name="LeftEar"
+                         Points="5,13 11,2 17,14"
+                         Fill="{DynamicResource AppSurfaceRaisedBrush}"
+                         Stroke="{DynamicResource AppBorderBrush}"
+                         StrokeThickness="1" />
+                <Polygon x:Name="RightEar"
+                         Points="25,14 31,2 37,13"
+                         Fill="{DynamicResource AppSurfaceRaisedBrush}"
+                         Stroke="{DynamicResource AppBorderBrush}"
+                         StrokeThickness="1" />
+
+                <Border x:Name="FaceBorder"
+                        Width="34" Height="30"
+                        Margin="4,10,4,2"
+                        CornerRadius="12"
+                        Background="{DynamicResource AppSurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource AppBorderBrush}"
+                        BorderThickness="1">
+                    <Grid>
+                        <TextBlock x:Name="EyesText"
+                                   Text="•   •"
+                                   FontSize="13"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Top"
+                                   Margin="0,4,0,0"
+                                   Foreground="{DynamicResource AppTextBrush}" />
+                        <TextBlock x:Name="MouthText"
+                                   Text="ᴥ"
+                                   FontSize="13"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Bottom"
+                                   Margin="0,0,0,3"
+                                   Foreground="{DynamicResource AppTextBrush}" />
+                    </Grid>
+                </Border>
+
+                <Ellipse x:Name="StatusDot"
+                         Width="9" Height="9"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Bottom"
+                         Margin="0,0,1,1"
+                         Stroke="{DynamicResource AppBackgroundBrush}"
+                         StrokeThickness="1.5" />
+            </Grid>
+
+            <StackPanel Grid.Column="1"
+                        VerticalAlignment="Center">
+                <TextBlock Text="ZPet"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppTextBrush}" />
+                <TextBlock x:Name="StateText"
+                           Text="LOCKED"
+                           FontSize="12"
+                           FontWeight="Bold"
+                           Margin="0,1,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppMutedTextBrush}" />
+                <TextBlock x:Name="MessageText"
+                           Text="Deployment access is off."
+                           FontSize="10"
+                           Margin="0,1,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppMutedTextBrush}" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
