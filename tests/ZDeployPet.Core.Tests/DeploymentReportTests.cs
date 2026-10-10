@@ -4,6 +4,8 @@ namespace ZDeployPet.Core.Tests;
 
 public sealed class DeploymentReportTests
 {
+    private const string ReportRoot = "/home/wilder/.local/state/millenova/deployments";
+
     [Fact]
     public void ParsesValidPassReportAndKeepsReporterResultAuthoritative()
     {
@@ -89,12 +91,12 @@ public sealed class DeploymentReportTests
     }
 
     [Theory]
-    [InlineData("/home/wilder/.local/state/millenova/deployments", "/home/wilder/.local/state/millenova/deployments/latest.json", true)]
-    [InlineData("/home/wilder/.local/state/millenova/deployments", "/home/wilder/.local/state/millenova/deployments/2026-10-10/run.full.log", true)]
-    [InlineData("/home/wilder/.local/state/millenova/deployments", "/home/wilder/.local/state/millenova/deployments", true)]
-    [InlineData("/home/wilder/.local/state/millenova/deployments", "/home/wilder/.local/state/millenova/deployments-escape/run.json", false)]
-    [InlineData("/home/wilder/.local/state/millenova/deployments", "/etc/passwd", false)]
-    [InlineData("/home/wilder/.local/state/millenova/deployments", "relative/latest.json", false)]
+    [InlineData(ReportRoot, ReportRoot + "/latest.json", true)]
+    [InlineData(ReportRoot, ReportRoot + "/2026-10-10/run.full.log", true)]
+    [InlineData(ReportRoot, ReportRoot, true)]
+    [InlineData(ReportRoot, ReportRoot + "-escape/run.json", false)]
+    [InlineData(ReportRoot, "/etc/passwd", false)]
+    [InlineData(ReportRoot, "relative/latest.json", false)]
     public void CanonicalPathBoundaryRequiresCandidateInsideRoot(string root, string candidate, bool expected)
     {
         Assert.Equal(expected, DeploymentReportPathBoundary.IsWithinCanonicalRoot(root, candidate));
@@ -109,6 +111,96 @@ public sealed class DeploymentReportTests
         Assert.Equal("/home/wilder/reports/latest.json", normalized);
 
         Assert.False(DeploymentReportPathBoundary.TryNormalizeCanonicalPosixPath("/../etc/passwd", out _));
+    }
+
+    [Fact]
+    public void HistorySelectionOrdersNewestFirstAndDeduplicatesDeploymentId()
+    {
+        DeploymentReportHistoryCandidate[] candidates =
+        [
+            Candidate("older.json", ReportWithIdentity("older", "2026-10-10T10:00:00+03:00")),
+            Candidate("newest.json", ReportWithIdentity("newest", "2026-10-10T12:00:00+03:00")),
+            Candidate("duplicate.json", ReportWithIdentity("newest", "2026-10-10T12:00:00+03:00")),
+            Candidate("middle.json", ReportWithIdentity("middle", "2026-10-10T11:00:00+03:00"))
+        ];
+
+        DeploymentReportHistorySelection selection = DeploymentReportHistory.SelectTrusted(
+            candidates,
+            ReportRoot,
+            maximumCandidates: 90,
+            maximumRows: 30);
+
+        Assert.Equal(["newest", "middle", "older"], selection.Reports.Select(report => report.DeploymentId));
+        Assert.Equal(1, selection.DuplicateCount);
+        Assert.Equal(0, selection.RejectedCount);
+        Assert.False(selection.RowLimitReached);
+    }
+
+    [Fact]
+    public void HistorySelectionRejectsPartialJsonAndPathEscapes()
+    {
+        DeploymentReportHistoryCandidate[] candidates =
+        [
+            Candidate("valid.json", ReportWithIdentity("valid", "2026-10-10T12:00:00+03:00")),
+            Candidate("partial.json", "{\"schema_version\":1"),
+            new DeploymentReportHistoryCandidate(
+                "/etc/escaped.json",
+                ReportWithIdentity("escaped-candidate", "2026-10-10T13:00:00+03:00")),
+            Candidate(
+                "escaped-artifact.json",
+                ReportWithIdentity("escaped-artifact", "2026-10-10T14:00:00+03:00")
+                    .Replace(ReportRoot + "/2026-10-10/run.full.log", "/etc/passwd"))
+        ];
+
+        DeploymentReportHistorySelection selection = DeploymentReportHistory.SelectTrusted(
+            candidates,
+            ReportRoot,
+            maximumCandidates: 90,
+            maximumRows: 30);
+
+        Assert.Single(selection.Reports);
+        Assert.Equal("valid", selection.Reports[0].DeploymentId);
+        Assert.Equal(3, selection.RejectedCount);
+    }
+
+    [Fact]
+    public void HistorySelectionEnforcesCandidateAndRowBounds()
+    {
+        DeploymentReportHistoryCandidate[] candidates = Enumerable.Range(0, 8)
+            .Select(index => Candidate(
+                $"run-{index}.json",
+                ReportWithIdentity($"run-{index}", $"2026-10-10T{index + 10:00}:00:00+03:00")))
+            .ToArray();
+
+        DeploymentReportHistorySelection candidateBound = DeploymentReportHistory.SelectTrusted(
+            candidates,
+            ReportRoot,
+            maximumCandidates: 5,
+            maximumRows: 30);
+        Assert.True(candidateBound.CandidateLimitReached);
+        Assert.Equal(5, candidateBound.Reports.Count);
+
+        DeploymentReportHistorySelection rowBound = DeploymentReportHistory.SelectTrusted(
+            candidates,
+            ReportRoot,
+            maximumCandidates: 90,
+            maximumRows: 3);
+        Assert.True(rowBound.RowLimitReached);
+        Assert.Equal(3, rowBound.Reports.Count);
+        Assert.Equal(["run-7", "run-6", "run-5"], rowBound.Reports.Select(report => report.DeploymentId));
+    }
+
+    private static DeploymentReportHistoryCandidate Candidate(string fileName, string json) =>
+        new($"{ReportRoot}/2026-10-10/{fileName}", json);
+
+    private static string ReportWithIdentity(string deploymentId, string startedAt)
+    {
+        DateTimeOffset started = DateTimeOffset.Parse(startedAt);
+        string finished = started.AddSeconds(15).ToString("yyyy-MM-dd'T'HH:mm:sszzz");
+        return ValidReport("pass", 0, "null")
+            .Replace("20261010-120000_v4.4.9_dry_both", deploymentId)
+            .Replace("2026-10-10T12:00:00+03:00", started.ToString("yyyy-MM-dd'T'HH:mm:sszzz"))
+            .Replace("2026-10-10T12:00:15+03:00", finished);
     }
 
     private static string ValidReport(string result, int exitStatus, string failureJson) => $$"""
