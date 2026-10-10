@@ -36,11 +36,23 @@ public partial class MainWindow
         InitializeOperatorAccessControl();
         InitializePetCompanion();
         InitializePda4ReportMonitor();
+        NormalizeDiscoverySurfaceRows();
         EnsureResponsiveActionPanel();
         EnsureActivityButton();
         InitializePda5DryRun();
         ApplyResponsiveActionSpacing();
         RefreshPda3ActionVisibility();
+    }
+
+    private void NormalizeDiscoverySurfaceRows()
+    {
+        if (_operatorAccessCard is null || _latestReportCard is null || _deploymentHistoryCard is null)
+            return;
+
+        Grid.SetRow(_operatorAccessCard, 1);
+        Grid.SetRow(_latestReportCard, 2);
+        Grid.SetRow(_deploymentHistoryCard, 3);
+        Grid.SetRow(ResultsTextBox, 4);
     }
 
     private void ApplyMainWindowThemeFixups()
