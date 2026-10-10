@@ -20,9 +20,11 @@ public sealed class DeploymentSessionController
     public string Message { get; private set; } = "Deployment access is locked.";
     public DateTimeOffset? ExpiresAtUtc => _lease?.ExpiresAtUtc;
     public bool HasOwnedAgent => _runtime is not null;
+    public bool TargetsReady { get; private set; }
 
     public async Task BeginUnlockAsync(DeploymentProfile profile, CancellationToken cancellationToken = default)
     {
+        TargetsReady = false;
         if (_runtime is not null)
             await LockAsync(cancellationToken);
 
@@ -70,6 +72,7 @@ public sealed class DeploymentSessionController
     {
         if (_runtime is null || _lease is null)
         {
+            TargetsReady = false;
             State = DeploymentAccessSessionState.Locked;
             Message = "No ZDeployPet deployment session is running. Click Unlock first.";
             return;
@@ -78,6 +81,7 @@ public sealed class DeploymentSessionController
         if (!string.Equals(_lease.ProfileId, profile.Id, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(_runtime.Distribution, profile.WslDistribution, StringComparison.Ordinal))
         {
+            TargetsReady = false;
             State = DeploymentAccessSessionState.Invalid;
             Message = "The running deployment session belongs to a different profile or WSL distribution. Lock it before continuing.";
             return;
@@ -86,6 +90,7 @@ public sealed class DeploymentSessionController
         WslSshAgentInspection inspection = await _agent.InspectAsync(_runtime, cancellationToken);
         if (!inspection.AgentReachable)
         {
+            TargetsReady = false;
             State = DeploymentAccessSessionState.Locked;
             Message = inspection.Error ?? "The ZDeployPet ssh-agent is no longer reachable.";
             return;
@@ -102,12 +107,16 @@ public sealed class DeploymentSessionController
         bool foreignLoaded = loaded.Any(value => !string.Equals(value, approved, StringComparison.Ordinal));
         if (foreignLoaded)
         {
+            TargetsReady = false;
             State = DeploymentAccessSessionState.Invalid;
             Message = "The dedicated ZDeployPet ssh-agent contains an unexpected key. Access is not READY; lock the session and start again.";
             return;
         }
 
         State = _lease.Evaluate(DateTimeOffset.UtcNow, true, approvedLoaded);
+        if (State is not DeploymentAccessSessionState.Ready and not DeploymentAccessSessionState.Expiring)
+            TargetsReady = false;
+
         Message = State switch
         {
             DeploymentAccessSessionState.Ready =>
@@ -137,6 +146,7 @@ public sealed class DeploymentSessionController
         DeploymentKeyIdentity? key = identity.DeploymentKey;
         if (key is null)
         {
+            TargetsReady = false;
             State = DeploymentAccessSessionState.Invalid;
             Message = "The profile no longer has an approved deployment key. Deployment execution is blocked.";
             return null;
@@ -147,6 +157,7 @@ public sealed class DeploymentSessionController
                 NormalizeFingerprint(_lease.ApprovedKeyFingerprint),
                 StringComparison.Ordinal))
         {
+            TargetsReady = false;
             State = DeploymentAccessSessionState.Invalid;
             Message = "The approved deployment key changed after this session was unlocked. Lock and unlock again before deployment.";
             return null;
@@ -159,6 +170,7 @@ public sealed class DeploymentSessionController
         DeploymentProfile profile,
         CancellationToken cancellationToken = default)
     {
+        TargetsReady = false;
         await CheckAsync(profile, cancellationToken);
         if (_runtime is null || State is not DeploymentAccessSessionState.Ready and not DeploymentAccessSessionState.Expiring)
         {
@@ -213,7 +225,8 @@ public sealed class DeploymentSessionController
         }
 
         int passed = results.Count(item => item.Result.Success);
-        Message = passed == results.Count && results.Count > 0
+        TargetsReady = passed == results.Count && results.Count > 0;
+        Message = TargetsReady
             ? $"READY — bounded-agent probes passed for all {passed} configured target{(passed == 1 ? string.Empty : "s")}."
             : $"READY — bounded session remains valid; {passed} of {results.Count} target probes passed. Review the failed target before deployment.";
         return results;
@@ -233,9 +246,6 @@ public sealed class DeploymentSessionController
             .Select(item => item.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // A profile save used to regenerate target IDs. Several stale IDs may therefore
-        // point at the same previously trusted server key. Collapse those duplicates by
-        // exact fingerprint + key type before attempting recovery.
         TargetHostIdentity[] legacyCandidates = identity.HostKeys
             .Where(item => !currentTargetIds.Contains(item.TargetId))
             .GroupBy(
@@ -249,10 +259,6 @@ public sealed class DeploymentSessionController
         List<TargetHostIdentity> verifiedMatches = [];
         foreach (TargetHostIdentity candidate in legacyCandidates)
         {
-            // ProbeAsync requests the candidate's exact SSH host-key algorithm, verifies
-            // the observed fingerprint against the old enrolled value, and then proves
-            // authentication through the bounded app-owned agent. This avoids relying on
-            // whichever key type ssh-keyscan happens to return first.
             SshProbeResult verification = await _agentProbe.ProbeAsync(
                 profile.WslDistribution,
                 target,
@@ -264,8 +270,6 @@ public sealed class DeploymentSessionController
                 verifiedMatches.Add(candidate);
         }
 
-        // Recovery must be unambiguous. If zero or multiple distinct trusted identities
-        // authenticate successfully, leave the target unenrolled and require explicit review.
         if (verifiedMatches.Count != 1)
             return null;
 
@@ -277,6 +281,7 @@ public sealed class DeploymentSessionController
 
     public async Task LockAsync(CancellationToken cancellationToken = default)
     {
+        TargetsReady = false;
         if (_runtime is not null)
         {
             WslSshAgentLockResult result = await _agent.LockAsync(_runtime, cancellationToken);
@@ -305,10 +310,9 @@ public sealed class DeploymentSessionController
         }
         catch
         {
-            // App shutdown must never hang indefinitely on WSL/ssh-agent cleanup.
-            // The final process boundary still runs after this method returns.
             _runtime = null;
             _lease = null;
+            TargetsReady = false;
             State = DeploymentAccessSessionState.Locked;
             Message = "LOCKED locally — shutdown cleanup timed out or failed.";
         }
