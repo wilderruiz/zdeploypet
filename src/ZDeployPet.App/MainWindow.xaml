@@ -74,7 +74,7 @@
                                 <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="Profiles are stored as JSON files under your local ZDeployPet application-data folder. Choose one from the Profile name list and press Load profile to restore its exact saved settings." />
                                 <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="New profile" />
                                 <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="Type a new profile name, choose the project folder and WSL environment, then complete the remaining sections. Check settings and save will validate the configuration before writing the JSON profile." />
-                                <TextBlock Margin="0,9,0,0" Foreground="#555" TextWrapping="Wrap" Text="The WSL project path is derived and verified automatically from the Windows project folder; you do not need to type it twice." />
+                                <TextBlock Margin="0,9,0,0" Foreground="{StaticResource AppTextBrush}" TextWrapping="Wrap" Text="The WSL project path is derived and verified automatically from the Windows project folder; you do not need to type it twice." />
                             </StackPanel>
                         </ToolTip>
                     </Button.ToolTip>
@@ -133,7 +133,7 @@
                                 <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="Example" />
                                 <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="A website may be hosted on one shared-hosting server while a backend service runs on a separate VPS. Add both servers here, then use Section 4 to decide which project parts go to each one." />
                                 <TextBlock Margin="0,9,0,0" TextWrapping="Wrap" Text="This section only describes connection destinations. It does not connect to a server, sign in, or store passwords." />
-                                <TextBlock Margin="0,9,0,0" Foreground="#555" TextWrapping="Wrap" Text="Tip: press Enter while editing a row to add another server row quickly." />
+                                <TextBlock Margin="0,9,0,0" Foreground="{StaticResource AppTextBrush}" TextWrapping="Wrap" Text="Tip: press Enter while editing a row to add another server row quickly." />
                             </StackPanel>
                         </ToolTip>
                     </Button.ToolTip>
@@ -170,7 +170,7 @@
                                 <TextBlock FontFamily="Consolas" TextWrapping="Wrap" Text="backend/ → /opt/example/backend/ on a VPS" />
                                 <TextBlock Margin="0,9,0,0" TextWrapping="Wrap" Text="The private configuration file can stay above public_html so it is not publicly accessible, while the website remains inside the web root." />
                                 <TextBlock Margin="0,9,0,0" FontWeight="Bold" TextWrapping="Wrap" Text="ZDeployPet keeps one clean Git project locally while deploying each part to the correct production server and path." />
-                                <TextBlock Margin="0,9,0,0" Foreground="#555" TextWrapping="Wrap" Text="Add one row per distinct destination. Press Enter while editing a row to add the next mapping quickly." />
+                                <TextBlock Margin="0,9,0,0" Foreground="{StaticResource AppTextBrush}" TextWrapping="Wrap" Text="Add one row per distinct destination. Press Enter while editing a row to add the next mapping quickly." />
                             </StackPanel>
                         </ToolTip>
                     </Button.ToolTip>
@@ -194,7 +194,7 @@
                                 <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="The complete validated profile is written as a JSON file in your local ZDeployPet application-data folder. Later, choose its name in Section 1 and press Load profile to restore the same settings into the UI." />
                                 <TextBlock Margin="0,9,0,0" FontWeight="Bold" Text="What is not saved" />
                                 <TextBlock Margin="0,3,0,0" TextWrapping="Wrap" Text="ZDeployPet does not store server passwords, private-key contents, or private-key passphrases in the profile. Saving a profile also does not contact a server and does not deploy anything." />
-                                <TextBlock Margin="0,9,0,0" Foreground="#555" TextWrapping="Wrap" Text="This gives each project a repeatable local deployment definition instead of relying on remembered form suggestions." />
+                                <TextBlock Margin="0,9,0,0" Foreground="{StaticResource AppTextBrush}" TextWrapping="Wrap" Text="This gives each project a repeatable local deployment definition instead of relying on remembered form suggestions." />
                             </StackPanel>
                         </ToolTip>
                     </Button.ToolTip>
