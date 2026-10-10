@@ -117,7 +117,10 @@ source "$script_path"
         startInfo.ArgumentList.Add($"SSH_AGENT_PID={runtime.AgentPid.ToString(CultureInfo.InvariantCulture)}");
         startInfo.ArgumentList.Add("/usr/bin/bash");
         startInfo.ArgumentList.Add("-c");
-        startInfo.ArgumentList.Add(DryRunReadAdapter);
+        // Raw string literals follow the source file's physical line endings. Normalize
+        // the adapter explicitly because bash -c interprets a stray CR in `pipefail\r`
+        // as part of the option name when the project is checked out with CRLF on Windows.
+        startInfo.ArgumentList.Add(NormalizeBashScript(DryRunReadAdapter));
         startInfo.ArgumentList.Add("zdeploypet-dry-run");
         startInfo.ArgumentList.Add(scriptRelativePath.Trim());
         startInfo.ArgumentList.Add(promptPlan.TargetChoice.ToString(CultureInfo.InvariantCulture));
@@ -201,6 +204,9 @@ source "$script_path"
             return new(false, -1, string.Empty, string.Empty, exception.Message);
         }
     }
+
+    private static string NormalizeBashScript(string script)
+        => script.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
 
     private static async Task<string> ReadAndMonitorAsync(
         StreamReader reader,
