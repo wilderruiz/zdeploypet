@@ -26,6 +26,7 @@ public partial class MainWindow
         base.OnContentRendered(e);
         ConfigureManagedEntryRows();
         InitializePda1Shell();
+        RestoreUiLayoutMemory();
     }
 
     protected override void OnClosing(CancelEventArgs e)
@@ -33,6 +34,7 @@ public partial class MainWindow
         // Window_Closing persists the unfinished draft. Flush editors first so the
         // draft on disk matches every value currently visible in the grids.
         FlushVisibleGridEditors();
+        SaveUiLayoutMemoryBestEffort();
         base.OnClosing(e);
     }
 
