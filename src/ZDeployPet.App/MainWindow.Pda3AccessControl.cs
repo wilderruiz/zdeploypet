@@ -79,14 +79,13 @@ public partial class MainWindow
         Grid.SetRow(_operatorAccessCard, 1);
         DiscoveryPanel.Children.Add(_operatorAccessCard);
 
-        HelpTipFactory.AttachToButton(
-            _operatorAccessButton,
-            new HelpTipSpec(
-                "Control everyday deployment access from one place.",
-                "Turn on starts the existing bounded ZDeployPet ssh-agent flow. After OpenSSH accepts the approved key, ZDeployPet verifies the exact fingerprint and automatically probes every configured target before showing ON / READY.",
-                WhenToUse: "Use this instead of opening the detailed Deployment access and Session windows during normal daily deployment work.",
-                WhatItDoes: "If onboarding is incomplete, this control changes to Set up deployment access. When access is ON, the same button becomes Turn off and invokes the real bounded-session lock path.",
-                Safety: "ON is never cosmetic. ZDeployPet shows ON / READY only after the approved key, lease, and all configured non-writing target probes pass. Closing the app still locks deployment access."));
+        Button accessHelp = HelpTipFactory.Create(new HelpTipSpec(
+            "Control everyday deployment access from one place.",
+            "Turn on starts the existing bounded ZDeployPet ssh-agent flow. After OpenSSH accepts the approved key, ZDeployPet verifies the exact fingerprint and automatically probes every configured target before showing ON / READY.",
+            WhenToUse: "Use this instead of opening the detailed Deployment access and Session windows during normal daily deployment work.",
+            WhatItDoes: "If onboarding is incomplete, this control changes to Set up deployment access. When access is ON, the same button becomes Turn off and invokes the real bounded-session lock path.",
+            Safety: "ON is never cosmetic. ZDeployPet shows ON / READY only after the approved key, lease, and all configured non-writing target probes pass. Closing the app still locks deployment access."));
+        _operatorAccessButton.ToolTip = accessHelp.ToolTip;
 
         DiscoveryPanel.IsVisibleChanged += async (_, _) =>
         {
