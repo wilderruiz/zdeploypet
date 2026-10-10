@@ -98,6 +98,20 @@ public sealed class DeploymentScriptApprovalTests
     }
 
     [Fact]
+    public void DryMarkerMayArriveBeforePromptEchoesFromSeparateStreamReader()
+    {
+        DryRunPromptProtocol protocol = new(new DryRunPromptPlan(TargetChoice: 3, ReleaseChoice: 1));
+
+        Assert.Null(protocol.Observe("DRY RUN — NOTHING WILL BE MODIFIED\n"));
+        Assert.True(protocol.DryModeConfirmed);
+        Assert.False(protocol.SafetyViolation);
+
+        Assert.Null(protocol.Observe("DRY RUN COMPLETE\n"));
+        Assert.True(protocol.Completed);
+        Assert.False(protocol.SafetyViolation);
+    }
+
+    [Fact]
     public void LiveMarkerFailsClosedAndNeverEmitsConfirmationPhrase()
     {
         DryRunPromptProtocol protocol = new(new DryRunPromptPlan(TargetChoice: 3, ReleaseChoice: 1));
