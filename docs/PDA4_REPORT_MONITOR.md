@@ -38,7 +38,8 @@ The generic ZDeployPet core consumes the stable run/result/artifact envelope and
 - `latest.json` may be consumed only after a complete parse and validation pass;
 - reporter `result` is authoritative; process exit status never upgrades a failed/cancelled report to success;
 - no report path, content or artifact may grant deployment authority;
-- the WSL reader resolves the configured root and `latest.json` with `realpath`, rejects symlink escapes, accepts only a regular file, and enforces a 2 MiB maximum before reading.
+- the WSL reader resolves the configured root and `latest.json` with `realpath`, rejects symlink escapes, accepts only a regular file, and enforces a 2 MiB maximum before reading;
+- the first shell report card validates all declared JSON/summary/full-log artifact paths against the canonical report root before rendering the report as trusted.
 
 ## Initial implementation sequence
 
@@ -46,9 +47,9 @@ The generic ZDeployPet core consumes the stable run/result/artifact envelope and
 2. ✅ add Core path-boundary validation for report/artifact paths;
 3. ✅ add automated tests for valid pass/fail/cancelled reports, malformed/partial JSON, unsupported schema and path escapes;
 4. ✅ add a narrow WSL read-only report-root reader for `latest.json` with canonical root/file containment and bounded payload size;
-5. add a shell report-status surface showing deployment id, release, mode, target, timestamps and authoritative result;
+5. ✅ add a shell **Latest deployment report** card showing deployment id, release, mode, target, timestamps, duration and authoritative PASS/FAILED/CANCELLED result;
 6. add read-only links/actions for validated summary/full-log artifacts;
-7. add safe refresh/watch behavior without deployment-side writes;
+7. 🟡 manual Refresh is present and automatic refresh occurs when the report surface becomes active; add bounded watch/poll behavior later without deployment-side writes;
 8. smoke against real Millenova reporter output.
 
 ## Acceptance gate
