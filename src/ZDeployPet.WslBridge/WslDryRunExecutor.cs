@@ -72,6 +72,11 @@ public sealed class WslDryRunExecutor
             if (!process.Start())
                 return new(false, -1, string.Empty, string.Empty, "Windows could not start the WSL dry-run process.");
 
+            // StreamWriter defaults to the Windows newline (CRLF). Bash `read -r` strips
+            // the LF delimiter but preserves the CR, turning a safe numeric choice such as
+            // `3` into `3\r` and causing Millenova's exact case match to reject it. The WSL
+            // script is a Unix process, so every synthetic prompt answer must be LF-only.
+            process.StandardInput.NewLine = "\n";
             foreach (string line in inputLines)
                 await process.StandardInput.WriteLineAsync(line.AsMemory(), cancellationToken);
             process.StandardInput.Close();
