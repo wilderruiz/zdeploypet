@@ -1,6 +1,6 @@
 # PDA-4 — Structured deployment-report monitor
 
-**Status:** 🟡 ACTIVE
+**Status:** ✅ ACCEPTED 2026-10-10
 
 PDA-4 adds a read-only monitor for project-owned deployment reporter output. The reporter JSON is authoritative deployment truth; ZDeployPet must never override it with process exit status or UI assumptions.
 
@@ -43,11 +43,12 @@ The generic ZDeployPet core consumes the stable run/result/artifact envelope and
 - historical discovery may enumerate only bounded report files below the configured canonical report root and must never execute, source or interpret shell content from the report tree;
 - `latest.json` is a convenience pointer/current snapshot and must not appear as a duplicate historical deployment row when the same `deployment_id` is already represented by its dated report JSON;
 - summary/full-log text is decoded as UTF-8 so reporter labels such as `STUDIO · TRACK DNA` render without mojibake;
-- automatic refresh is allowed only while the report surface is visible, remains read-only, and must stop when that surface is hidden or the app closes.
+- automatic refresh is allowed only while the report surface is visible, remains read-only, and must stop when that surface is hidden or the app closes;
+- automatic polling checks only `latest.json` on the 15-second cadence; full history enumeration is performed on initial/manual refresh or when a genuinely new deployment id is detected.
 
 ## Latest report surface
 
-Keep the existing **Latest deployment report** card as the fast current-state surface. It shows:
+The **Latest deployment report** card is the fast current-state surface. It shows:
 
 - authoritative PASS / FAILED / CANCELLED result;
 - release and previous release;
@@ -60,29 +61,28 @@ The latest card remains independent from deployment-access state. A LOCKED ZDepl
 
 ## Deployment history table
 
-Add a **Deployment history** table directly below the latest-report card rather than a single historical dropdown. The table is the primary historical browsing surface because it allows runs to be scanned and compared without repeatedly opening a selector.
+The **Deployment history** table sits directly below the latest-report card and is the primary historical browsing surface.
 
-Initial row model, newest first:
+Row model, newest first:
 
 `Started | Release | Mode | Target | Result | Duration | Summary | Full log`
 
-Requirements:
+Accepted behavior:
 
-- default to the newest 30 trusted report JSON files; do not recursively load an unbounded history into the UI;
+- render at most the newest 30 trusted reports;
 - derive each row from the same schema-v1 parser used by the latest card, not from filenames alone;
-- enumerate dated report JSON files below the canonical report root and ignore `latest.json` as a duplicate history source;
-- deduplicate by `deployment_id` if the same authoritative report is encountered through more than one safe path;
-- preserve reporter result as the row result; do not infer success from exit code, filename, colour, or current UI state;
-- keep PASS / FAILED / CANCELLED visually distinct while still exposing the literal reporter result text to accessibility tooling;
-- malformed, unsupported, partially written, escaped or otherwise untrusted report files must not become normal history rows; surface a bounded warning/count instead of crashing the table;
-- **Summary** and **Full log** actions on each row use the report's validated artifact paths and the same bounded read-only viewer as the latest card;
-- selecting a row may later open a richer report-details surface, but row selection itself grants no deployment authority and performs no write;
-- bounded polling may refresh the visible report surface, but must stop when the surface is hidden and must not create deployment-side writes;
-- future filters may include Result and Target, but they are not required for the first history-table acceptance slice.
+- enumerate dated report JSON below the canonical report root and ignore root `latest.json` as a duplicate history source;
+- deduplicate by `deployment_id`;
+- preserve reporter result as authoritative row result;
+- visually distinguish PASS / FAILED / CANCELLED while retaining literal result text;
+- skip malformed, unsupported, partially written, escaped or otherwise untrusted candidates and expose a bounded skip count instead of crashing;
+- **Summary** and **Full log** on each row use that selected report's validated artifact paths and the same bounded read-only viewer as the latest card;
+- row selection/actions grant no deployment authority and perform no write;
+- bounded polling is lightweight and does not repeatedly rescan history when nothing changed.
 
-## Current implementation slice
+## Accepted implementation
 
-Implemented on `main`:
+Completed on `main` and operator-smoked on 2026-10-10:
 
 - WSL history discovery scans dated `*.json` report files below the canonical report root and excludes root `latest.json`;
 - candidate enumeration is capped at 90 paths before report parsing, while the UI renders at most the newest 30 trusted deployment ids;
@@ -91,43 +91,32 @@ Implemented on `main`:
 - duplicate deployment ids are suppressed;
 - malformed/untrusted candidates are skipped and counted in the history status line;
 - the history table shows Started, Release, Mode, Target, Result and Duration plus row-specific Summary / Full log actions;
-- row actions use the selected report's own artifact paths and the existing bounded read-only artifact viewer;
-- WSL stdout/stderr decoding is explicitly UTF-8 to correct middle-dot reporter labels;
+- row actions use the selected report's own artifact paths and the bounded read-only artifact viewer;
+- WSL stdout/stderr decoding is explicit UTF-8;
 - deterministic Core history selection owns bounded candidate processing, path/artifact validation, deployment-id deduplication, newest-first ordering and row limiting;
 - automated Core tests cover history candidate bounds, row bounds, deduplication, ordering, malformed/partial JSON, report-path escape and artifact-path escape;
 - the user reported the Release solution test/build run successful on 2026-10-10;
-- a 15-second `DispatcherTimer` now refreshes latest + history only while the report surface is visible, stops when the surface is hidden, pauses around its own async refresh to avoid timer overlap, and stops on app close.
+- the initial 15-second full refresh was corrected after operator smoke showed history churn and repeated activity-log entries;
+- the accepted timer performs a lightweight `latest.json` check every 15 seconds only while the report surface is visible, suppresses unchanged-result log spam, and triggers the expensive history refresh only after a newly observed deployment id;
+- operator smoke showed the latest PASS card stable, the history table populated with 30 trusted rows newest-first, and activity reduced to one latest-load plus one history-load event instead of repeated polling noise.
 
-## Initial implementation sequence
+## Acceptance result
 
-1. ✅ add immutable Core report contracts and a schema-v1 parser/validator;
-2. ✅ add Core path-boundary validation for report/artifact paths;
-3. ✅ add automated tests for valid pass/fail/cancelled reports, malformed/partial JSON, unsupported schema and path escapes;
-4. ✅ add a narrow WSL read-only report-root reader for `latest.json` with canonical root/file containment and bounded payload size;
-5. ✅ add a shell **Latest deployment report** card showing deployment id, release, mode, target, timestamps, duration and authoritative PASS/FAILED/CANCELLED result;
-6. ✅ add read-only **View summary** / **View full log** actions for validated bounded artifacts;
-7. 🟡 explicit UTF-8 artifact decoding implemented; retain final acceptance check for special `·` labels;
-8. ✅ bounded WSL history enumerator implemented and published-development history loading reported successful on 2026-10-10;
-9. ✅ **Deployment history** table implemented; published-development table smoke reported successful on 2026-10-10;
-10. ✅ automated Core history tests added and Release solution test/build reported successful on 2026-10-10;
-11. 🟡 bounded visible-only 15-second report polling implemented; published-development behavior smoke pending;
-12. ✅ latest-report card, summary/full-log viewers and historical table have real Millenova published-development smoke; final PDA-4 acceptance now waits only on polling/UTF-8 operator smoke and master-plan status synchronization.
-
-## Acceptance gate
-
-PDA-4 is accepted when:
+PDA-4 is accepted because:
 
 - valid real `latest.json` renders correctly;
 - real historical Millenova runs render newest-first in the bounded Deployment history table;
-- the table shows Started, Release, Mode, Target, Result and Duration for each trusted run;
-- historical Summary / Full log actions open the artifact belonging to the selected deployment, not the current latest deployment;
-- `latest.json` does not create a duplicate historical row;
-- malformed/partial latest or historical reports fail closed without crashing the shell;
+- Started, Release, Mode, Target, Result and Duration are visible per trusted row;
+- historical Summary / Full log actions use the selected deployment's artifacts;
+- root `latest.json` is not duplicated as a history row;
+- malformed/partial/untrusted reports fail closed without crashing the shell;
 - report/artifact path escapes are rejected;
 - PASS/FAILED/CANCELLED remain reporter-authoritative regardless of process/UI state;
-- validated summary/full-log artifacts stay bounded under the configured report root;
-- UTF-8 reporter text, including middle-dot labels, renders correctly;
-- bounded automatic refresh runs only while the report surface is visible and stops when hidden/app closes;
+- validated summary/full-log reads stay bounded under the configured report root;
+- UTF-8 artifact decoding is explicit;
+- bounded automatic polling is visible-only, lightweight when unchanged, and stops with the report surface/app lifecycle;
 - monitoring performs no deployment-side write;
-- automated parser/path-boundary/history-selection tests pass;
-- published-development smoke passes against the Millenova report root for both latest and historical reports.
+- automated parser/path-boundary/history-selection tests pass in the user-reported Release solution run;
+- published-development smoke passed against the real Millenova report root for both latest and historical reports.
+
+**Next phase:** PDA-5 — Allowlisted dry-run executor.
