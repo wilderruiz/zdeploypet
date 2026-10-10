@@ -13,6 +13,7 @@ public sealed class DeploymentSessionController
     private readonly DeploymentAccessIdentityStore _identityStore = new();
     private readonly WslSshAgentSession _agent = new();
     private readonly WslSshAgentProbe _agentProbe = new();
+    private readonly WslSshDiagnostics _diagnostics = new();
     private WslSshAgentRuntime? _runtime;
     private DeploymentAccessSessionLease? _lease;
 
@@ -179,6 +180,24 @@ public sealed class DeploymentSessionController
         foreach (DeploymentTarget target in profile.Targets)
         {
             TargetHostIdentity? hostKey = identity.FindHostKey(target.Id);
+            if (hostKey is null)
+            {
+                TargetHostIdentity? recovered = await TryRecoverHostTrustAfterTargetIdChangeAsync(
+                    profile,
+                    target,
+                    identity,
+                    cancellationToken);
+                if (recovered is not null)
+                {
+                    hostKey = recovered;
+                    identity = await _identityStore.LoadAsync(profile.Id, cancellationToken);
+                    ShellRuntime.Activity.Add(
+                        ShellActivityLevel.Success,
+                        "Access",
+                        $"Recovered previously enrolled SSH host trust for '{target.Label}' after a profile target-id change. The observed host fingerprint exactly matched an existing trusted fingerprint.");
+                }
+            }
+
             SshProbeResult probe = hostKey is null
                 ? new SshProbeResult(
                     SshProbeStatus.HostKeyNotEnrolled,
@@ -198,6 +217,44 @@ public sealed class DeploymentSessionController
             ? $"READY — bounded-agent probes passed for all {passed} configured target{(passed == 1 ? string.Empty : "s")}."
             : $"READY — bounded session remains valid; {passed} of {results.Count} target probes passed. Review the failed target before deployment.";
         return results;
+    }
+
+    private async Task<TargetHostIdentity?> TryRecoverHostTrustAfterTargetIdChangeAsync(
+        DeploymentProfile profile,
+        DeploymentTarget target,
+        DeploymentAccessIdentity identity,
+        CancellationToken cancellationToken)
+    {
+        HashSet<string> currentTargetIds = profile.Targets
+            .Select(item => item.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        TargetHostIdentity[] legacyCandidates = identity.HostKeys
+            .Where(item => !currentTargetIds.Contains(item.TargetId))
+            .ToArray();
+        if (legacyCandidates.Length == 0)
+            return null;
+
+        HostKeyScanResult scan = await _diagnostics.ScanHostKeyAsync(
+            profile.WslDistribution,
+            target.Host,
+            target.Port,
+            cancellationToken);
+        if (!scan.Success || string.IsNullOrWhiteSpace(scan.Fingerprint) || string.IsNullOrWhiteSpace(scan.KeyType))
+            return null;
+
+        string observed = NormalizeFingerprint(scan.Fingerprint);
+        TargetHostIdentity[] matches = legacyCandidates
+            .Where(candidate =>
+                string.Equals(NormalizeFingerprint(candidate.Fingerprint), observed, StringComparison.Ordinal) &&
+                string.Equals(candidate.KeyType, scan.KeyType, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (matches.Length != 1)
+            return null;
+
+        TargetHostIdentity rebound = new(target.Id, matches[0].Fingerprint, matches[0].KeyType);
+        await _identityStore.EnrollHostKeyAsync(profile.Id, rebound, cancellationToken);
+        return rebound;
     }
 
     public async Task LockAsync(CancellationToken cancellationToken = default)
