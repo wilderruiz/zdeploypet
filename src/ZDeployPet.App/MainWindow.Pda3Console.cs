@@ -102,6 +102,8 @@ public partial class MainWindow
         FlowDocument document = new()
         {
             PagePadding = new Thickness(0),
+            ColumnGap = 0,
+            ColumnWidth = double.PositiveInfinity,
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = 12,
             Foreground = new SolidColorBrush(Color.FromRgb(0xD8, 0xDE, 0xE9)),
@@ -121,6 +123,8 @@ public partial class MainWindow
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             SelectionBrush = FindBrush("AppSelectionBrush", Brushes.DimGray)
         };
+        _activityConsoleTextBox.SizeChanged += EmbeddedConsoleTextBox_SizeChanged;
+        _activityConsoleTextBox.Loaded += (_, _) => UpdateEmbeddedConsolePageWidth();
         consoleBorder.Child = _activityConsoleTextBox;
         Grid.SetRow(consoleBorder, 2);
         root.Children.Add(consoleBorder);
@@ -173,6 +177,26 @@ public partial class MainWindow
     private void EmbeddedActivity_StateChanged(object? sender, PropertyChangedEventArgs e) =>
         Dispatcher.InvokeAsync(RefreshEmbeddedActivityState);
 
+    private void EmbeddedConsoleTextBox_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) < 1) return;
+        UpdateEmbeddedConsolePageWidth();
+    }
+
+    private void UpdateEmbeddedConsolePageWidth()
+    {
+        if (_activityConsoleTextBox is null || _activityConsoleTextBox.ActualWidth <= 0) return;
+
+        // RichTextBox/FlowDocument otherwise keeps a document page wider than the
+        // visible viewport on some WPF hosts. Pin the page to the live viewport so
+        // Paragraph layout must reflow whenever the splitter changes pane width.
+        double viewportWidth = Math.Max(120, _activityConsoleTextBox.ActualWidth -
+            _activityConsoleTextBox.Padding.Left - _activityConsoleTextBox.Padding.Right - 18);
+        _activityConsoleTextBox.Document.PageWidth = viewportWidth;
+        _activityConsoleTextBox.Document.MinPageWidth = viewportWidth;
+        _activityConsoleTextBox.Document.MaxPageWidth = viewportWidth;
+    }
+
     private void RefreshEmbeddedActivityConsole()
     {
         if (_activityConsoleTextBox is null) return;
@@ -195,6 +219,7 @@ public partial class MainWindow
             document.Blocks.Add(paragraph);
         }
 
+        UpdateEmbeddedConsolePageWidth();
         _activityConsoleTextBox.ScrollToEnd();
         RefreshEmbeddedActivityStatus();
     }
