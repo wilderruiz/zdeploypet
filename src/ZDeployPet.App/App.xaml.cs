@@ -2,6 +2,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
 
 namespace ZDeployPet.App;
 
@@ -52,8 +55,44 @@ public partial class App : Application
                 if (sender is ToolTip toolTip) ThemeRuntime.ApplyToolTip(toolTip);
             }));
 
+        // The custom dark ComboBox template deliberately owns its own chrome. Keep the
+        // entire non-editable field clickable, not only the narrow arrow button. The
+        // arrow itself is excluded here so its normal ToggleButton behavior is not
+        // double-toggled by this class handler.
+        EventManager.RegisterClassHandler(
+            typeof(ComboBox),
+            UIElement.PreviewMouseLeftButtonDownEvent,
+            new MouseButtonEventHandler((sender, args) =>
+            {
+                if (sender is not ComboBox comboBox ||
+                    !comboBox.IsEnabled ||
+                    comboBox.IsEditable ||
+                    comboBox.IsDropDownOpen)
+                    return;
+
+                if (args.OriginalSource is DependencyObject source &&
+                    IsInsideToggleButton(source, comboBox))
+                    return;
+
+                comboBox.Focus();
+                comboBox.IsDropDownOpen = true;
+                args.Handled = true;
+            }));
+
         ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Application", "ZDeployPet started.");
         base.OnStartup(e);
+    }
+
+    private static bool IsInsideToggleButton(DependencyObject source, ComboBox owner)
+    {
+        DependencyObject? current = source;
+        while (current is not null && !ReferenceEquals(current, owner))
+        {
+            if (current is ToggleButton) return true;
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
     }
 
     private static void SignalPrimaryInstance()
