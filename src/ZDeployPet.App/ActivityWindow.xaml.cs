@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace ZDeployPet.App;
 
@@ -18,21 +19,19 @@ public partial class ActivityWindow : Window
     {
         InitializeComponent();
 
-        HelpTipFactory.AttachToButton(
-            CopySelectedButton,
-            new HelpTipSpec(
-                "Copy the text currently selected in the activity console.",
-                "The copied text comes from the already-sanitized console output shown in this window.",
-                WhenToUse: "Drag across the console to select only the lines or text you want to share, then use Copy selection.",
-                Safety: "ZDeployPet redacts common secret-bearing assignments and private-key markers before entries reach this view, but you should still review copied text before sharing it externally."));
+        Button selectionHelp = HelpTipFactory.Create(new HelpTipSpec(
+            "Copy the text currently selected in the activity console.",
+            "The copied text comes from the already-sanitized console output shown in this window.",
+            WhenToUse: "Drag across the console to select only the lines or text you want to share, then use Copy selection.",
+            Safety: "ZDeployPet redacts common secret-bearing assignments and private-key markers before entries reach this view, but you should still review copied text before sharing it externally."));
+        CopySelectedButton.ToolTip = selectionHelp.ToolTip;
 
-        HelpTipFactory.AttachToButton(
-            CopyAllButton,
-            new HelpTipSpec(
-                "Copy the complete visible activity console.",
-                "This copies the bounded in-memory ZDeployPet activity buffer in timestamp order.",
-                WhenToUse: "Use this when a longer sequence of profile, session, target-probe, or application lifecycle events is useful for debugging.",
-                Safety: "The stream is sanitized before display and copy. It intentionally does not expose private-key contents, passphrases, passwords, agent sockets, or deployment authorization."));
+        Button allHelp = HelpTipFactory.Create(new HelpTipSpec(
+            "Copy the complete visible activity console.",
+            "This copies the bounded in-memory ZDeployPet activity buffer in timestamp order.",
+            WhenToUse: "Use this when a longer sequence of profile, session, target-probe, or application lifecycle events is useful for debugging.",
+            Safety: "The stream is sanitized before display and copy. It intentionally does not expose private-key contents, passphrases, passwords, agent sockets, or deployment authorization."));
+        CopyAllButton.ToolTip = allHelp.ToolTip;
 
         foreach (ShellActivityEntry entry in ShellRuntime.Activity.Snapshot())
             _rows.Add(ToRow(entry));
