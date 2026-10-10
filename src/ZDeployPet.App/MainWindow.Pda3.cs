@@ -34,6 +34,7 @@ public partial class MainWindow
 
         InitializePda3MenuShell();
         InitializeOperatorAccessControl();
+        InitializePetCompanion();
         EnsureResponsiveActionPanel();
         EnsureActivityButton();
         ApplyResponsiveActionSpacing();
