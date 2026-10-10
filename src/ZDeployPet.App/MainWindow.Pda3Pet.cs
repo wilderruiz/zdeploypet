@@ -132,14 +132,12 @@ public partial class MainWindow
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
             Padding = new Thickness(9, 6, 10, 6),
-            Margin = new Thickness(0, 0, 0, 0),
             Background = FindBrush("AppSurfaceBrush", Brushes.Black),
             BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(5),
             IsHitTestVisible = false,
-            Visibility = Visibility.Collapsed,
-            ToolTip = "ZPet mirrors ZDeployPet status only. It cannot unlock access, run a deployment, or bypass a confirmation."
+            Visibility = Visibility.Collapsed
         };
 
         Grid.SetRow(_petCompanion, 0);
@@ -176,7 +174,7 @@ public partial class MainWindow
             message = "Deployment access needs attention.";
             stateBrush = Brushes.IndianRed;
         }
-        else if (_deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring &&
+        else if ((_deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring) &&
                  _operatorAccessTargetsPassed)
         {
             state = "READY";
