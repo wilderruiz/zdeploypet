@@ -28,9 +28,17 @@ public partial class MainWindow
         shell.Children.Add(menuBar);
 
         Grid body = new();
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 620 });
+        body.ColumnDefinitions.Add(new ColumnDefinition
+        {
+            Width = new GridLength(1, GridUnitType.Star),
+            MinWidth = MinimumOperatorPaneWidth
+        });
         _activitySplitterColumn = new ColumnDefinition { Width = new GridLength(5) };
-        _activityPaneColumn = new ColumnDefinition { Width = _rememberedActivityPaneWidth, MinWidth = 300 };
+        _activityPaneColumn = new ColumnDefinition
+        {
+            Width = _rememberedActivityPaneWidth,
+            MinWidth = MinimumActivityPaneWidth
+        };
         body.ColumnDefinitions.Add(_activitySplitterColumn);
         body.ColumnDefinitions.Add(_activityPaneColumn);
 
@@ -63,8 +71,10 @@ public partial class MainWindow
         shell.Children.Add(body);
         Content = shell;
 
-        MinWidth = Math.Max(MinWidth, 1100);
-        if (Width < 1320) Width = 1320;
+        // Keep only a practical whole-window floor. The two panes themselves own
+        // their smaller minima so the splitter can genuinely resize either side.
+        MinWidth = Math.Max(MinWidth, MinimumOperatorPaneWidth + MinimumActivityPaneWidth + 45);
+        if (Width < 1180) Width = 1180;
 
         ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Top application menu initialized with embedded Console / Activity pane.");
     }
