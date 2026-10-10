@@ -1,6 +1,6 @@
 # PDA-6 — Live executor and exact human confirmation
 
-**Status:** 🟡 ACTIVE — immutable live review UI implemented; no live execution path enabled yet
+**Status:** 🟡 ACTIVE — immutable review smoke passed; live executor staged but not wired to UI
 
 PDA-6 extends the accepted PDA-5 execution foundation to live deployment. The safety boundary is stricter than dry run: ZDeployPet may prepare and display an immutable review, but it must never synthesize, prefill, auto-type, paste, or otherwise supply the operator's live confirmation phrase.
 
@@ -21,8 +21,6 @@ PDA-6 must preserve all PDA-5 execution controls and additionally require:
 - reporter truth, not process exit code, closes the run.
 
 ## Core review snapshot
-
-The first PDA-6 slice adds deterministic Core contracts. The review UI added in the next slice still cannot launch a live process.
 
 A review snapshot freezes:
 
@@ -61,6 +59,28 @@ Immediately before a future live execution begins, the current state must still 
 
 Any mismatch invalidates the confirmation and requires a brand-new review + brand-new human confirmation.
 
+## Live prompt/executor staging
+
+The next internal slice is now implemented but intentionally **not connected to any UI execution button yet**.
+
+`LiveDeploymentPromptProtocol` observes the approved project script and fails closed unless the run proves the live protocol. It treats any dry-run marker as a safety violation, requires the live banner, requires the exact configured confirmation prompt, and requires `MILLENOVA DEPLOYMENT COMPLETE` before a successful process exit can be considered protocol-complete.
+
+`WslLiveDeploymentExecutor` is a narrow WSL adapter that:
+
+- uses the existing app-owned bounded SSH-agent runtime;
+- invokes only the configured project-relative deployment script;
+- supplies only allowlisted numeric target/release choices;
+- structurally selects mode `2` for live deployment;
+- accepts an already human-entered confirmation phrase only after exact Core validation;
+- forwards that phrase exactly once and only when the script asks the exact configured live-confirmation prompt;
+- never derives, generates or substitutes confirmation text;
+- rejects a repeated confirmation prompt;
+- streams bounded stdout/stderr observationally;
+- has a 30-minute hard ceiling;
+- kills the process on cancellation/timeout and never auto-retries.
+
+This executor exists for compilation/test staging only. The Live deployment review window still cannot start a live process.
+
 ## Current implementation slice
 
 Implemented on `main`:
@@ -82,13 +102,14 @@ Implemented on `main`:
 - exact configured live confirmation phrase displayed separately while the operator input field always starts blank;
 - a **Validate typed confirmation** action that performs confirmation validation only and cannot launch live deployment;
 - target/release changes invalidate the existing review and clear the typed phrase;
-- the window explicitly states that live execution is unavailable in this slice.
+- published-development UI smoke passed on 2026-10-10: build succeeded, Live deploy review surfaced correctly under ON / READY, and review-only flow behaved as expected;
+- Core `LiveDeploymentPromptProtocol` plus regression tests for complete live flow, dry-mode rejection, missing live proof, missing confirmation prompt and successful-exit-without-completion rejection;
+- staged `WslLiveDeploymentExecutor` with exact-prompt single-use operator confirmation forwarding and no UI wiring.
 
 Not implemented yet:
 
-- live executor;
-- wiring natural script output to the Live deploy console tab during an actual run;
-- project-script live prompt adapter;
+- launch-time wiring from the reviewed/confirmed UI into the live executor;
+- natural live script output routing to the Live deploy console during an actual run;
 - reporter refresh/closeout for a real live run;
 - production live smoke.
 
@@ -96,15 +117,16 @@ Not implemented yet:
 
 1. ✅ Core immutable live request/review/confirmation contracts;
 2. ✅ Core tests for exact confirmation and invalidation rules;
-3. ✅ build immutable WPF review surface with confirmation input blank by default and no auto-fill helper;
-4. 🟡 revalidate approved script/session/target/release immediately before launch — review-time validation is implemented; launch-time revalidation remains required with the executor;
-5. ⬜ implement narrow live WSL executor that supplies bounded target/release/mode choices but never supplies the confirmation phrase itself;
-6. ⬜ require the operator phrase to be passed exactly once at the script's exact live-confirmation prompt;
-7. ⬜ isolate natural output in the Live deploy console tab;
-8. ⬜ keep one execution lease for the full live run and never auto-retry;
-9. ⬜ refresh PDA-4 report truth after completion and use reporter result as authoritative;
-10. ⬜ automated negative tests for stale review, changed fingerprint, wrong confirmation, non-READY access, concurrent execution and live-confirmation automation attempts;
-11. ⬜ explicit operator-controlled published-development live smoke.
+3. ✅ immutable WPF review surface with confirmation input blank by default and no auto-fill helper;
+4. 🟡 revalidate approved script/session/target/release immediately before launch — review-time validation is implemented; launch-time wiring remains required;
+5. ✅ stage narrow live WSL executor that supplies bounded target/release/mode choices and can forward only the already human-entered exact phrase at the exact confirmation prompt;
+6. ✅ add observational live prompt protocol and negative regression tests; no UI execution path yet;
+7. ⬜ wire confirmed immutable review to the executor only after a fresh launch-time revalidation;
+8. ⬜ isolate natural output in the Live deploy console tab;
+9. ⬜ keep one execution lease for the full live run and never auto-retry;
+10. ⬜ refresh PDA-4 report truth after completion and use reporter result as authoritative;
+11. ⬜ complete final automated negative tests around executor invocation and stale review handling;
+12. ⬜ explicit operator-controlled published-development live smoke.
 
 ## Acceptance gate
 
