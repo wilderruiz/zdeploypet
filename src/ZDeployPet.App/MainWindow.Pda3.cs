@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace ZDeployPet.App;
 
@@ -22,6 +23,9 @@ public partial class MainWindow
                 {
                     ApplyMainWindowThemeFixups();
                     ThemeRuntime.Apply(this);
+                    Dispatcher.BeginInvoke(
+                        DispatcherPriority.Loaded,
+                        new Action(ApplyVisibleProfileThemeFixups));
                 }
             };
         }
@@ -69,6 +73,56 @@ public partial class MainWindow
         TargetsGrid.RowHeaderWidth = 0;
         DestinationsGrid.HeadersVisibility = DataGridHeadersVisibility.Column;
         DestinationsGrid.RowHeaderWidth = 0;
+    }
+
+    private void ApplyVisibleProfileThemeFixups()
+    {
+        Brush raised = FindBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray);
+        Brush border = FindBrush("AppBorderBrush", Brushes.DimGray);
+        Brush text = FindBrush("AppTextBrush", Brushes.White);
+        Style? sharedInfoButtonStyle = Application.Current.TryFindResource("SharedInfoButtonStyle") as Style;
+
+        ApplyVisibleProfileThemeFixupsRecursive(SetupPanel, raised, border, text, sharedInfoButtonStyle);
+    }
+
+    private static void ApplyVisibleProfileThemeFixupsRecursive(
+        DependencyObject parent,
+        Brush raised,
+        Brush border,
+        Brush text,
+        Style? sharedInfoButtonStyle)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int index = 0; index < count; index++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, index);
+
+            if (child is Border panel && panel.Background is SolidColorBrush panelBrush &&
+                panelBrush.Color.ToString().Equals("#FFFFF5E6", StringComparison.OrdinalIgnoreCase))
+            {
+                panel.Background = raised;
+                panel.BorderBrush = border;
+                panel.SetValue(TextElement.ForegroundProperty, text);
+            }
+
+            if (child is Button button && string.Equals(button.Content?.ToString(), "i", StringComparison.Ordinal) &&
+                sharedInfoButtonStyle is not null)
+            {
+                Thickness margin = button.Margin;
+                HorizontalAlignment horizontal = button.HorizontalAlignment;
+                VerticalAlignment vertical = button.VerticalAlignment;
+
+                button.Style = sharedInfoButtonStyle;
+                button.Margin = margin;
+                button.HorizontalAlignment = horizontal;
+                button.VerticalAlignment = vertical;
+                button.Background = raised;
+                button.BorderBrush = raised;
+                button.Foreground = text;
+            }
+
+            ApplyVisibleProfileThemeFixupsRecursive(child, raised, border, text, sharedInfoButtonStyle);
+        }
     }
 
     private static Brush FindBrush(string key, Brush fallback)
