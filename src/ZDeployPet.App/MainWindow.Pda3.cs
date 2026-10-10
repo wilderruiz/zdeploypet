@@ -32,6 +32,7 @@ public partial class MainWindow
         }
 
         InitializePda3MenuShell();
+        InitializeOperatorAccessControl();
         EnsureActivityButton();
         RefreshPda3ActionVisibility();
     }
