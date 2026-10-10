@@ -16,6 +16,14 @@ public partial class MainWindow
             _pda3ShellHooked = true;
             ApplyMainWindowThemeFixups();
             DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda3ActionVisibility();
+            SetupPanel.IsVisibleChanged += (_, _) =>
+            {
+                if (SetupPanel.Visibility == Visibility.Visible)
+                {
+                    ApplyMainWindowThemeFixups();
+                    ThemeRuntime.Apply(this);
+                }
+            };
         }
 
         InitializePda3MenuShell();
