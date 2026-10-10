@@ -190,6 +190,7 @@ public partial class MainWindow
     {
         _operatorAccessBusy = true;
         RefreshOperatorAccessVisuals(onboardingReady: true);
+        RefreshPda5DryRunVisibility();
         RefreshPetCompanion();
         try
         {
@@ -213,6 +214,7 @@ public partial class MainWindow
         if (_operatorAccessCard is null || _operatorAccessButton is null) return;
         bool onboardingReady = _activeProfile is not null && await IsOperatorAccessOnboardingReadyAsync(_activeProfile);
         RefreshOperatorAccessVisuals(onboardingReady);
+        RefreshPda5DryRunVisibility();
         RefreshPetCompanion();
     }
 
