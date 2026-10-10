@@ -124,6 +124,37 @@ public sealed class DeploymentSessionController
         };
     }
 
+    public async Task<WslSshAgentRuntime?> GetReadyRuntimeAsync(
+        DeploymentProfile profile,
+        CancellationToken cancellationToken = default)
+    {
+        await CheckAsync(profile, cancellationToken);
+        if (_runtime is null || _lease is null ||
+            State is not DeploymentAccessSessionState.Ready and not DeploymentAccessSessionState.Expiring)
+            return null;
+
+        DeploymentAccessIdentity identity = await _identityStore.LoadAsync(profile.Id, cancellationToken);
+        DeploymentKeyIdentity? key = identity.DeploymentKey;
+        if (key is null)
+        {
+            State = DeploymentAccessSessionState.Invalid;
+            Message = "The profile no longer has an approved deployment key. Deployment execution is blocked.";
+            return null;
+        }
+
+        if (!string.Equals(
+                NormalizeFingerprint(key.Fingerprint),
+                NormalizeFingerprint(_lease.ApprovedKeyFingerprint),
+                StringComparison.Ordinal))
+        {
+            State = DeploymentAccessSessionState.Invalid;
+            Message = "The approved deployment key changed after this session was unlocked. Lock and unlock again before deployment.";
+            return null;
+        }
+
+        return _runtime;
+    }
+
     public async Task<IReadOnlyList<DeploymentSessionProbeResult>> ProbeReadyTargetsAsync(
         DeploymentProfile profile,
         CancellationToken cancellationToken = default)
