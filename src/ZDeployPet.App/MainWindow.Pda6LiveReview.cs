@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using ZDeployPet.Core;
 
 namespace ZDeployPet.App;
 
@@ -49,7 +50,7 @@ public partial class MainWindow
         bool shellVisible = DiscoveryPanel.Visibility == Visibility.Visible && _activeProfile is not null;
         bool accessReady =
             _deploymentSession.TargetsReady &&
-            _deploymentSession.State is Core.DeploymentAccessSessionState.Ready or Core.DeploymentAccessSessionState.Expiring;
+            _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring;
 
         _liveReviewButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
         _liveReviewButton.IsEnabled = shellVisible && accessReady && !_deploymentExecutionGate.IsRunning;
@@ -73,7 +74,7 @@ public partial class MainWindow
             _deploymentSession,
             targetsReady: () =>
                 _deploymentSession.TargetsReady &&
-                _deploymentSession.State is Core.DeploymentAccessSessionState.Ready or Core.DeploymentAccessSessionState.Expiring,
+                _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring,
             executionGate: _deploymentExecutionGate)
         {
             Owner = this
