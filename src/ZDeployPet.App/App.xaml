@@ -216,6 +216,53 @@
             </Setter>
         </Style>
 
+        <!-- Own tab chrome as well so Windows light-theme defaults cannot render the
+             console-channel tabs as white. Text colour continues to inherit the
+             existing application foreground; only the tab surfaces are darkened. -->
+        <Style TargetType="{x:Type TabControl}">
+            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style TargetType="{x:Type TabItem}">
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TabItem}">
+                        <Border x:Name="TabChrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter ContentSource="Header"
+                                              Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabChrome" Property="Background" Value="#30343D" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabChrome" Property="Background" Value="{StaticResource AppSurfaceRaisedBrush}" />
+                                <Setter TargetName="TabChrome" Property="BorderBrush" Value="{StaticResource AppAccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="TabChrome" Property="Background" Value="#202228" />
+                                <Setter TargetName="TabChrome" Property="BorderBrush" Value="#343943" />
+                                <Setter Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="{x:Type GroupBox}">
             <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
