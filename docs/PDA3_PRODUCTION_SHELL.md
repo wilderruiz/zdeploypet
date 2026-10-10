@@ -16,6 +16,7 @@ The PDA-3 shell foundation now includes:
 - a live **Console / Activity** surface with current profile/session state plus Copy selection / Copy all support;
 - the Console / Activity surface is docked as a persistent **right-side main-shell pane**, is resizable with a splitter, updates live while the operator works elsewhere in ZDeployPet, and can be shown/hidden from **View**;
 - the older standalone Activity window remains a diagnostics-compatible surface but is no longer the normal operator path;
+- local **UI layout memory** stored under the ZDeployPet Local Application Data root so the main-window size/position, maximized state, console-pane width and console visibility reopen the way the operator last left them; invalid/off-screen geometry fails safe and does not block startup;
 - a top **Project / Profile**, **View**, **Help** application menu that routes to the existing approved actions rather than duplicating deployment authority;
 - an **About ZDeployPet** surface with runtime version/build/platform/.NET/architecture/repository information and an explicit note that public release licensing remains PDA-8 work;
 - first-pass application-level dark/red resources applied across the main shell, Activity, Deployment Session, Deployment Access and Git Safety surfaces.
@@ -72,13 +73,14 @@ Security complexity stays in the controller/service layer and in advanced setup 
 2. 🟡 continue extracting durable shell/view-model boundaries so later surfaces do not accumulate inside `MainWindow`;
 3. ✅ add the sanitized Console / Activity surface with copy support;
 4. ✅ dock Console / Activity into the right side of the main shell with a resizable splitter and live updates;
-5. ✅ add the top Project/Profile, View, Help and About menu;
-6. 🟡 finish the shared dark/red theme and correct remaining light host surfaces, low-contrast text and disabled-button rendering;
-7. **next operator simplification:** add the single deployment-access status/control and first-time setup bundle described above, with current detailed windows moved to advanced/diagnostic access;
-8. ✅ seed About with real runtime/build/platform/repository information; refine packaged build metadata later in PDA-8;
-9. add ZDeployPet icon assets and window/taskbar integration;
-10. add the companion/pet as a non-authoritative reflection of shell state;
-11. complete keyboard/focus/accessibility smoke and ensure the pet cannot trigger privileged actions.
+5. ✅ remember main-window geometry and Console / Activity pane sizing/visibility across launches;
+6. ✅ add the top Project/Profile, View, Help and About menu;
+7. 🟡 finish the shared dark/red theme and correct remaining light host surfaces, low-contrast text and disabled-button rendering;
+8. **next operator simplification:** add the single deployment-access status/control and first-time setup bundle described above, with current detailed windows moved to advanced/diagnostic access;
+9. ✅ seed About with real runtime/build/platform/repository information; refine packaged build metadata later in PDA-8;
+10. add ZDeployPet icon assets and window/taskbar integration;
+11. add the companion/pet as a non-authoritative reflection of shell state;
+12. complete keyboard/focus/accessibility smoke and ensure the pet cannot trigger privileged actions.
 
 ## Non-goals for PDA-3
 
