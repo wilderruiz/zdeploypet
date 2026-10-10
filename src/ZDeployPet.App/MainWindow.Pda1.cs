@@ -27,7 +27,7 @@ public partial class MainWindow
 
     private void EnsurePdaActionButtons()
     {
-        if (AccessOnboardingButton.Parent is not StackPanel actions) return;
+        if (AccessOnboardingButton.Parent is not Panel actions) return;
 
         if (_deploymentSessionButton is null)
         {
