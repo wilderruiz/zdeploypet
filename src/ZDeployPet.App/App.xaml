@@ -14,7 +14,7 @@
         <SolidColorBrush x:Key="AppWarningBackgroundBrush" Color="#342B18" />
         <SolidColorBrush x:Key="AppWarningBorderBrush" Color="#B98A35" />
         <SolidColorBrush x:Key="AppSelectionBrush" Color="#5B2A35" />
-        <SolidColorBrush x:Key="AppInputBackgroundBrush" Color="#22252C" />
+        <SolidColorBrush x:Key="AppInputBackgroundBrush" Color="#14171C" />
         <SolidColorBrush x:Key="AppInputTextBrush" Color="#F4F5F7" />
 
         <Style TargetType="{x:Type Window}">
@@ -85,7 +85,7 @@
         <Style TargetType="{x:Type ComboBox}">
             <Setter Property="Foreground" Value="{StaticResource AppInputTextBrush}" />
             <Setter Property="Background" Value="{StaticResource AppInputBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AppInputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="8,4,30,4" />
             <Setter Property="Template">
@@ -148,7 +148,7 @@
                                 <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                         MaxHeight="320"
                                         Background="{StaticResource AppInputBackgroundBrush}"
-                                        BorderBrush="{StaticResource AppInputBackgroundBrush}"
+                                        BorderBrush="{StaticResource AppBorderBrush}"
                                         BorderThickness="1">
                                     <ScrollViewer CanContentScroll="True"
                                                   VerticalScrollBarVisibility="Auto"
@@ -164,13 +164,16 @@
                                 <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="OuterBorder" Property="Background" Value="#252830" />
+                                <Setter TargetName="OuterBorder" Property="Background" Value="#1B1F26" />
+                                <Setter TargetName="OuterBorder" Property="BorderBrush" Value="{StaticResource AppAccentBrush}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="OuterBorder" Property="Background" Value="#252830" />
+                                <Setter TargetName="OuterBorder" Property="Background" Value="#1B1F26" />
+                                <Setter TargetName="OuterBorder" Property="BorderBrush" Value="{StaticResource AppAccentHoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="OuterBorder" Property="Background" Value="#202228" />
+                                <Setter TargetName="OuterBorder" Property="BorderBrush" Value="#343943" />
                                 <Setter Property="Foreground" Value="#AEB4BE" />
                                 <Setter Property="Opacity" Value="1" />
                             </Trigger>
