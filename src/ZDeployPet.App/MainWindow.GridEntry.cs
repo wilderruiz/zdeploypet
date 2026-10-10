@@ -26,6 +26,7 @@ public partial class MainWindow
         base.OnContentRendered(e);
         ConfigureManagedEntryRows();
         InitializePda1Shell();
+        OptimizePda4ReportPolling();
         RestoreUiLayoutMemory();
     }
 
