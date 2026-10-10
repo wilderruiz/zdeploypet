@@ -62,7 +62,24 @@ Target ids are never interpreted as shell fragments. A target is valid only when
 
 The execution service uses `ProcessStartInfo.ArgumentList` / direct argument vectors. It does not construct a `sh -c` command from operator input.
 
-For the current interactive Millenova script, the narrow executor feeds only bounded numeric prompt choices. PDA-5 always appends deployment mode `1` (dry run); there is no code path in this executor that can submit live mode `2`. The app-owned `SSH_AUTH_SOCK` and `SSH_AGENT_PID` values are injected through `/usr/bin/env` as fixed environment assignments before `/usr/bin/bash` executes the configured relative script from the verified WSL project directory.
+### Interactive-script safety correction
+
+The first PDA-5 implementation pre-fed the numeric target/release/mode answers to the configured script's stdin. Published-development smoke on 2026-10-10 proved that this is unsafe for an interactive deployment script: commands executed during preflight can share/consume stdin, so later synthetic answers can be shifted away from the prompt they were intended for. A run requested as dry unexpectedly entered the script's live branch and completed a real 4.4.24 deployment. The reporter correctly recorded that run as `mode=live`, so PDA-4 truth exposed the safety failure immediately.
+
+That stdin-prefeed design is rejected and must never be restored.
+
+The replacement contract is prompt-driven and fail-closed:
+
+- no target/release/mode answer is written before its exact expected prompt is observed;
+- target choice is emitted only after `Choose deployment destination [1/2/3]:`;
+- release choice is emitted only after `Choose release type [1/2/3]:` when the selected target requires it;
+- dry mode `1` is emitted only after `Choose [1/2]:`;
+- ZDeployPet never emits the live authorization phrase `DEPLOY MILLENOVA`;
+- observing `LIVE MILLENOVA DEPLOYMENT` or the live confirmation prompt is an immediate safety violation and the process tree is killed;
+- a successful process exit is not accepted unless the script first proves `DRY RUN — NOTHING WILL BE MODIFIED` and later reaches `DRY RUN COMPLETE`;
+- any missing/shifted/unexpected prompt sequence fails closed with a dedicated ZDeployPet safety failure rather than silently trusting exit code.
+
+This preserves the project-owned interactive deployment script while preventing queued stdin from crossing command/prompt boundaries.
 
 ## Current implementation slice
 
@@ -73,24 +90,28 @@ Implemented on `main`:
 - direct WSL executor uses `ProcessStartInfo.ArgumentList`, verified WSL project directory, fixed app-owned agent environment and `/usr/bin/bash` on the configured relative script;
 - controller exposes a revalidated execution runtime only after live agent inspection plus a fresh comparison between the currently approved deployment key and the bounded lease fingerprint;
 - a Core single-execution gate prevents a second deployment execution from acquiring authority concurrently;
-- the shell now exposes **Dry run…** and a dedicated operator window with exact script fingerprint approval, allowlisted target selection and PATCH/MINOR/MAJOR release choices;
-- the current Millenova adapter exposes `hostinger`, `vps`, and when both are configured, `all`; VPS-only omits the release-choice prompt while every PDA-5 path fixes deployment mode to dry run;
+- the shell exposes **Dry run…** and a dedicated operator window with exact script fingerprint approval, allowlisted target selection and PATCH/MINOR/MAJOR release choices;
+- the current Millenova adapter exposes Hostinger, VPS and Both targets; VPS-only omits the release-choice prompt;
+- target identity persistence and legacy host-trust recovery were corrected after smoke exposed target GUID churn;
+- the rejected stdin-prefeed executor has been replaced with a prompt-driven protocol that sends one bounded answer only after the exact corresponding script prompt appears;
+- the prompt protocol kills the process on any live-mode marker and requires both the dry-run banner and `DRY RUN COMPLETE` before it can report protocol success;
 - ZPet switches to RUNNING while a dry-run process is executing;
 - after process completion ZDeployPet records bounded PASS/FAIL/completion highlights in the sanitized Console / Activity stream and explicitly refreshes PDA-4 latest/history reporter truth;
-- user-reported Release test run on 2026-10-10 passed 74 Core tests and 21 Infrastructure tests before the UI/controller execution slice; a fresh build/test run is required for the new shell slice.
+- user-reported Release test run on 2026-10-10 passed 74 Core tests and 21 Infrastructure tests before the later execution-protocol changes; a fresh build/test run is required for the prompt-driven safety fix.
 
 ## Initial implementation sequence
 
 1. ✅ define immutable Core dry-run request, guard context, state and validation contracts;
 2. ✅ add Core tests for changed script fingerprint, non-READY access, invalid target/release, concurrent execution and shell-like input rejection;
 3. ✅ add separate per-user deployment-script approval contract/store plus matching validation and persistence tests;
-4. ✅ add a narrow WSL executor using direct argument vectors, verified WSL working directory, fixed agent environment and bounded interactive prompt choices; no operator input is interpolated into `sh -c`;
+4. ✅ add a narrow WSL executor using direct argument vectors, verified WSL working directory and fixed agent environment; no operator input is interpolated into `sh -c`;
 5. ✅ revalidate the PDA-2 session immediately before launch, including current approved-key fingerprint versus the live bounded lease;
 6. ✅ add a single in-process execution lease/lock with Core coverage;
 7. ✅ add a shell dry-run surface with allowlisted target and bounded release controls; no arbitrary command field;
-8. 🟡 sanitized start/exit/highlight lifecycle is wired to Console / Activity; true line-by-line streaming remains optional follow-up if operator smoke shows it is needed;
+8. 🟡 sanitized start/exit/highlight lifecycle is wired to Console / Activity; true line-by-line display remains optional follow-up;
 9. ✅ refresh PDA-4 latest/history after process completion and direct the operator to reporter truth as the authoritative outcome;
-10. 🟡 published-development Millenova dry-run smoke from ZDeployPet remains pending.
+10. ❌ first published-development Millenova dry-run smoke failed safety: stdin-prefeed shifted answers and the script entered live mode; this design is retired;
+11. 🟡 replacement prompt-driven protocol implemented with fail-closed live-marker detection and dry-mode completion proof; fresh build/tests and published-development smoke pending.
 
 ## Acceptance gate
 
@@ -103,7 +124,11 @@ PDA-5 is accepted only when:
 - unsafe release input cannot reach the process layer;
 - a second concurrent execution is blocked;
 - no generic command textbox or `sh -c` path exists for operator input;
+- no prompt answer is pre-buffered before its exact expected script prompt;
+- PDA-5 never emits the live authorization phrase;
+- a live-mode banner/prompt kills the run before authorization;
+- successful execution requires observed dry-mode banner plus `DRY RUN COMPLETE`;
 - dry-run lifecycle is visible in sanitized Console / Activity;
 - PDA-4 structured reporter evidence is refreshed after completion and remains authoritative over process exit status;
-- automated execution-guardrail tests pass;
-- a real Millenova dry run starts from the ZDeployPet UI and does not require manually invoking the script in a terminal.
+- automated execution-guardrail and prompt-protocol tests pass;
+- a real Millenova dry run starts from the ZDeployPet UI, remains reporter `mode=dry`, completes successfully, and does not require manually invoking the script in a terminal.
