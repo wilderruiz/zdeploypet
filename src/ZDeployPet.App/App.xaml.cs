@@ -38,7 +38,9 @@ public partial class App : Application
             FrameworkElement.LoadedEvent,
             new RoutedEventHandler((sender, _) =>
             {
-                if (sender is Window window) ThemeRuntime.Apply(window);
+                if (sender is not Window window) return;
+                window.Icon = ProductIconFactory.CreateWindowIcon();
+                ThemeRuntime.Apply(window);
             }));
 
         EventManager.RegisterClassHandler(
