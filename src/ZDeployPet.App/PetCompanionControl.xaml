@@ -2,7 +2,11 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              MinWidth="170" MaxWidth="260"
-             IsHitTestVisible="False">
+             Focusable="False"
+             IsTabStop="False"
+             IsHitTestVisible="False"
+             AutomationProperties.Name="ZPet deployment status companion"
+             AutomationProperties.HelpText="Read-only deployment status companion. It cannot start, stop, or authorize a deployment.">
     <Border x:Name="ShellBorder"
             Padding="9,6,10,6"
             Background="{DynamicResource AppSurfaceBrush}"
