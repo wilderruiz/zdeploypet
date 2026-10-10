@@ -13,7 +13,6 @@ public sealed class DeploymentSessionController
     private readonly DeploymentAccessIdentityStore _identityStore = new();
     private readonly WslSshAgentSession _agent = new();
     private readonly WslSshAgentProbe _agentProbe = new();
-    private readonly WslSshDiagnostics _diagnostics = new();
     private WslSshAgentRuntime? _runtime;
     private DeploymentAccessSessionLease? _lease;
 
@@ -186,6 +185,7 @@ public sealed class DeploymentSessionController
                     profile,
                     target,
                     identity,
+                    key,
                     cancellationToken);
                 if (recovered is not null)
                 {
@@ -194,7 +194,7 @@ public sealed class DeploymentSessionController
                     ShellRuntime.Activity.Add(
                         ShellActivityLevel.Success,
                         "Access",
-                        $"Recovered previously enrolled SSH host trust for '{target.Label}' after a profile target-id change. The observed host fingerprint exactly matched an existing trusted fingerprint.");
+                        $"Recovered previously enrolled SSH host trust for '{target.Label}' after a profile target-id change. The exact trusted host fingerprint and bounded-agent authentication both matched.");
                 }
             }
 
@@ -223,36 +223,54 @@ public sealed class DeploymentSessionController
         DeploymentProfile profile,
         DeploymentTarget target,
         DeploymentAccessIdentity identity,
+        DeploymentKeyIdentity deploymentKey,
         CancellationToken cancellationToken)
     {
+        if (_runtime is null)
+            return null;
+
         HashSet<string> currentTargetIds = profile.Targets
             .Select(item => item.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // A profile save used to regenerate target IDs. Several stale IDs may therefore
+        // point at the same previously trusted server key. Collapse those duplicates by
+        // exact fingerprint + key type before attempting recovery.
         TargetHostIdentity[] legacyCandidates = identity.HostKeys
             .Where(item => !currentTargetIds.Contains(item.TargetId))
+            .GroupBy(
+                item => $"{NormalizeFingerprint(item.Fingerprint)}|{item.KeyType.Trim().ToUpperInvariant()}",
+                StringComparer.Ordinal)
+            .Select(group => group.First())
             .ToArray();
         if (legacyCandidates.Length == 0)
             return null;
 
-        HostKeyScanResult scan = await _diagnostics.ScanHostKeyAsync(
-            profile.WslDistribution,
-            target.Host,
-            target.Port,
-            cancellationToken);
-        if (!scan.Success || string.IsNullOrWhiteSpace(scan.Fingerprint) || string.IsNullOrWhiteSpace(scan.KeyType))
+        List<TargetHostIdentity> verifiedMatches = [];
+        foreach (TargetHostIdentity candidate in legacyCandidates)
+        {
+            // ProbeAsync requests the candidate's exact SSH host-key algorithm, verifies
+            // the observed fingerprint against the old enrolled value, and then proves
+            // authentication through the bounded app-owned agent. This avoids relying on
+            // whichever key type ssh-keyscan happens to return first.
+            SshProbeResult verification = await _agentProbe.ProbeAsync(
+                profile.WslDistribution,
+                target,
+                deploymentKey,
+                candidate,
+                _runtime,
+                cancellationToken);
+            if (verification.Success)
+                verifiedMatches.Add(candidate);
+        }
+
+        // Recovery must be unambiguous. If zero or multiple distinct trusted identities
+        // authenticate successfully, leave the target unenrolled and require explicit review.
+        if (verifiedMatches.Count != 1)
             return null;
 
-        string observed = NormalizeFingerprint(scan.Fingerprint);
-        TargetHostIdentity[] matches = legacyCandidates
-            .Where(candidate =>
-                string.Equals(NormalizeFingerprint(candidate.Fingerprint), observed, StringComparison.Ordinal) &&
-                string.Equals(candidate.KeyType, scan.KeyType, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-
-        if (matches.Length != 1)
-            return null;
-
-        TargetHostIdentity rebound = new(target.Id, matches[0].Fingerprint, matches[0].KeyType);
+        TargetHostIdentity matched = verifiedMatches[0];
+        TargetHostIdentity rebound = new(target.Id, matched.Fingerprint, matched.KeyType);
         await _identityStore.EnrollHostKeyAsync(profile.Id, rebound, cancellationToken);
         return rebound;
     }
