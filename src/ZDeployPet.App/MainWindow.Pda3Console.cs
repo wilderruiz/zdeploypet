@@ -126,12 +126,12 @@ public partial class MainWindow
         DockPanel.SetDock(_activityStatusText, Dock.Left);
         footer.Children.Add(_activityStatusText);
 
-        Button copySelection = new() { Content = "Copy selection", Padding = new Thickness(10, 6), Margin = new Thickness(8, 0, 0, 0) };
+        Button copySelection = new() { Content = "Copy selection", Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(8, 0, 0, 0) };
         copySelection.Click += EmbeddedCopySelection_Click;
         DockPanel.SetDock(copySelection, Dock.Right);
         footer.Children.Add(copySelection);
 
-        Button copyAll = new() { Content = "Copy all", Padding = new Thickness(10, 6), Margin = new Thickness(8, 0, 0, 0) };
+        Button copyAll = new() { Content = "Copy all", Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(8, 0, 0, 0) };
         copyAll.Click += EmbeddedCopyAll_Click;
         DockPanel.SetDock(copyAll, Dock.Right);
         footer.Children.Add(copyAll);
