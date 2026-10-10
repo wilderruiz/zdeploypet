@@ -20,14 +20,14 @@ public partial class MainWindow
         {
             Content = "Live deploy review…",
             Padding = new Thickness(16, 9, 16, 9),
-            Margin = new Thickness(10, 12, 0, 0),
+            Margin = new Thickness(0, 10, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Left,
             Visibility = Visibility.Visible,
             IsEnabled = false
         };
         _liveReviewButton.Click += LiveReview_Click;
-        Grid.SetRow(_liveReviewButton, 1);
-        Grid.SetColumn(_liveReviewButton, 1);
+        Grid.SetRow(_liveReviewButton, 2);
+        Grid.SetColumnSpan(_liveReviewButton, 2);
         accessGrid.Children.Add(_liveReviewButton);
 
         HelpTipFactory.AttachToButton(
