@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 
 namespace ZDeployPet.App;
 
@@ -12,6 +13,14 @@ public partial class App : Application
             new RoutedEventHandler((sender, _) =>
             {
                 if (sender is Window window) ThemeRuntime.Apply(window);
+            }));
+
+        EventManager.RegisterClassHandler(
+            typeof(ToolTip),
+            FrameworkElement.LoadedEvent,
+            new RoutedEventHandler((sender, _) =>
+            {
+                if (sender is ToolTip toolTip) ThemeRuntime.ApplyToolTip(toolTip);
             }));
 
         ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Application", "ZDeployPet started.");
