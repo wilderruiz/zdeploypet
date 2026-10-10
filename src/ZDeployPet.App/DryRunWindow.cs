@@ -467,23 +467,24 @@ public sealed class DryRunWindow : Window
         List<TargetOption> options = [];
         foreach (DeploymentTarget target in _profile.Targets)
         {
-            int choice = string.Equals(target.Id, "hostinger", StringComparison.OrdinalIgnoreCase)
+            int choice = string.Equals(target.Label, "Hostinger", StringComparison.OrdinalIgnoreCase)
                 ? 1
-                : string.Equals(target.Id, "vps", StringComparison.OrdinalIgnoreCase)
+                : string.Equals(target.Label, "VPS", StringComparison.OrdinalIgnoreCase)
                     ? 2
-                    : Math.Min(options.Count + 1, 3);
-            if (choice is < 1 or > 3) continue;
+                    : 0;
+            if (choice == 0) continue;
             options.Add(new(target.Id, target.Label, choice));
         }
 
-        bool hasHostinger = _profile.Targets.Any(target => string.Equals(target.Id, "hostinger", StringComparison.OrdinalIgnoreCase));
-        bool hasVps = _profile.Targets.Any(target => string.Equals(target.Id, "vps", StringComparison.OrdinalIgnoreCase));
+        bool hasHostinger = options.Any(option => option.PromptChoice == 1);
+        bool hasVps = options.Any(option => option.PromptChoice == 2);
         if (hasHostinger && hasVps)
-            options.Add(new(AllTargetsId, "All configured targets", 3));
+            options.Add(new(AllTargetsId, "Both targets", 3));
 
         return options
             .GroupBy(option => option.Id, StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First())
+            .OrderBy(option => option.PromptChoice)
             .ToList();
     }
 
