@@ -135,7 +135,7 @@ public partial class MainWindow
 
         _activityButton = new Button
         {
-            Content = "Activity…",
+            Content = "Console",
             Margin = new Thickness(0, 0, 8, 0),
             Padding = new Thickness(16, 9, 16, 9),
             Visibility = Visibility.Collapsed
@@ -146,10 +146,10 @@ public partial class MainWindow
         HelpTipFactory.AttachToButton(
             _activityButton,
             new HelpTipSpec(
-                "Open the sanitized ZDeployPet Console / Activity view.",
-                "Activity shows application, profile, deployment-session and target-probe events from the bounded in-memory shell log.",
-                WhenToUse: "Use it when you want to see what ZDeployPet has done during this app session or copy diagnostics for troubleshooting.",
-                WhatItDoes: "The view updates live, shows the current profile/session state, and supports copying selected rows or the complete visible history.",
+                "Show or hide the live ZDeployPet Console / Activity pane.",
+                "The console is docked on the right side of the main shell and follows application, profile, deployment-session, probe and Git-safety activity in real time.",
+                WhenToUse: "Keep it visible while operating ZDeployPet when you want immediate confirmation of each action, or hide it temporarily when you need more workspace.",
+                WhatItDoes: "The pane is resizable with the vertical splitter and reads the same bounded sanitized in-memory activity stream used by diagnostics.",
                 Safety: "Entries are sanitized before display. Private-key markers and common password, passphrase, token and secret assignments are redacted, and deployment authority is never exposed through the log."));
     }
 
@@ -161,13 +161,5 @@ public partial class MainWindow
             : Visibility.Collapsed;
     }
 
-    private void Activity_Click(object sender, RoutedEventArgs e)
-    {
-        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Console / Activity opened.");
-        ActivityWindow window = new()
-        {
-            Owner = this
-        };
-        window.Show();
-    }
+    private void Activity_Click(object sender, RoutedEventArgs e) => ToggleEmbeddedActivityPane();
 }
