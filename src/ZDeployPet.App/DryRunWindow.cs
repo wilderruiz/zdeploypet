@@ -70,11 +70,13 @@ public sealed class DryRunWindow : Window
     {
         ScrollViewer scroll = new()
         {
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            Padding = new Thickness(24)
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
 
-        StackPanel body = new();
+        StackPanel body = new()
+        {
+            Margin = new Thickness(24)
+        };
         body.Children.Add(new TextBlock
         {
             Text = "Allowlisted dry run",
