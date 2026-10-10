@@ -97,7 +97,7 @@ public sealed class WslDeploymentReportReader
 
     public async Task<WslDeploymentHistoryListResult> ListHistoryJsonAsync(
         string distribution,
-        string reportRoot,
+        string? reportRoot,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(distribution))
