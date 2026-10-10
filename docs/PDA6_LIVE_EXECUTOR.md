@@ -1,6 +1,6 @@
 # PDA-6 — Live executor and exact human confirmation
 
-**Status:** 🟡 ACTIVE — immutable review smoke passed; live executor staged but not wired to UI
+**Status:** 🟡 ACTIVE — guarded live executor wired to reviewed UI; published build/runtime smoke still required
 
 PDA-6 extends the accepted PDA-5 execution foundation to live deployment. The safety boundary is stricter than dry run: ZDeployPet may prepare and display an immutable review, but it must never synthesize, prefill, auto-type, paste, or otherwise supply the operator's live confirmation phrase.
 
@@ -20,113 +20,73 @@ PDA-6 must preserve all PDA-5 execution controls and additionally require:
 - natural live script output isolated in the **Live deploy** console tab;
 - reporter truth, not process exit code, closes the run.
 
-## Core review snapshot
+## Review and exact confirmation
 
-A review snapshot freezes:
+The immutable review freezes profile identity, configured script path, current approved SHA-256, target, release, configured confirmation phrase and review id/timestamp. Review creation fails closed unless the current script still matches approval, deployment access is READY, no execution is running, target/release are bounded, and the confirmation phrase is safe.
 
-- review id;
-- profile id + display name;
-- configured project-relative script path;
-- current approved script SHA-256;
-- target id + display label;
-- bounded release token;
-- configured live confirmation phrase;
-- creation timestamp.
+The operator-entered confirmation is accepted only as an ordinal exact match. Case changes, leading/trailing whitespace, script changes, profile/target/release/phrase changes, lost READY state or a concurrent execution invalidate authorization.
 
-Review creation fails closed unless:
+The confirmation input always starts blank. Editing it after validation disarms live launch immediately.
 
-- the current script SHA-256 still equals the approved fingerprint;
-- deployment access is READY;
-- no execution is already running;
-- target is allowlisted;
-- release token passes the accepted bounded-token grammar;
-- live confirmation phrase is non-empty, bounded, and contains no control characters.
+## Live executor
 
-## Exact confirmation and invalidation
+`LiveDeploymentPromptProtocol` observes the approved project script and fails closed unless the run proves the live protocol. Any dry-run marker is a safety violation. The protocol requires the live banner, exact configured confirmation prompt and `MILLENOVA DEPLOYMENT COMPLETE` before a successful process exit can be protocol-complete.
 
-The operator-entered confirmation is accepted only when it is an **ordinal exact match** to the phrase frozen in the review snapshot. Case changes, leading/trailing whitespace, or any other mutation fail.
-
-Immediately before a future live execution begins, the current state must still equal the frozen review for:
-
-- profile id;
-- configured script path;
-- current script SHA-256;
-- target id;
-- release token;
-- configured live confirmation phrase;
-- deployment-access READY state;
-- no concurrent execution.
-
-Any mismatch invalidates the confirmation and requires a brand-new review + brand-new human confirmation.
-
-## Live prompt/executor staging
-
-The next internal slice is now implemented but intentionally **not connected to any UI execution button yet**.
-
-`LiveDeploymentPromptProtocol` observes the approved project script and fails closed unless the run proves the live protocol. It treats any dry-run marker as a safety violation, requires the live banner, requires the exact configured confirmation prompt, and requires `MILLENOVA DEPLOYMENT COMPLETE` before a successful process exit can be considered protocol-complete.
-
-`WslLiveDeploymentExecutor` is a narrow WSL adapter that:
+`WslLiveDeploymentExecutor`:
 
 - uses the existing app-owned bounded SSH-agent runtime;
 - invokes only the configured project-relative deployment script;
-- supplies only allowlisted numeric target/release choices;
+- supplies only bounded numeric target/release choices;
 - structurally selects mode `2` for live deployment;
-- accepts an already human-entered confirmation phrase only after exact Core validation;
-- forwards that phrase exactly once and only when the script asks the exact configured live-confirmation prompt;
+- accepts only the already human-entered phrase after Core validation;
+- forwards that phrase exactly once and only at the exact live-confirmation prompt;
 - never derives, generates or substitutes confirmation text;
-- rejects a repeated confirmation prompt;
+- rejects repeated confirmation prompts;
 - streams bounded stdout/stderr observationally;
 - has a 30-minute hard ceiling;
-- kills the process on cancellation/timeout and never auto-retries.
-
-This executor exists for compilation/test staging only. The Live deployment review window still cannot start a live process.
+- never auto-retries after cancellation, timeout, failure or partial deployment.
 
 ## Current implementation slice
 
 Implemented on `main`:
 
-- `LiveDeploymentRequest`;
-- `LiveDeploymentReviewContext`;
-- immutable `LiveDeploymentReviewSnapshot`;
-- `LiveDeploymentConfirmationContext`;
-- `LiveDeploymentReviewGuard.CreateReview(...)`;
-- `LiveDeploymentReviewGuard.ValidateConfirmation(...)`;
-- exact ordinal confirmation matching;
-- confirmation invalidation on session lock, concurrent execution, profile/script/fingerprint/target/release/phrase changes;
-- bounded confirmation-phrase validation;
-- automated Core regression coverage for the above;
-- `Live deploy review…` control directly under Deployment access, enabled only while access is ON / READY;
-- modeless `LiveDeploymentReviewWindow` with allowlisted target and bounded release choices;
-- review-time revalidation of script approval/fingerprint, READY runtime and global execution gate;
-- immutable review display of profile/project, target, mapped destination summary, release transition preview, script path, SHA-256 and review id;
-- exact configured live confirmation phrase displayed separately while the operator input field always starts blank;
-- a **Validate typed confirmation** action that performs confirmation validation only and cannot launch live deployment;
-- target/release changes invalidate the existing review and clear the typed phrase;
-- published-development UI smoke passed on 2026-10-10: build succeeded, Live deploy review surfaced correctly under ON / READY, and review-only flow behaved as expected;
-- Core `LiveDeploymentPromptProtocol` plus regression tests for complete live flow, dry-mode rejection, missing live proof, missing confirmation prompt and successful-exit-without-completion rejection;
-- staged `WslLiveDeploymentExecutor` with exact-prompt single-use operator confirmation forwarding and no UI wiring.
+- Core immutable review/confirmation contracts and negative tests;
+- immutable WPF review surface with blank confirmation input;
+- `Live deploy review…` available only while deployment access is ON / READY;
+- target/release changes invalidate the review;
+- published-development review-only UI smoke passed on 2026-10-10;
+- live prompt protocol and staged WSL executor with safety tests;
+- exact confirmation validation now arms a separate **Start LIVE deployment** button;
+- any text edit after validation immediately disarms that button;
+- immediately before launch, ZDeployPet rechecks script SHA/approval, READY bounded-agent runtime, frozen target/release/phrase and the global execution gate;
+- one global execution lease spans the full live run;
+- natural script output is emitted only to the `deploy_millenova.live.sh` / **Live deploy** console channel;
+- completion refreshes PDA-4 latest/history evidence and treats reporter truth as authoritative;
+- cancellation/failure messaging explicitly warns that a partial deployment may exist and no retry is attempted;
+- confirmation text is never written to activity logs.
 
-Not implemented yet:
+Still required before acceptance:
 
-- launch-time wiring from the reviewed/confirmed UI into the live executor;
-- natural live script output routing to the Live deploy console during an actual run;
-- reporter refresh/closeout for a real live run;
-- production live smoke.
+- published Release build/test of this wired slice;
+- operator UI smoke proving validate/disarm/revalidate behavior;
+- one explicit operator-controlled real Millenova live deployment from ZDeployPet;
+- final reporter confirmation of expected `live` target/result;
+- any regression fixes exposed by that smoke.
 
 ## Implementation sequence
 
 1. ✅ Core immutable live request/review/confirmation contracts;
 2. ✅ Core tests for exact confirmation and invalidation rules;
-3. ✅ immutable WPF review surface with confirmation input blank by default and no auto-fill helper;
-4. 🟡 revalidate approved script/session/target/release immediately before launch — review-time validation is implemented; launch-time wiring remains required;
-5. ✅ stage narrow live WSL executor that supplies bounded target/release/mode choices and can forward only the already human-entered exact phrase at the exact confirmation prompt;
-6. ✅ add observational live prompt protocol and negative regression tests; no UI execution path yet;
-7. ⬜ wire confirmed immutable review to the executor only after a fresh launch-time revalidation;
-8. ⬜ isolate natural output in the Live deploy console tab;
-9. ⬜ keep one execution lease for the full live run and never auto-retry;
-10. ⬜ refresh PDA-4 report truth after completion and use reporter result as authoritative;
-11. ⬜ complete final automated negative tests around executor invocation and stale review handling;
-12. ⬜ explicit operator-controlled published-development live smoke.
+3. ✅ immutable WPF review surface with confirmation input blank by default;
+4. ✅ launch-time revalidation wired for script approval/fingerprint, session, target, release and phrase;
+5. ✅ narrow live WSL executor with bounded target/release/mode inputs;
+6. ✅ exact human-entered phrase forwarded only at the exact live prompt;
+7. ✅ natural output routed to the Live deploy console channel;
+8. ✅ one execution lease for the full run; no auto-retry;
+9. ✅ PDA-4 report refresh wired after completion;
+10. ✅ Core live-protocol negative tests in place;
+11. 🟡 published-development build + UI smoke of the wired live path;
+12. ⬜ explicit operator-controlled real live smoke and reporter acceptance.
 
 ## Acceptance gate
 
