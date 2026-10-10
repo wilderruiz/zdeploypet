@@ -37,6 +37,12 @@ public partial class MainWindow
             : Visibility.Collapsed;
         if (_petCompanion.Visibility != Visibility.Visible) return;
 
+        if (_dryRunExecutionBusy)
+        {
+            _petCompanion.SetState(PetCompanionState.Running, "Dry run in progress.");
+            return;
+        }
+
         if (_operatorAccessBusy)
         {
             _petCompanion.SetState(PetCompanionState.Running, "Checking deployment access.");
