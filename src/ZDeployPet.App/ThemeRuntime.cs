@@ -1,6 +1,8 @@
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace ZDeployPet.App;
 
@@ -36,6 +38,8 @@ internal static class ThemeRuntime
         "#FFD8D8D8"
     };
 
+    private static readonly ConditionalWeakTable<ScrollBar, DispatcherTimer> ScrollFadeTimers = new();
+
     public static void Apply(Window window)
     {
         Brush background = ResourceBrush("AppBackgroundBrush", Brushes.Black);
@@ -51,9 +55,23 @@ internal static class ThemeRuntime
         if (Application.Current.TryFindResource("SharedToolTipStyle") is Style style)
             toolTip.Style = style;
 
+        Brush text = ResourceBrush("AppTextBrush", Brushes.White);
         toolTip.Background = ResourceBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray);
-        toolTip.Foreground = ResourceBrush("AppTextBrush", Brushes.White);
+        toolTip.Foreground = text;
         toolTip.BorderBrush = ResourceBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray);
+
+        if (toolTip.Content is DependencyObject content)
+            ApplyToolTipTextRecursive(content, text);
+    }
+
+    private static void ApplyToolTipTextRecursive(DependencyObject parent, Brush text)
+    {
+        if (parent is TextBlock textBlock)
+            textBlock.Foreground = text;
+
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int index = 0; index < count; index++)
+            ApplyToolTipTextRecursive(VisualTreeHelper.GetChild(parent, index), text);
     }
 
     private static void ApplyToDescendants(DependencyObject parent)
@@ -71,6 +89,9 @@ internal static class ThemeRuntime
     {
         if (element is TextBlock textBlock && IsLegacyBrush(textBlock.Foreground, LegacyMutedForegrounds))
             textBlock.Foreground = ResourceBrush("AppMutedTextBrush", Brushes.LightGray);
+
+        if (element is ScrollBar scrollBar)
+            PrepareSharedScrollBar(scrollBar);
 
         if (element is Button button && Equals(button.Content, "i"))
         {
@@ -101,6 +122,59 @@ internal static class ThemeRuntime
             else if (IsLegacyBrush(border.BorderBrush, LegacyNeutralBorders))
                 border.BorderBrush = ResourceBrush("AppBorderBrush", Brushes.DimGray);
         }
+    }
+
+    private static void PrepareSharedScrollBar(ScrollBar scrollBar)
+    {
+        if (ScrollFadeTimers.TryGetValue(scrollBar, out _))
+            return;
+
+        if (scrollBar.Orientation == Orientation.Vertical)
+        {
+            scrollBar.Width = 7;
+            scrollBar.MinWidth = 7;
+        }
+        else
+        {
+            scrollBar.Height = 7;
+            scrollBar.MinHeight = 7;
+        }
+
+        scrollBar.Opacity = 0;
+        scrollBar.Background = Brushes.Transparent;
+
+        DispatcherTimer fadeTimer = new(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(850)
+        };
+
+        fadeTimer.Tick += (_, _) =>
+        {
+            fadeTimer.Stop();
+            if (!scrollBar.IsMouseOver)
+                scrollBar.Opacity = 0;
+        };
+
+        scrollBar.MouseEnter += (_, _) =>
+        {
+            fadeTimer.Stop();
+            scrollBar.Opacity = 0.92;
+        };
+
+        scrollBar.MouseLeave += (_, _) =>
+        {
+            fadeTimer.Stop();
+            fadeTimer.Start();
+        };
+
+        scrollBar.ValueChanged += (_, _) =>
+        {
+            scrollBar.Opacity = 0.92;
+            fadeTimer.Stop();
+            fadeTimer.Start();
+        };
+
+        ScrollFadeTimers.Add(scrollBar, fadeTimer);
     }
 
     private static bool IsLegacyBrush(Brush? brush, HashSet<string> values) =>
