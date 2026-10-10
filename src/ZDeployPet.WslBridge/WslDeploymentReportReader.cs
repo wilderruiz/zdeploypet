@@ -30,7 +30,7 @@ public sealed class WslDeploymentReportReader
         test -f "$candidate" || { printf '%s\n' 'latest.json is not a regular file' >&2; exit 21; }
 
         relative="$(realpath --relative-to="$root" -- "$candidate")" || { printf '%s\n' 'cannot verify latest.json containment' >&2; exit 22; }
-        if test "$relative" = ".." || test "$relative" != "${relative#../}"; then
+        if test "$relative" = ".." || printf '%s\n' "$relative" | grep -q '^\.\./'; then
             printf '%s\n' 'latest.json resolves outside the configured report root' >&2
             exit 22
         fi
