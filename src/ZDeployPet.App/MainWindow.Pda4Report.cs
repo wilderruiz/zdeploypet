@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using ZDeployPet.Core;
 using ZDeployPet.WslBridge;
 
@@ -9,6 +10,7 @@ namespace ZDeployPet.App;
 public partial class MainWindow
 {
     private const int MaximumHistoryRows = 30;
+    private static readonly TimeSpan DeploymentReportRefreshInterval = TimeSpan.FromSeconds(15);
 
     private readonly WslDeploymentReportReader _deploymentReportReader = new();
     private bool _pda4ReportInitialized;
@@ -21,6 +23,7 @@ public partial class MainWindow
     private Border? _deploymentHistoryCard;
     private TextBlock? _deploymentHistoryStatusText;
     private StackPanel? _deploymentHistoryRowsPanel;
+    private DispatcherTimer? _deploymentReportRefreshTimer;
     private int _latestReportRefreshGeneration;
     private int _historyRefreshGeneration;
     private string? _latestReportCanonicalRoot;
@@ -45,13 +48,53 @@ public partial class MainWindow
         Grid.SetRow(_deploymentHistoryCard, 2);
         DiscoveryPanel.Children.Add(_deploymentHistoryCard);
 
+        _deploymentReportRefreshTimer = new DispatcherTimer
+        {
+            Interval = DeploymentReportRefreshInterval
+        };
+        _deploymentReportRefreshTimer.Tick += async (_, _) => await RefreshReportsFromTimerAsync();
+
         DiscoveryPanel.IsVisibleChanged += (_, _) =>
         {
             if (DiscoveryPanel.Visibility == Visibility.Visible)
+            {
+                _deploymentReportRefreshTimer.Start();
                 _ = RefreshLatestDeploymentReportAsync();
+            }
+            else
+            {
+                _deploymentReportRefreshTimer.Stop();
+            }
         };
 
+        Closed += (_, _) => _deploymentReportRefreshTimer?.Stop();
+
+        if (DiscoveryPanel.Visibility == Visibility.Visible)
+            _deploymentReportRefreshTimer.Start();
+
         _ = RefreshLatestDeploymentReportAsync();
+    }
+
+    private async Task RefreshReportsFromTimerAsync()
+    {
+        DispatcherTimer? timer = _deploymentReportRefreshTimer;
+        if (timer is null || DiscoveryPanel.Visibility != Visibility.Visible)
+            return;
+
+        DeploymentProfile? profile = _activeProfile;
+        if (profile is null || string.IsNullOrWhiteSpace(profile.ReportRoot))
+            return;
+
+        timer.Stop();
+        try
+        {
+            await RefreshLatestDeploymentReportAsync();
+        }
+        finally
+        {
+            if (DiscoveryPanel.Visibility == Visibility.Visible)
+                timer.Start();
+        }
     }
 
     private Border BuildLatestReportCard()
@@ -150,9 +193,9 @@ public partial class MainWindow
             new HelpTipSpec(
                 "Refresh deployment reports.",
                 "ZDeployPet reads latest.json and the bounded deployment history from the configured WSL report root, validates reporter schema and checks declared artifact paths before showing trusted results.",
-                WhenToUse: "Use this after a deployment attempt or whenever you want to re-read reporter truth.",
+                WhenToUse: "Use this after a deployment attempt or whenever you want to re-read reporter truth. While this surface is visible, ZDeployPet also performs the same read-only refresh every 15 seconds.",
                 WhatItDoes: "Refreshes both the latest card and the read-only history table. Reporter result is authoritative; process exit status or UI state cannot upgrade a failed/cancelled report to success.",
-                Safety: "This action is read-only. It does not modify the report directory and it does not deploy anything."));
+                Safety: "This action and the visible-only timer are read-only. They do not modify the report directory and they do not deploy anything."));
 
         return card;
     }
