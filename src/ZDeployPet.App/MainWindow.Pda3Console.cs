@@ -239,6 +239,7 @@ public partial class MainWindow
         {
             if (_activityPaneColumn.ActualWidth > 0)
                 _rememberedActivityPaneWidth = new GridLength(Math.Max(300, _activityPaneColumn.ActualWidth));
+            _activityPaneColumn.MinWidth = 0;
             _activityPane.Visibility = Visibility.Collapsed;
             _activityPaneSplitter.Visibility = Visibility.Collapsed;
             _activityPaneColumn.Width = new GridLength(0);
@@ -247,6 +248,7 @@ public partial class MainWindow
         }
         else
         {
+            _activityPaneColumn.MinWidth = 300;
             _activityPaneColumn.Width = _rememberedActivityPaneWidth;
             _activitySplitterColumn.Width = new GridLength(5);
             _activityPaneSplitter.Visibility = Visibility.Visible;
