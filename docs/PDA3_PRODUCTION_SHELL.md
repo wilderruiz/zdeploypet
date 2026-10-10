@@ -13,7 +13,9 @@ The PDA-3 shell foundation now includes:
 - redaction for private-key markers and common `password=`, `passphrase=`, `token=` and `secret=` assignments before activity entries reach the UI;
 - `ShellRuntime` as the shared process-level state/log owner;
 - application, profile, deployment-access, session, probe and Git-safety events entering the sanitized activity stream;
-- a live **Console / Activity** window with current profile/session state plus Copy selected / Copy all support;
+- a live **Console / Activity** surface with current profile/session state plus Copy selection / Copy all support;
+- the Console / Activity surface is docked as a persistent **right-side main-shell pane**, is resizable with a splitter, updates live while the operator works elsewhere in ZDeployPet, and can be shown/hidden from **View**;
+- the older standalone Activity window remains a diagnostics-compatible surface but is no longer the normal operator path;
 - a top **Project / Profile**, **View**, **Help** application menu that routes to the existing approved actions rather than duplicating deployment authority;
 - an **About ZDeployPet** surface with runtime version/build/platform/.NET/architecture/repository information and an explicit note that public release licensing remains PDA-8 work;
 - first-pass application-level dark/red resources applied across the main shell, Activity, Deployment Session, Deployment Access and Git Safety surfaces.
@@ -60,7 +62,7 @@ The main shell should aim for a very small set of operator actions:
 - project/profile selector;
 - deployment access **ON / OFF**;
 - deployment action/status area (introduced in PDA-5/PDA-6);
-- Activity/diagnostics when needed.
+- the docked, resizable live Activity console for immediate operator feedback, with hide/show available when more workspace is needed.
 
 Security complexity stays in the controller/service layer and in advanced setup screens, not in the number of buttons the operator must understand.
 
@@ -69,13 +71,14 @@ Security complexity stays in the controller/service layer and in advanced setup 
 1. ✅ wire profile/session state transitions into `ShellStateStore` and lifecycle events into `ShellActivityLog`;
 2. 🟡 continue extracting durable shell/view-model boundaries so later surfaces do not accumulate inside `MainWindow`;
 3. ✅ add the sanitized Console / Activity surface with copy support;
-4. ✅ add the top Project/Profile, View, Help and About menu;
-5. 🟡 finish the shared dark/red theme and correct remaining light host surfaces, low-contrast text and disabled-button rendering;
-6. **next operator simplification:** add the single deployment-access status/control and first-time setup bundle described above, with current detailed windows moved to advanced/diagnostic access;
-7. ✅ seed About with real runtime/build/platform/repository information; refine packaged build metadata later in PDA-8;
-8. add ZDeployPet icon assets and window/taskbar integration;
-9. add the companion/pet as a non-authoritative reflection of shell state;
-10. complete keyboard/focus/accessibility smoke and ensure the pet cannot trigger privileged actions.
+4. ✅ dock Console / Activity into the right side of the main shell with a resizable splitter and live updates;
+5. ✅ add the top Project/Profile, View, Help and About menu;
+6. 🟡 finish the shared dark/red theme and correct remaining light host surfaces, low-contrast text and disabled-button rendering;
+7. **next operator simplification:** add the single deployment-access status/control and first-time setup bundle described above, with current detailed windows moved to advanced/diagnostic access;
+8. ✅ seed About with real runtime/build/platform/repository information; refine packaged build metadata later in PDA-8;
+9. add ZDeployPet icon assets and window/taskbar integration;
+10. add the companion/pet as a non-authoritative reflection of shell state;
+11. complete keyboard/focus/accessibility smoke and ensure the pet cannot trigger privileged actions.
 
 ## Non-goals for PDA-3
 
