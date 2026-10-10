@@ -48,7 +48,15 @@ internal static class ThemeRuntime
         window.Background = background;
         window.Foreground = text;
 
+        // Keep every ScrollViewer in the app on the same compact scrollbar metric.
+        // The delayed scans are important because WPF creates ScrollBar visuals only
+        // after the owning ScrollViewer template has been realized.
+        Application.Current.Resources[SystemParameters.VerticalScrollBarWidthKey] = 7.0;
+        Application.Current.Resources[SystemParameters.HorizontalScrollBarHeightKey] = 7.0;
+
         ApplyToDescendants(window);
+        window.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => ApplyToDescendants(window)));
+        window.Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() => ApplyToDescendants(window)));
     }
 
     public static void ApplyToolTip(ToolTip toolTip)
@@ -62,17 +70,27 @@ internal static class ThemeRuntime
         toolTip.BorderBrush = ResourceBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray);
 
         if (toolTip.Content is DependencyObject content)
-            ApplyToolTipTextRecursive(content, text);
+        {
+            // Tooltip content is often still disconnected from the visual tree when
+            // this method runs. Walk the logical tree so explicitly muted TextBlocks
+            // (for example old #555 helper lines) are promoted to normal tooltip text.
+            ApplyToolTipLogicalTextRecursive(content, text);
+            toolTip.Dispatcher.BeginInvoke(
+                DispatcherPriority.Loaded,
+                new Action(() => ApplyToolTipLogicalTextRecursive(content, text)));
+        }
     }
 
-    private static void ApplyToolTipTextRecursive(DependencyObject parent, Brush text)
+    private static void ApplyToolTipLogicalTextRecursive(DependencyObject parent, Brush text)
     {
         if (parent is TextBlock textBlock)
             textBlock.Foreground = text;
 
-        int count = VisualTreeHelper.GetChildrenCount(parent);
-        for (int index = 0; index < count; index++)
-            ApplyToolTipTextRecursive(VisualTreeHelper.GetChild(parent, index), text);
+        foreach (object child in LogicalTreeHelper.GetChildren(parent))
+        {
+            if (child is DependencyObject dependencyObject)
+                ApplyToolTipLogicalTextRecursive(dependencyObject, text);
+        }
     }
 
     private static void ApplyToDescendants(DependencyObject parent)
@@ -134,15 +152,18 @@ internal static class ThemeRuntime
         {
             scrollBar.Width = 7;
             scrollBar.MinWidth = 7;
+            scrollBar.MaxWidth = 7;
         }
         else
         {
             scrollBar.Height = 7;
             scrollBar.MinHeight = 7;
+            scrollBar.MaxHeight = 7;
         }
 
         scrollBar.Opacity = 0;
         scrollBar.Background = Brushes.Transparent;
+        scrollBar.BorderBrush = Brushes.Transparent;
 
         DispatcherTimer fadeTimer = new(DispatcherPriority.Background)
         {
