@@ -78,13 +78,13 @@ public partial class MainWindow
         state.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         state.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         state.Children.Add(new TextBlock { Text = "Profile", FontWeight = FontWeights.SemiBold });
-        _activityProfileText = new TextBlock { Text = "—", Margin = new Thickness(8, 0, 16, 0) };
+        _activityProfileText = new TextBlock { Text = "—", Margin = new Thickness(8, 0, 16, 0), TextWrapping = TextWrapping.Wrap };
         Grid.SetColumn(_activityProfileText, 1);
         state.Children.Add(_activityProfileText);
         TextBlock sessionLabel = new() { Text = "Session", FontWeight = FontWeights.SemiBold };
         Grid.SetColumn(sessionLabel, 2);
         state.Children.Add(sessionLabel);
-        _activitySessionText = new TextBlock { Text = "LOCKED", Margin = new Thickness(8, 0, 0, 0) };
+        _activitySessionText = new TextBlock { Text = "LOCKED", Margin = new Thickness(8, 0, 0, 0), TextWrapping = TextWrapping.Wrap };
         Grid.SetColumn(_activitySessionText, 3);
         state.Children.Add(_activitySessionText);
         stateBorder.Child = state;
@@ -108,9 +108,9 @@ public partial class MainWindow
             Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x0D, 0x10)),
             BorderThickness = new Thickness(0),
             Padding = new Thickness(10),
-            TextWrapping = TextWrapping.NoWrap,
+            TextWrapping = TextWrapping.Wrap,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             SelectionBrush = FindBrush("AppSelectionBrush", Brushes.DimGray)
         };
         consoleBorder.Child = _activityConsoleTextBox;
