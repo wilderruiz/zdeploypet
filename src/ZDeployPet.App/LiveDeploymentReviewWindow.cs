@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using ZDeployPet.Core;
 using ZDeployPet.Infrastructure;
+using ZDeployPet.WslBridge;
 
 namespace ZDeployPet.App;
 
@@ -15,8 +16,11 @@ public sealed class LiveDeploymentReviewWindow : Window
     private readonly DeploymentProfile _profile;
     private readonly DeploymentSessionController _sessionController;
     private readonly Func<bool> _targetsReady;
+    private readonly Func<Task> _refreshReports;
+    private readonly Action<bool> _executionStateChanged;
     private readonly DeploymentExecutionGate _executionGate;
     private readonly DeploymentScriptApprovalStore _approvalStore = new();
+    private readonly WslLiveDeploymentExecutor _executor = new();
 
     private readonly ComboBox _targetCombo = new();
     private readonly ComboBox _releaseCombo = new();
@@ -25,30 +29,37 @@ public sealed class LiveDeploymentReviewWindow : Window
     private readonly StackPanel _reviewBody = new();
     private readonly TextBox _confirmationBox = new();
     private readonly Button _validateButton = new();
+    private readonly Button _startLiveButton = new();
     private readonly TextBlock _statusText = new();
 
     private LiveDeploymentReviewSnapshot? _snapshot;
     private string? _currentSha256;
+    private bool _confirmationValidated;
+    private bool _executionBusy;
 
     private sealed record TargetOption(string Id, string Label, int PromptChoice);
-    private sealed record ReleaseOption(string Token, string Label);
+    private sealed record ReleaseOption(string Token, string Label, int PromptChoice);
 
     public LiveDeploymentReviewWindow(
         DeploymentProfile profile,
         DeploymentSessionController sessionController,
         Func<bool> targetsReady,
+        Func<Task> refreshReports,
+        Action<bool> executionStateChanged,
         DeploymentExecutionGate executionGate)
     {
         _profile = profile;
         _sessionController = sessionController;
         _targetsReady = targetsReady;
+        _refreshReports = refreshReports;
+        _executionStateChanged = executionStateChanged;
         _executionGate = executionGate;
 
         Title = "Live deployment review — ZDeployPet";
         Width = 760;
-        Height = 760;
+        Height = 820;
         MinWidth = 650;
-        MinHeight = 580;
+        MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = FindBrush("AppBackgroundBrush", Brushes.Black);
         Foreground = FindBrush("AppTextBrush", Brushes.White);
@@ -70,7 +81,7 @@ public sealed class LiveDeploymentReviewWindow : Window
         });
         body.Children.Add(new TextBlock
         {
-            Text = "PDA-6 review only. This window cannot execute a live deployment yet.",
+            Text = "Review the exact live intent, type the confirmation phrase manually, then launch only if every frozen safety condition still matches.",
             Margin = new Thickness(0, 5, 0, 18),
             TextWrapping = TextWrapping.Wrap,
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
@@ -124,9 +135,9 @@ public sealed class LiveDeploymentReviewWindow : Window
         body.Children.Add(Label("Release type", 12));
         ReleaseOption[] releases =
         [
-            new("patch", "PATCH"),
-            new("minor", "MINOR"),
-            new("major", "MAJOR")
+            new("patch", "PATCH", 1),
+            new("minor", "MINOR", 2),
+            new("major", "MAJOR", 3)
         ];
         _releaseCombo.ItemsSource = releases;
         _releaseCombo.DisplayMemberPath = nameof(ReleaseOption.Label);
@@ -146,7 +157,7 @@ public sealed class LiveDeploymentReviewWindow : Window
 
         body.Children.Add(new TextBlock
         {
-            Text = "Safety: creating a review performs no deployment and sends no confirmation phrase. Any later change to the target, release, script fingerprint, configured confirmation phrase, deployment-access state, or execution state invalidates confirmation.",
+            Text = "Safety: review creation performs no deployment. Any later change to target, release, script fingerprint, configured phrase, access state or execution state invalidates authorization.",
             Margin = new Thickness(0, 12, 0, 0),
             TextWrapping = TextWrapping.Wrap,
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
@@ -158,6 +169,8 @@ public sealed class LiveDeploymentReviewWindow : Window
 
     private async Task CreateReviewAsync()
     {
+        if (_executionBusy) return;
+
         if (!_targetsReady())
         {
             SetStatus("BLOCKED — deployment access must be ON / READY with all configured target probes passed.", true);
@@ -256,8 +269,9 @@ public sealed class LiveDeploymentReviewWindow : Window
         }
 
         _snapshot = review.Snapshot;
+        _confirmationValidated = false;
         RenderSnapshot(_snapshot, target);
-        SetStatus("REVIEW CREATED — immutable snapshot captured. Live execution remains unavailable in this PDA-6 slice.");
+        SetStatus("REVIEW CREATED — immutable snapshot captured. Type the exact confirmation phrase manually, then validate it.");
     }
 
     private void RenderSnapshot(LiveDeploymentReviewSnapshot snapshot, TargetOption target)
@@ -307,6 +321,8 @@ public sealed class LiveDeploymentReviewWindow : Window
         _confirmationBox.Foreground = FindBrush("AppTextBrush", Brushes.White);
         _confirmationBox.BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray);
         _confirmationBox.Padding = new Thickness(8, 6, 8, 6);
+        _confirmationBox.TextChanged -= ConfirmationBox_TextChanged;
+        _confirmationBox.TextChanged += ConfirmationBox_TextChanged;
         AutomationProperties.SetName(_confirmationBox, "Exact live deployment confirmation phrase");
         _reviewBody.Children.Add(_confirmationBox);
 
@@ -318,9 +334,19 @@ public sealed class LiveDeploymentReviewWindow : Window
         _validateButton.Click += ValidateConfirmation_Click;
         _reviewBody.Children.Add(_validateButton);
 
+        _startLiveButton.Content = "Start LIVE deployment";
+        _startLiveButton.Padding = new Thickness(18, 10, 18, 10);
+        _startLiveButton.Margin = new Thickness(0, 12, 0, 0);
+        _startLiveButton.HorizontalAlignment = HorizontalAlignment.Left;
+        _startLiveButton.IsEnabled = false;
+        _startLiveButton.Click -= StartLiveDeployment_Click;
+        _startLiveButton.Click += StartLiveDeployment_Click;
+        AutomationProperties.SetName(_startLiveButton, "Start live deployment after exact confirmation");
+        _reviewBody.Children.Add(_startLiveButton);
+
         _reviewBody.Children.Add(new TextBlock
         {
-            Text = "This button validates only. It cannot start a live deployment. ZDeployPet never fills this field for you.",
+            Text = "The LIVE button stays disabled until the exact phrase is manually typed and revalidated. Immediately before launch, ZDeployPet rechecks the script fingerprint, approved script, deployment-access runtime, frozen target/release/phrase and global execution lock. Live runs are never retried automatically.",
             Margin = new Thickness(0, 10, 0, 0),
             TextWrapping = TextWrapping.Wrap,
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
@@ -329,9 +355,163 @@ public sealed class LiveDeploymentReviewWindow : Window
         _reviewCard.Visibility = Visibility.Visible;
     }
 
+    private void ConfirmationBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _confirmationValidated = false;
+        _startLiveButton.IsEnabled = false;
+    }
+
     private async void ValidateConfirmation_Click(object sender, RoutedEventArgs e)
     {
-        if (_snapshot is null) return;
+        if (_snapshot is null || _executionBusy) return;
+
+        LiveValidationState validation = await RevalidateAsync();
+        if (!validation.Result.IsConfirmed)
+        {
+            _confirmationValidated = false;
+            _startLiveButton.IsEnabled = false;
+            SetStatus("CONFIRMATION INVALID — " + string.Join(" ", validation.Result.Errors), true);
+            return;
+        }
+
+        _confirmationValidated = true;
+        _startLiveButton.IsEnabled = true;
+        SetStatus("CONFIRMATION VALID — exact human-entered phrase matches this unchanged immutable review. LIVE launch is now armed for this unchanged state only.");
+    }
+
+    private async void StartLiveDeployment_Click(object sender, RoutedEventArgs e)
+    {
+        if (_snapshot is null || !_confirmationValidated || _executionBusy)
+            return;
+
+        LiveValidationState validation = await RevalidateAsync();
+        if (!validation.Result.IsConfirmed || validation.Runtime is null)
+        {
+            _confirmationValidated = false;
+            _startLiveButton.IsEnabled = false;
+            SetStatus("LIVE BLOCKED — " + string.Join(" ", validation.Result.Errors), true);
+            return;
+        }
+
+        TargetOption? target = _targetCombo.SelectedItem as TargetOption;
+        ReleaseOption? release = _releaseCombo.SelectedItem as ReleaseOption;
+        if (target is null)
+        {
+            SetStatus("LIVE BLOCKED — target is no longer selected.", true);
+            return;
+        }
+
+        bool releaseRequired = target.PromptChoice != 2;
+        if (releaseRequired && release is null)
+        {
+            SetStatus("LIVE BLOCKED — release selection is no longer valid.", true);
+            return;
+        }
+
+        if (!_executionGate.TryAcquire(out IDisposable? executionLease) || executionLease is null)
+        {
+            SetStatus("LIVE BLOCKED — another deployment execution acquired the global execution lock.", true);
+            return;
+        }
+
+        using (executionLease)
+        {
+            _executionBusy = true;
+            _executionStateChanged(true);
+            _createReviewButton.IsEnabled = false;
+            _targetCombo.IsEnabled = false;
+            _releaseCombo.IsEnabled = false;
+            _confirmationBox.IsEnabled = false;
+            _validateButton.IsEnabled = false;
+            _startLiveButton.IsEnabled = false;
+
+            string operatorPhrase = _confirmationBox.Text;
+            LiveDeploymentPromptPlan plan = new(
+                TargetChoice: target.PromptChoice,
+                ReleaseChoice: releaseRequired ? release!.PromptChoice : null,
+                ConfirmationPhrase: _snapshot.LiveConfirmationPhrase);
+
+            SetStatus("LIVE RUNNING — the approved script is executing through the bounded deployment-access session. Output is streaming to the Live deploy console.");
+            ShellRuntime.Activity.Add(
+                ShellActivityLevel.Warning,
+                "Live deploy",
+                $"Live deployment started for '{_profile.Name}', target '{target.Label}', release '{_snapshot.Release}', review {_snapshot.ReviewId}. No automatic retry is permitted.");
+            ShellRuntime.Activity.Add(
+                ShellActivityLevel.Info,
+                "deploy_millenova.live.sh",
+                "--- live script output begins ---");
+
+            try
+            {
+                WslLiveDeploymentExecutionResult result = await _executor.ExecuteAsync(
+                    _profile.WslDistribution,
+                    _profile.WslProjectPath,
+                    _profile.ScriptRelativePath,
+                    validation.Runtime,
+                    plan,
+                    operatorPhrase,
+                    outputLine: (line, isError) =>
+                    {
+                        Dispatcher.BeginInvoke(new Action(() =>
+                            ShellRuntime.Activity.Add(
+                                isError ? ShellActivityLevel.Warning : ShellActivityLevel.Info,
+                                "deploy_millenova.live.sh",
+                                line)));
+                    });
+
+                ShellRuntime.Activity.Add(
+                    ShellActivityLevel.Info,
+                    "deploy_millenova.live.sh",
+                    "--- live script output ends ---");
+
+                if (!result.Started)
+                {
+                    SetStatus("LIVE FAILED TO START — " + (result.Error ?? "The WSL live-deployment process did not start."), true);
+                    ShellRuntime.Activity.Add(ShellActivityLevel.Error, "Live deploy", result.Error ?? "Live deployment process did not start.");
+                    return;
+                }
+
+                ShellRuntime.Activity.Add(
+                    result.ExitCode == 0 ? ShellActivityLevel.Success : ShellActivityLevel.Warning,
+                    "Live deploy",
+                    $"Live deployment process exited with code {result.ExitCode}. Reporter truth will now be refreshed and remains authoritative. No retry was attempted.");
+
+                SetStatus($"LIVE PROCESS COMPLETE — exit code {result.ExitCode}. Refreshing authoritative deployment report…", result.ExitCode != 0);
+                await _refreshReports();
+                SetStatus($"LIVE PROCESS COMPLETE — exit code {result.ExitCode}. Review Latest deployment report / Deployment history for authoritative reporter truth. No automatic retry occurred.", result.ExitCode != 0);
+            }
+            catch (OperationCanceledException)
+            {
+                SetStatus("LIVE CANCELLED — execution was cancelled. The deployment may be partial; inspect reporter/full log before any further action. No retry was attempted.", true);
+                ShellRuntime.Activity.Add(ShellActivityLevel.Warning, "Live deploy", "Live execution was cancelled. No automatic retry was attempted.");
+            }
+            catch (Exception exception)
+            {
+                SetStatus("LIVE ERROR — " + exception.Message + " No automatic retry was attempted.", true);
+                ShellRuntime.Activity.Add(ShellActivityLevel.Error, "Live deploy", exception.Message);
+            }
+            finally
+            {
+                _executionBusy = false;
+                _executionStateChanged(false);
+                _confirmationValidated = false;
+                _confirmationBox.Text = string.Empty;
+                _createReviewButton.IsEnabled = true;
+                _targetCombo.IsEnabled = true;
+                RefreshReleaseAvailability();
+                _confirmationBox.IsEnabled = true;
+                _validateButton.IsEnabled = true;
+                _startLiveButton.IsEnabled = false;
+                _snapshot = null;
+                _reviewCard.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
+    private async Task<LiveValidationState> RevalidateAsync()
+    {
+        if (_snapshot is null)
+            return new(new LiveDeploymentConfirmationResult(false, ["No immutable live review exists."]), null);
 
         string currentSha;
         try
@@ -341,11 +521,33 @@ public sealed class LiveDeploymentReviewWindow : Window
         }
         catch (Exception exception)
         {
-            SetStatus("CONFIRMATION INVALID — script fingerprint could not be revalidated: " + exception.Message, true);
-            return;
+            return new(new LiveDeploymentConfirmationResult(false, ["Script fingerprint could not be revalidated: " + exception.Message]), null);
         }
 
-        bool accessReady = _targetsReady() && await _sessionController.GetReadyRuntimeAsync(_profile) is not null;
+        DeploymentScriptApproval? approval = await _approvalStore.LoadAsync(_profile.Id);
+        DeploymentScriptApprovalMatchResult approvalMatch = DeploymentScriptApprovalValidator.Validate(
+            approval,
+            _profile.Id,
+            _profile.ScriptRelativePath,
+            currentSha);
+        if (!approvalMatch.IsMatch)
+            return new(new LiveDeploymentConfirmationResult(false, approvalMatch.Errors), null);
+
+        WslSshAgentRuntime? runtime = null;
+        bool accessReady = _targetsReady();
+        if (accessReady)
+        {
+            runtime = await _sessionController.GetReadyRuntimeAsync(_profile);
+            accessReady = runtime is not null;
+        }
+
+        TargetOption? selectedTarget = _targetCombo.SelectedItem as TargetOption;
+        ReleaseOption? selectedRelease = _releaseCombo.SelectedItem as ReleaseOption;
+        string selectedTargetId = selectedTarget?.Id ?? string.Empty;
+        string selectedReleaseToken = selectedTarget?.PromptChoice == 2
+            ? "unchanged"
+            : selectedRelease?.Token ?? string.Empty;
+
         LiveDeploymentConfirmationResult result = LiveDeploymentReviewGuard.ValidateConfirmation(
             _snapshot,
             _confirmationBox.Text,
@@ -353,27 +555,26 @@ public sealed class LiveDeploymentReviewWindow : Window
                 ProfileId: _profile.Id,
                 ScriptRelativePath: _profile.ScriptRelativePath,
                 CurrentScriptSha256: currentSha,
-                TargetId: _snapshot.TargetId,
-                Release: _snapshot.Release,
+                TargetId: selectedTargetId,
+                Release: selectedReleaseToken,
                 LiveConfirmationPhrase: _profile.LiveConfirmationPhrase,
                 DeploymentAccessReady: accessReady,
                 ExecutionAlreadyRunning: _executionGate.IsRunning));
 
-        if (result.IsConfirmed)
-        {
-            SetStatus("CONFIRMATION VALID — exact human-entered phrase matches this unchanged review. Live execution is intentionally not enabled yet.");
-        }
-        else
-        {
-            SetStatus("CONFIRMATION INVALID — " + string.Join(" ", result.Errors), true);
-        }
+        return new(result, result.IsConfirmed ? runtime : null);
     }
+
+    private sealed record LiveValidationState(
+        LiveDeploymentConfirmationResult Result,
+        WslSshAgentRuntime? Runtime);
 
     private void InvalidateReview(string reason)
     {
         if (_snapshot is null) return;
         _snapshot = null;
+        _confirmationValidated = false;
         _confirmationBox.Text = string.Empty;
+        _startLiveButton.IsEnabled = false;
         _reviewCard.Visibility = Visibility.Collapsed;
         SetStatus("REVIEW INVALIDATED — " + reason, true);
     }
@@ -402,6 +603,8 @@ public sealed class LiveDeploymentReviewWindow : Window
 
     private void RefreshReleaseAvailability()
     {
+        if (_executionBusy) return;
+
         TargetOption? target = _targetCombo.SelectedItem as TargetOption;
         bool required = target is null || target.PromptChoice != 2;
         _releaseCombo.IsEnabled = required;
