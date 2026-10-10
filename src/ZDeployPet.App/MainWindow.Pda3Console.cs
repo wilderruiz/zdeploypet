@@ -10,12 +10,23 @@ public partial class MainWindow
 {
     private const double MinimumActivityPaneWidth = 220;
     private const double MinimumOperatorPaneWidth = 420;
-    private const string RawDeploymentScriptCategory = "deploy_millenova.sh";
+    private const string DryRunActivityCategory = "Dry run";
+    private const string LiveDeployActivityCategory = "Live deploy";
+    private const string RawDryScriptCategory = "deploy_millenova.sh";
+    private const string RawLiveScriptCategory = "deploy_millenova.live.sh";
+
+    private enum EmbeddedConsoleChannel
+    {
+        DryRun,
+        LiveDeploy,
+        ZDeployPet
+    }
 
     private ColumnDefinition? _activityPaneColumn;
     private ColumnDefinition? _activitySplitterColumn;
     private GridSplitter? _activityPaneSplitter;
     private Border? _activityPane;
+    private TabControl? _activityConsoleTabs;
     private TextBox? _activityConsoleTextBox;
     private TextBlock? _activityProfileText;
     private TextBlock? _activitySessionText;
@@ -34,6 +45,7 @@ public partial class MainWindow
         };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -43,11 +55,11 @@ public partial class MainWindow
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         Button help = HelpTipFactory.Create(new HelpTipSpec(
-            "Read the live ZDeployPet activity console.",
-            "This pane follows application, profile, session, probe and Git-safety activity as it happens.",
-            WhenToUse: "Keep it visible while operating ZDeployPet when you want immediate confirmation of what the app is doing.",
-            WhatItDoes: "The pane reads the bounded in-memory shell activity stream and current profile/session state. Drag the splitter to resize it, or use View to hide/show it.",
-            Safety: "Activity is sanitized before display. The console does not expose passwords, passphrases, private-key contents or deployment authority."));
+            "Read the live ZDeployPet consoles.",
+            "Dry run, future live deployment, and ZDeployPet application activity are separated so deployment output is not buried in routine shell events.",
+            WhenToUse: "Keep Dry run selected while previewing deploy_millenova.sh. Use ZDeployPet when troubleshooting session, report, probe or application behavior.",
+            WhatItDoes: "Each tab filters the bounded in-memory activity stream into its own console. Dry-run shell lines are rendered exactly as the script printed them after sanitization.",
+            Safety: "Console output is observational and sanitized. It never grants deployment authority or exposes passwords, passphrases or private-key contents."));
         help.Margin = new Thickness(8, 0, 0, 0);
         help.HorizontalAlignment = HorizontalAlignment.Right;
         help.VerticalAlignment = VerticalAlignment.Top;
@@ -67,7 +79,7 @@ public partial class MainWindow
         });
         heading.Children.Add(new TextBlock
         {
-            Text = "Live sanitized activity from this ZDeployPet session.",
+            Text = "Separated deployment and ZDeployPet logs from this session.",
             Margin = new Thickness(0, 4, 0, 0),
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray),
             TextWrapping = TextWrapping.Wrap
@@ -136,6 +148,31 @@ public partial class MainWindow
         Grid.SetRow(stateBorder, 1);
         root.Children.Add(stateBorder);
 
+        _activityConsoleTabs = new TabControl
+        {
+            Margin = new Thickness(0, 0, 0, 6),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            SelectedIndex = 0
+        };
+        _activityConsoleTabs.Items.Add(new TabItem
+        {
+            Header = "Dry run",
+            Tag = EmbeddedConsoleChannel.DryRun
+        });
+        _activityConsoleTabs.Items.Add(new TabItem
+        {
+            Header = "Live deploy",
+            Tag = EmbeddedConsoleChannel.LiveDeploy
+        });
+        _activityConsoleTabs.Items.Add(new TabItem
+        {
+            Header = "ZDeployPet",
+            Tag = EmbeddedConsoleChannel.ZDeployPet
+        });
+        _activityConsoleTabs.SelectionChanged += (_, _) => RefreshEmbeddedActivityConsole();
+        Grid.SetRow(_activityConsoleTabs, 2);
+        root.Children.Add(_activityConsoleTabs);
+
         Border consoleBorder = new()
         {
             Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x0D, 0x10)),
@@ -165,7 +202,7 @@ public partial class MainWindow
             SelectionBrush = FindBrush("AppSelectionBrush", Brushes.DimGray)
         };
         consoleBorder.Child = _activityConsoleTextBox;
-        Grid.SetRow(consoleBorder, 2);
+        Grid.SetRow(consoleBorder, 3);
         root.Children.Add(consoleBorder);
 
         Grid footer = new()
@@ -213,13 +250,13 @@ public partial class MainWindow
         Grid.SetRow(footerActions, 1);
         footer.Children.Add(footerActions);
 
-        Grid.SetRow(footer, 3);
+        Grid.SetRow(footer, 4);
         root.Children.Add(footer);
 
         // WPF can otherwise keep Auto-sized descendants at their previous desired
         // width after a GridSplitter move. Constrain every responsive surface to the
-        // live console viewport so header, state strip, console and footer all obey
-        // the pane edge immediately.
+        // live console viewport so header, state strip, tabs, console and footer all
+        // obey the pane edge immediately.
         root.SizeChanged += (_, e) =>
         {
             double available = Math.Max(0, e.NewSize.Width);
@@ -230,6 +267,11 @@ public partial class MainWindow
             stateBorder.MaxWidth = available;
             state.Width = Math.Max(0, available - stateBorder.Padding.Left - stateBorder.Padding.Right - 2);
             state.MaxWidth = state.Width;
+            if (_activityConsoleTabs is not null)
+            {
+                _activityConsoleTabs.Width = available;
+                _activityConsoleTabs.MaxWidth = available;
+            }
             consoleBorder.Width = available;
             consoleBorder.MaxWidth = available;
             footer.Width = available;
@@ -267,7 +309,19 @@ public partial class MainWindow
         Dispatcher.InvokeAsync(() =>
         {
             _embeddedActivityRows.Add(ToEmbeddedActivityRow(entry));
-            RefreshEmbeddedActivityConsole();
+
+            // Deployment output gets visual priority while it is running, without
+            // mixing routine application/session messages into the same log stream.
+            if (_activityConsoleTabs is not null &&
+                string.Equals(entry.Category, DryRunActivityCategory, StringComparison.OrdinalIgnoreCase) &&
+                entry.Message.StartsWith("Dry run started", StringComparison.OrdinalIgnoreCase))
+            {
+                _activityConsoleTabs.SelectedIndex = 0;
+            }
+            else
+            {
+                RefreshEmbeddedActivityConsole();
+            }
         });
     }
 
@@ -278,13 +332,40 @@ public partial class MainWindow
     {
         if (_activityConsoleTextBox is null) return;
 
+        EmbeddedConsoleChannel channel = GetSelectedConsoleChannel();
+        List<ActivityRow> rows = _embeddedActivityRows.Where(row => IsRowInChannel(row, channel)).ToList();
+
         StringBuilder text = new();
-        foreach (ActivityRow row in _embeddedActivityRows)
+        foreach (ActivityRow row in rows)
             text.AppendLine(FormatEmbeddedActivityRow(row));
 
         _activityConsoleTextBox.Text = text.ToString().TrimEnd();
         _activityConsoleTextBox.ScrollToEnd();
-        RefreshEmbeddedActivityStatus();
+        RefreshEmbeddedActivityStatus(rows.Count, channel);
+    }
+
+    private EmbeddedConsoleChannel GetSelectedConsoleChannel()
+    {
+        if (_activityConsoleTabs?.SelectedItem is TabItem tab && tab.Tag is EmbeddedConsoleChannel channel)
+            return channel;
+
+        return EmbeddedConsoleChannel.DryRun;
+    }
+
+    private static bool IsRowInChannel(ActivityRow row, EmbeddedConsoleChannel channel)
+    {
+        bool dry = string.Equals(row.Category, DryRunActivityCategory, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(row.Category, RawDryScriptCategory, StringComparison.OrdinalIgnoreCase);
+        bool live = string.Equals(row.Category, LiveDeployActivityCategory, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(row.Category, RawLiveScriptCategory, StringComparison.OrdinalIgnoreCase);
+
+        return channel switch
+        {
+            EmbeddedConsoleChannel.DryRun => dry,
+            EmbeddedConsoleChannel.LiveDeploy => live,
+            EmbeddedConsoleChannel.ZDeployPet => !dry && !live,
+            _ => false
+        };
     }
 
     private void RefreshEmbeddedActivityState()
@@ -296,10 +377,17 @@ public partial class MainWindow
             : ShellRuntime.State.SessionState.ToString().ToUpperInvariant();
     }
 
-    private void RefreshEmbeddedActivityStatus()
+    private void RefreshEmbeddedActivityStatus(int visibleCount, EmbeddedConsoleChannel channel)
     {
-        if (_activityStatusText is not null)
-            _activityStatusText.Text = $"{_embeddedActivityRows.Count} activit{(_embeddedActivityRows.Count == 1 ? "y" : "ies")}";
+        if (_activityStatusText is null) return;
+
+        string label = channel switch
+        {
+            EmbeddedConsoleChannel.DryRun => "dry-run",
+            EmbeddedConsoleChannel.LiveDeploy => "live-deploy",
+            _ => "ZDeployPet"
+        };
+        _activityStatusText.Text = $"{visibleCount} {label} line{(visibleCount == 1 ? string.Empty : "s")}";
     }
 
     private void EmbeddedCopySelection_Click(object sender, RoutedEventArgs e)
@@ -317,14 +405,16 @@ public partial class MainWindow
 
     private void EmbeddedCopyAll_Click(object sender, RoutedEventArgs e)
     {
-        if (_embeddedActivityRows.Count == 0)
+        EmbeddedConsoleChannel channel = GetSelectedConsoleChannel();
+        ActivityRow[] rows = _embeddedActivityRows.Where(row => IsRowInChannel(row, channel)).ToArray();
+        if (rows.Length == 0)
         {
-            if (_activityStatusText is not null) _activityStatusText.Text = "No activity to copy yet.";
+            if (_activityStatusText is not null) _activityStatusText.Text = "No lines in this console yet.";
             return;
         }
 
-        Clipboard.SetText(string.Join(Environment.NewLine, _embeddedActivityRows.Select(FormatEmbeddedActivityRow)));
-        if (_activityStatusText is not null) _activityStatusText.Text = $"Copied all {_embeddedActivityRows.Count} activities.";
+        Clipboard.SetText(string.Join(Environment.NewLine, rows.Select(FormatEmbeddedActivityRow)));
+        if (_activityStatusText is not null) _activityStatusText.Text = $"Copied all {rows.Length} lines from this console.";
     }
 
     private static ActivityRow ToEmbeddedActivityRow(ShellActivityEntry entry) => new(
@@ -338,7 +428,8 @@ public partial class MainWindow
         // Deployment-script output is already a console stream. Render it as the script
         // printed it instead of wrapping every line in ZDeployPet's activity metadata.
         // The message has still passed through ShellRuntime sanitization before arriving here.
-        if (string.Equals(row.Category, RawDeploymentScriptCategory, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(row.Category, RawDryScriptCategory, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(row.Category, RawLiveScriptCategory, StringComparison.OrdinalIgnoreCase))
             return row.Message;
 
         return $"{row.LocalTime} | {row.Level} | {row.Category} | {row.Message}";
