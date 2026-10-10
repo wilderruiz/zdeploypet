@@ -21,9 +21,10 @@ The PDA-3 shell foundation now includes:
 - local **UI layout memory** stored under the ZDeployPet Local Application Data root so the main-window size/position, maximized state, console-pane width and console visibility reopen the way the operator last left them; invalid/off-screen geometry fails safe and does not block startup;
 - a top **Project / Profile**, **View**, **Help** application menu that routes to the existing approved actions rather than duplicating deployment authority;
 - an **About ZDeployPet** surface with runtime version/build/platform/.NET/architecture/repository information and an explicit note that public release licensing remains PDA-8 work;
-- first-pass application-level dark/red resources applied across the main shell, Activity, Deployment Session, Deployment Access and Git Safety surfaces.
+- first-pass application-level dark/red resources applied across the main shell, Activity, Deployment Session, Deployment Access and Git Safety surfaces;
+- a reusable `PetCompanionControl` presentation component for ZPet with distinct **LOCKED / RUNNING / READY / ERROR** visual states; the main shell only maps real controller/session state into the component, and the pet remains non-interactive and non-authoritative.
 
-The shell/menu/activity surfaces are presentation and operator-visibility layers only. They do not bypass deployment-access checks, create new arbitrary execution paths, or execute a deployment script.
+The shell/menu/activity/pet surfaces are presentation and operator-visibility layers only. They do not bypass deployment-access checks, create new arbitrary execution paths, or execute a deployment script.
 
 ## Simple operator mode — required PDA-3 outcome
 
@@ -84,7 +85,7 @@ Security complexity stays in the controller/service layer and in advanced setup 
 9. ✅ add the single deployment-access status/control; continue refining the first-time setup bundle and move detailed access/session controls fully into advanced/diagnostic use;
 10. ✅ seed About with real runtime/build/platform/repository information; refine packaged build metadata later in PDA-8;
 11. add ZDeployPet icon assets and window/taskbar integration;
-12. add the companion/pet as a non-authoritative reflection of shell state;
+12. ✅ add the companion/pet as a non-authoritative reflection of shell state, then extract it into a reusable presentation component with distinct LOCKED / RUNNING / READY / ERROR visuals;
 13. complete keyboard/focus/accessibility smoke and ensure the pet cannot trigger privileged actions.
 
 ## Non-goals for PDA-3
