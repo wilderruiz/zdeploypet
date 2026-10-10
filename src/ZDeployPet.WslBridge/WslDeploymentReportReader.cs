@@ -29,10 +29,11 @@ public sealed class WslDeploymentReportReader
         candidate="$(realpath -e -- "$root/latest.json")" || { printf '%s\n' 'latest.json does not exist' >&2; exit 20; }
         test -f "$candidate" || { printf '%s\n' 'latest.json is not a regular file' >&2; exit 21; }
 
-        case "$candidate" in
-            "$root"/*) ;;
-            *) printf '%s\n' 'latest.json resolves outside the configured report root' >&2; exit 22 ;;
-        esac
+        relative="$(realpath --relative-to="$root" -- "$candidate")" || { printf '%s\n' 'cannot verify latest.json containment' >&2; exit 22; }
+        if test "$relative" = ".." || test "$relative" != "${relative#../}"; then
+            printf '%s\n' 'latest.json resolves outside the configured report root' >&2
+            exit 22
+        fi
 
         size="$(stat -c '%s' -- "$candidate")" || { printf '%s\n' 'cannot read latest.json size' >&2; exit 23; }
         test "$size" -le "$2" || { printf '%s\n' 'latest.json exceeds the maximum supported size' >&2; exit 24; }
