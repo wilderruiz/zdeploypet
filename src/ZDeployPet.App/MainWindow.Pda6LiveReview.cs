@@ -8,6 +8,7 @@ public partial class MainWindow
 {
     private Button? _liveReviewButton;
     private LiveDeploymentReviewWindow? _liveReviewWindow;
+    private bool _liveExecutionBusy;
 
     private void InitializePda6LiveReview()
     {
@@ -34,10 +35,10 @@ public partial class MainWindow
             _liveReviewButton,
             new HelpTipSpec(
                 "Open the immutable live-deployment review.",
-                "PDA-6 freezes the exact profile, target, release choice, script path and script SHA-256 before any live execution can later be considered.",
+                "PDA-6 freezes the exact profile, target, release choice, script path and script SHA-256 before live execution can be authorized.",
                 WhenToUse: "Available only while Deployment access is ON / READY with all configured target probes passed.",
-                WhatItDoes: "Creates a review snapshot and lets you manually type the exact configured confirmation phrase. This slice validates the review and confirmation only; it cannot execute a live deployment yet.",
-                Safety: "The confirmation field is always blank when a review is created. ZDeployPet never auto-fills or synthesizes the phrase. Any changed script/session/target/release state invalidates confirmation."));
+                WhatItDoes: "Creates a review snapshot, requires you to manually type the exact configured confirmation phrase, revalidates the frozen state immediately before launch, then runs only the approved project script.",
+                Safety: "The confirmation field always starts blank. ZDeployPet never auto-fills or synthesizes the phrase. Any changed script/session/target/release state invalidates confirmation, and live execution is never retried automatically."));
 
         DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda6LiveReviewVisibility();
         RefreshPda6LiveReviewVisibility();
@@ -53,7 +54,8 @@ public partial class MainWindow
             _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring;
 
         _liveReviewButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
-        _liveReviewButton.IsEnabled = shellVisible && accessReady && !_deploymentExecutionGate.IsRunning;
+        _liveReviewButton.IsEnabled = shellVisible && accessReady && !_liveExecutionBusy && !_deploymentExecutionGate.IsRunning;
+        _liveReviewButton.Content = _liveExecutionBusy ? "Live deploy running…" : "Live deploy review…";
     }
 
     private void LiveReview_Click(object sender, RoutedEventArgs e)
@@ -75,6 +77,14 @@ public partial class MainWindow
             targetsReady: () =>
                 _deploymentSession.TargetsReady &&
                 _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring,
+            refreshReports: async () => await RefreshLatestDeploymentReportAsync(),
+            executionStateChanged: busy =>
+            {
+                _liveExecutionBusy = busy;
+                RefreshPda6LiveReviewVisibility();
+                RefreshPda5DryRunVisibility();
+                RefreshPetCompanion();
+            },
             executionGate: _deploymentExecutionGate)
         {
             Owner = this
