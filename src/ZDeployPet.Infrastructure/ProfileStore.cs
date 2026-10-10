@@ -160,6 +160,13 @@ public sealed class ProfileStore
     {
         Directory.CreateDirectory(_profilesRoot);
         string profilePath = GetProfilePath(profile.Id);
+
+        DeploymentProfile? existing = File.Exists(profilePath)
+            ? await LoadByIdAsync(profile.Id, cancellationToken)
+            : null;
+        if (existing is not null)
+            PreserveStableTargetIds(profile, existing);
+
         await WriteAtomicAsync(profilePath, profile, cancellationToken);
         await SetActiveProfileAsync(profile.Id, cancellationToken);
     }
@@ -178,6 +185,48 @@ public sealed class ProfileStore
         if (!File.Exists(profilePath)) return null;
         await using FileStream profileStream = File.OpenRead(profilePath);
         return await JsonSerializer.DeserializeAsync<DeploymentProfile>(profileStream, JsonOptions, cancellationToken);
+    }
+
+    private static void PreserveStableTargetIds(DeploymentProfile incoming, DeploymentProfile existing)
+    {
+        if (incoming.Targets is not IList<DeploymentTarget> mutableTargets ||
+            incoming.Destinations is not IList<DeploymentDestination> mutableDestinations)
+            return;
+
+        Dictionary<string, string> remappedTargetIds = new(StringComparer.OrdinalIgnoreCase);
+        for (int index = 0; index < mutableTargets.Count; index++)
+        {
+            DeploymentTarget candidate = mutableTargets[index];
+            DeploymentTarget[] endpointMatches = existing.Targets
+                .Where(previous =>
+                    string.Equals(previous.Host, candidate.Host, StringComparison.OrdinalIgnoreCase) &&
+                    previous.Port == candidate.Port &&
+                    string.Equals(previous.User, candidate.User, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            // Preserve identity only when the endpoint match is unambiguous. A changed
+            // host/port/user is deliberately treated as a new target so existing host
+            // trust cannot silently follow a materially different SSH endpoint.
+            if (endpointMatches.Length != 1)
+                continue;
+
+            DeploymentTarget previousTarget = endpointMatches[0];
+            if (string.Equals(previousTarget.Id, candidate.Id, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            remappedTargetIds[candidate.Id] = previousTarget.Id;
+            mutableTargets[index] = candidate with { Id = previousTarget.Id };
+        }
+
+        if (remappedTargetIds.Count == 0)
+            return;
+
+        for (int index = 0; index < mutableDestinations.Count; index++)
+        {
+            DeploymentDestination destination = mutableDestinations[index];
+            if (remappedTargetIds.TryGetValue(destination.TargetId, out string? stableTargetId))
+                mutableDestinations[index] = destination with { TargetId = stableTargetId };
+        }
     }
 
     private string GetProfilePath(string profileId)
