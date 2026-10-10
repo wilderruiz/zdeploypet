@@ -41,6 +41,7 @@ public partial class App : Application
                 if (sender is not Window window) return;
                 window.Icon = ProductIconFactory.CreateWindowIcon();
                 ThemeRuntime.Apply(window);
+                AccessibilityRuntime.Apply(window);
             }));
 
         EventManager.RegisterClassHandler(
