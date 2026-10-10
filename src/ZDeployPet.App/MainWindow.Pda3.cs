@@ -10,6 +10,7 @@ public partial class MainWindow
 {
     private bool _pda3ShellHooked;
     private Button? _activityButton;
+    private WrapPanel? _responsiveActionsPanel;
 
     private void InitializePda3Shell()
     {
@@ -33,6 +34,7 @@ public partial class MainWindow
 
         InitializePda3MenuShell();
         InitializeOperatorAccessControl();
+        EnsureResponsiveActionPanel();
         EnsureActivityButton();
         RefreshPda3ActionVisibility();
     }
@@ -130,14 +132,43 @@ public partial class MainWindow
     private static Brush FindBrush(string key, Brush fallback)
         => Application.Current.TryFindResource(key) as Brush ?? fallback;
 
+    private void EnsureResponsiveActionPanel()
+    {
+        if (_responsiveActionsPanel is not null) return;
+        if (AccessOnboardingButton.Parent is not StackPanel current || current.Parent is not DockPanel footer) return;
+
+        int index = footer.Children.IndexOf(current);
+        Dock dock = DockPanel.GetDock(current);
+
+        WrapPanel responsive = new()
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        DockPanel.SetDock(responsive, dock);
+
+        while (current.Children.Count > 0)
+        {
+            UIElement child = current.Children[0];
+            current.Children.RemoveAt(0);
+            responsive.Children.Add(child);
+        }
+
+        footer.Children.Remove(current);
+        footer.Children.Insert(index, responsive);
+        footer.LastChildFill = true;
+        _responsiveActionsPanel = responsive;
+    }
+
     private void EnsureActivityButton()
     {
-        if (_activityButton is not null || AccessOnboardingButton.Parent is not StackPanel actions) return;
+        if (_activityButton is not null || AccessOnboardingButton.Parent is not Panel actions) return;
 
         _activityButton = new Button
         {
             Content = "Console",
-            Margin = new Thickness(0, 0, 8, 0),
+            Margin = new Thickness(0, 0, 8, 6),
             Padding = new Thickness(16, 9, 16, 9),
             Visibility = Visibility.Collapsed
         };
