@@ -70,19 +70,60 @@ public sealed class DeploymentScriptApprovalTests
     }
 
     [Fact]
-    public void PromptPlanAlwaysAppendsDryMode()
+    public void PromptProtocolEmitsOnlyAfterExactExpectedPrompts()
     {
-        DryRunPromptPlan plan = new(TargetChoice: 3, ReleaseChoice: 1);
+        DryRunPromptProtocol protocol = new(new DryRunPromptPlan(TargetChoice: 3, ReleaseChoice: 1));
 
-        Assert.Equal(["3", "1", "1"], plan.BuildStandardInputLines());
+        Assert.Null(protocol.Observe("preflight noise\n"));
+        Assert.Equal("3", protocol.Observe("Choose deployment destination [1/2/3]: "));
+        Assert.Null(protocol.Observe("many validator lines\n"));
+        Assert.Equal("1", protocol.Observe("Choose release type [1/2/3]: "));
+        Assert.Equal("1", protocol.Observe("Choose [1/2]: "));
+        Assert.Null(protocol.Observe("DRY RUN — NOTHING WILL BE MODIFIED\n"));
+        Assert.True(protocol.DryModeConfirmed);
+        Assert.Null(protocol.Observe("DRY RUN COMPLETE\n"));
+        Assert.True(protocol.Completed);
+        Assert.False(protocol.SafetyViolation);
     }
 
     [Fact]
-    public void VpsStylePromptPlanCanOmitReleaseChoice()
+    public void VpsStyleProtocolSkipsReleasePrompt()
     {
-        DryRunPromptPlan plan = new(TargetChoice: 2, ReleaseChoice: null);
+        DryRunPromptProtocol protocol = new(new DryRunPromptPlan(TargetChoice: 2, ReleaseChoice: null));
 
-        Assert.Equal(["2", "1"], plan.BuildStandardInputLines());
+        Assert.Equal("2", protocol.Observe("Choose deployment destination [1/2/3]: "));
+        Assert.Equal("1", protocol.Observe("Choose [1/2]: "));
+        Assert.Null(protocol.Observe("DRY RUN — NOTHING WILL BE MODIFIED\nDRY RUN COMPLETE\n"));
+        Assert.True(protocol.Completed);
+    }
+
+    [Fact]
+    public void LiveMarkerFailsClosedAndNeverEmitsConfirmationPhrase()
+    {
+        DryRunPromptProtocol protocol = new(new DryRunPromptPlan(TargetChoice: 3, ReleaseChoice: 1));
+
+        Assert.Equal("3", protocol.Observe("Choose deployment destination [1/2/3]: "));
+        Assert.Equal("1", protocol.Observe("Choose release type [1/2/3]: "));
+        Assert.Equal("1", protocol.Observe("Choose [1/2]: "));
+        Assert.Null(protocol.Observe("LIVE MILLENOVA DEPLOYMENT\nType DEPLOY MILLENOVA to continue: "));
+
+        Assert.True(protocol.SafetyViolation);
+        Assert.False(protocol.Completed);
+        Assert.DoesNotContain("DEPLOY MILLENOVA", new[] { "3", "1", "1" });
+    }
+
+    [Fact]
+    public void SuccessfulExitWithoutVerifiedDryCompletionFailsClosed()
+    {
+        DryRunPromptProtocol protocol = new(new DryRunPromptPlan(TargetChoice: 1, ReleaseChoice: 1));
+
+        _ = protocol.Observe("Choose deployment destination [1/2/3]: ");
+        _ = protocol.Observe("Choose release type [1/2/3]: ");
+        _ = protocol.Observe("Choose [1/2]: ");
+        protocol.MarkProcessExited(0);
+
+        Assert.True(protocol.SafetyViolation);
+        Assert.Contains("without completing", protocol.ViolationReason, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -94,6 +135,6 @@ public sealed class DeploymentScriptApprovalTests
     {
         DryRunPromptPlan plan = new(targetChoice, releaseChoice);
 
-        Assert.Throws<InvalidDataException>(() => plan.BuildStandardInputLines());
+        Assert.Throws<InvalidDataException>(() => plan.Validate());
     }
 }
