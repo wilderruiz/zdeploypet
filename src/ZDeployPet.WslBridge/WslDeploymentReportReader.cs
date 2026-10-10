@@ -15,14 +15,26 @@ public sealed record WslDeploymentReportReadResult(
         new(false, null, null, null, error);
 }
 
+public sealed record WslDeploymentArtifactReadResult(
+    bool Success,
+    string? CanonicalPath,
+    string? Text,
+    string? Error)
+{
+    public static WslDeploymentArtifactReadResult Failed(string error) =>
+        new(false, null, null, error);
+}
+
 /// <summary>
-/// Read-only reader for the deployment reporter's latest.json inside the selected WSL distribution.
-/// The reader resolves paths with direct WSL utility invocations rather than an inline shell script,
-/// rejects path escapes in managed code, imposes a bounded payload size, and never writes to the report tree.
+/// Read-only reader for deployment reporter artifacts inside the selected WSL distribution.
+/// Paths are resolved with direct WSL utility invocations, containment is enforced in managed code,
+/// payload sizes are bounded, and no operation writes to the report tree.
 /// </summary>
 public sealed class WslDeploymentReportReader
 {
     public const int MaximumReportBytes = 2 * 1024 * 1024;
+    public const int MaximumSummaryBytes = 2 * 1024 * 1024;
+    public const int MaximumFullLogBytes = 8 * 1024 * 1024;
 
     public async Task<WslDeploymentReportReadResult> ReadLatestAsync(
         string distribution,
@@ -47,24 +59,91 @@ public sealed class WslDeploymentReportReader
             return WslDeploymentReportReadResult.Failed("The configured report root did not resolve to a safe absolute WSL path.");
 
         string requestedLatest = canonicalRoot.TrimEnd('/') + "/latest.json";
+        WslDeploymentArtifactReadResult read = await ReadTextArtifactWithinCanonicalRootAsync(
+            distribution,
+            canonicalRoot,
+            requestedLatest,
+            MaximumReportBytes,
+            "latest.json",
+            cancellationToken);
+
+        if (!read.Success || read.Text is null || read.CanonicalPath is null)
+            return WslDeploymentReportReadResult.Failed(read.Error ?? "latest.json could not be read safely.");
+
+        if (string.IsNullOrWhiteSpace(read.Text))
+            return WslDeploymentReportReadResult.Failed("latest.json is empty.");
+
+        return new WslDeploymentReportReadResult(
+            true,
+            canonicalRoot,
+            read.CanonicalPath,
+            read.Text,
+            null);
+    }
+
+    public async Task<WslDeploymentArtifactReadResult> ReadTextArtifactAsync(
+        string distribution,
+        string reportRoot,
+        string artifactPath,
+        int maximumBytes,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(distribution))
+            return WslDeploymentArtifactReadResult.Failed("A WSL distribution is required.");
+        if (string.IsNullOrWhiteSpace(reportRoot) || !reportRoot.StartsWith('/'))
+            return WslDeploymentArtifactReadResult.Failed("A safe absolute WSL report root is required.");
+        if (string.IsNullOrWhiteSpace(artifactPath) || !artifactPath.StartsWith('/'))
+            return WslDeploymentArtifactReadResult.Failed("A safe absolute WSL artifact path is required.");
+        if (maximumBytes <= 0)
+            return WslDeploymentArtifactReadResult.Failed("The artifact size limit is invalid.");
+
+        WslCommandResult rootResult = await RunWslCommandAsync(
+            distribution,
+            ["realpath", "-e", "--", reportRoot],
+            cancellationToken);
+        if (!rootResult.Success)
+            return WslDeploymentArtifactReadResult.Failed(
+                FriendlyFailure(rootResult, "report root does not exist or cannot be resolved"));
+
+        string canonicalRoot = rootResult.Output.Trim();
+        if (!DeploymentReportPathBoundary.TryNormalizeCanonicalPosixPath(canonicalRoot, out canonicalRoot))
+            return WslDeploymentArtifactReadResult.Failed("The configured report root did not resolve to a safe absolute WSL path.");
+
+        return await ReadTextArtifactWithinCanonicalRootAsync(
+            distribution,
+            canonicalRoot,
+            artifactPath,
+            maximumBytes,
+            "artifact",
+            cancellationToken);
+    }
+
+    private static async Task<WslDeploymentArtifactReadResult> ReadTextArtifactWithinCanonicalRootAsync(
+        string distribution,
+        string canonicalRoot,
+        string requestedPath,
+        int maximumBytes,
+        string displayName,
+        CancellationToken cancellationToken)
+    {
         WslCommandResult candidateResult = await RunWslCommandAsync(
             distribution,
-            ["realpath", "-e", "--", requestedLatest],
+            ["realpath", "-e", "--", requestedPath],
             cancellationToken);
         if (!candidateResult.Success)
-            return WslDeploymentReportReadResult.Failed(
-                FriendlyFailure(candidateResult, "latest.json does not exist or cannot be resolved"));
+            return WslDeploymentArtifactReadResult.Failed(
+                FriendlyFailure(candidateResult, $"{displayName} does not exist or cannot be resolved"));
 
         string canonicalPath = candidateResult.Output.Trim();
         if (!DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, canonicalPath))
-            return WslDeploymentReportReadResult.Failed("latest.json resolves outside the configured report root.");
+            return WslDeploymentArtifactReadResult.Failed($"{displayName} resolves outside the configured report root.");
 
         WslCommandResult typeResult = await RunWslCommandAsync(
             distribution,
             ["test", "-f", canonicalPath],
             cancellationToken);
         if (!typeResult.Success)
-            return WslDeploymentReportReadResult.Failed("latest.json is not a regular file.");
+            return WslDeploymentArtifactReadResult.Failed($"{displayName} is not a regular file.");
 
         WslCommandResult sizeResult = await RunWslCommandAsync(
             distribution,
@@ -72,28 +151,23 @@ public sealed class WslDeploymentReportReader
             cancellationToken);
         if (!sizeResult.Success ||
             !long.TryParse(sizeResult.Output.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out long size))
-            return WslDeploymentReportReadResult.Failed("Cannot read latest.json size safely.");
+            return WslDeploymentArtifactReadResult.Failed($"Cannot read {displayName} size safely.");
 
-        if (size < 0 || size > MaximumReportBytes)
-            return WslDeploymentReportReadResult.Failed("latest.json exceeds the maximum supported size.");
+        if (size < 0 || size > maximumBytes)
+            return WslDeploymentArtifactReadResult.Failed($"{displayName} exceeds the maximum supported size of {maximumBytes:N0} bytes.");
 
         WslCommandResult readResult = await RunWslCommandAsync(
             distribution,
             ["cat", "--", canonicalPath],
             cancellationToken);
         if (!readResult.Success)
-            return WslDeploymentReportReadResult.Failed(
-                FriendlyFailure(readResult, "latest.json could not be read"));
+            return WslDeploymentArtifactReadResult.Failed(
+                FriendlyFailure(readResult, $"{displayName} could not be read"));
 
-        string json = readResult.Output;
-        if (string.IsNullOrWhiteSpace(json))
-            return WslDeploymentReportReadResult.Failed("latest.json is empty.");
-
-        return new WslDeploymentReportReadResult(
+        return new WslDeploymentArtifactReadResult(
             true,
-            canonicalRoot,
             canonicalPath,
-            json,
+            readResult.Output,
             null);
     }
 
