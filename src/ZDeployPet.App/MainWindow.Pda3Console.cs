@@ -32,25 +32,7 @@ public partial class MainWindow
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        Grid header = new();
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        StackPanel heading = new();
-        heading.Children.Add(new TextBlock
-        {
-            Text = "Console / Activity",
-            FontSize = 20,
-            FontWeight = FontWeights.SemiBold
-        });
-        heading.Children.Add(new TextBlock
-        {
-            Text = "Live sanitized activity from this ZDeployPet session.",
-            Margin = new Thickness(0, 4, 0, 0),
-            Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray),
-            TextWrapping = TextWrapping.Wrap
-        });
-        header.Children.Add(heading);
-
+        DockPanel header = new() { LastChildFill = true };
         Button help = HelpTipFactory.Create(new HelpTipSpec(
             "Read the live ZDeployPet activity console.",
             "This pane follows application, profile, session, probe and Git-safety activity as it happens.",
@@ -60,33 +42,83 @@ public partial class MainWindow
         help.Margin = new Thickness(8, 0, 0, 0);
         help.HorizontalAlignment = HorizontalAlignment.Right;
         help.VerticalAlignment = VerticalAlignment.Top;
-        Grid.SetColumn(help, 1);
+        DockPanel.SetDock(help, Dock.Right);
         header.Children.Add(help);
+
+        StackPanel heading = new();
+        heading.Children.Add(new TextBlock
+        {
+            Text = "Console / Activity",
+            FontSize = 20,
+            FontWeight = FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap
+        });
+        heading.Children.Add(new TextBlock
+        {
+            Text = "Live sanitized activity from this ZDeployPet session.",
+            Margin = new Thickness(0, 4, 0, 0),
+            Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray),
+            TextWrapping = TextWrapping.Wrap
+        });
+        header.Children.Add(heading);
         root.Children.Add(header);
 
         Border stateBorder = new()
         {
             Margin = new Thickness(0, 12, 0, 10),
-            Padding = new Thickness(10),
+            Padding = new Thickness(10, 6, 10, 6),
             Background = FindBrush("AppSurfaceBrush", Brushes.DarkSlateGray),
             BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
             BorderThickness = new Thickness(1)
         };
-        Grid state = new();
-        state.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        state.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        state.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        state.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        state.Children.Add(new TextBlock { Text = "Profile", FontWeight = FontWeights.SemiBold });
-        _activityProfileText = new TextBlock { Text = "—", Margin = new Thickness(8, 0, 16, 0), TextWrapping = TextWrapping.Wrap };
-        Grid.SetColumn(_activityProfileText, 1);
-        state.Children.Add(_activityProfileText);
-        TextBlock sessionLabel = new() { Text = "Session", FontWeight = FontWeights.SemiBold };
-        Grid.SetColumn(sessionLabel, 2);
-        state.Children.Add(sessionLabel);
-        _activitySessionText = new TextBlock { Text = "LOCKED", Margin = new Thickness(8, 0, 0, 0), TextWrapping = TextWrapping.Wrap };
-        Grid.SetColumn(_activitySessionText, 3);
-        state.Children.Add(_activitySessionText);
+        WrapPanel state = new()
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        StackPanel profileState = new()
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 2, 24, 2)
+        };
+        profileState.Children.Add(new TextBlock
+        {
+            Text = "Profile",
+            FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        _activityProfileText = new TextBlock
+        {
+            Text = "—",
+            Margin = new Thickness(8, 0, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        profileState.Children.Add(_activityProfileText);
+        state.Children.Add(profileState);
+
+        StackPanel sessionState = new()
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 2, 0, 2)
+        };
+        sessionState.Children.Add(new TextBlock
+        {
+            Text = "Session",
+            FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        _activitySessionText = new TextBlock
+        {
+            Text = "LOCKED",
+            Margin = new Thickness(8, 0, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        sessionState.Children.Add(_activitySessionText);
+        state.Children.Add(sessionState);
+
         stateBorder.Child = state;
         Grid.SetRow(stateBorder, 1);
         root.Children.Add(stateBorder);
@@ -128,24 +160,46 @@ public partial class MainWindow
         Grid.SetRow(consoleBorder, 2);
         root.Children.Add(consoleBorder);
 
-        DockPanel footer = new() { Margin = new Thickness(0, 10, 0, 0), LastChildFill = false };
+        Grid footer = new() { Margin = new Thickness(0, 10, 0, 0) };
+        footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
         _activityStatusText = new TextBlock
         {
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
+            Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 6)
         };
-        DockPanel.SetDock(_activityStatusText, Dock.Left);
         footer.Children.Add(_activityStatusText);
 
-        Button copySelection = new() { Content = "Copy selection", Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(8, 0, 0, 0) };
-        copySelection.Click += EmbeddedCopySelection_Click;
-        DockPanel.SetDock(copySelection, Dock.Right);
-        footer.Children.Add(copySelection);
-
-        Button copyAll = new() { Content = "Copy all", Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(8, 0, 0, 0) };
+        WrapPanel footerActions = new()
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        Button copyAll = new()
+        {
+            Content = "Copy all",
+            Padding = new Thickness(10, 6, 10, 6),
+            Margin = new Thickness(4, 2, 4, 2),
+            MinWidth = 72
+        };
         copyAll.Click += EmbeddedCopyAll_Click;
-        DockPanel.SetDock(copyAll, Dock.Right);
-        footer.Children.Add(copyAll);
+        footerActions.Children.Add(copyAll);
+
+        Button copySelection = new()
+        {
+            Content = "Copy selection",
+            Padding = new Thickness(10, 6, 10, 6),
+            Margin = new Thickness(4, 2, 0, 2),
+            MinWidth = 96
+        };
+        copySelection.Click += EmbeddedCopySelection_Click;
+        footerActions.Children.Add(copySelection);
+
+        Grid.SetRow(footerActions, 1);
+        footer.Children.Add(footerActions);
 
         Grid.SetRow(footer, 3);
         root.Children.Add(footer);
