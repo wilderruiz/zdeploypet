@@ -17,6 +17,55 @@ public sealed class WslDryRunExecutor
     private const int MaximumCapturedCharacters = 4 * 1024 * 1024;
     private const int MaximumLiveLineCharacters = 16 * 1024;
     private const int SafetyViolationExitCode = 97;
+    private static readonly TimeSpan MaximumExecutionTime = TimeSpan.FromMinutes(20);
+
+    // The approved Millenova script uses `read -r -p ...`. Bash suppresses -p prompts
+    // when stdin is not a terminal, so a redirected-process adapter that waits to SEE
+    // those prompts can deadlock forever. This fixed wrapper never pre-buffers answers
+    // on stdin. Instead it overrides only the exact three interactive read calls used
+    // by the approved deployment script, injects the allowlisted target/release values,
+    // and structurally forces deployment mode 1 (dry). Any live confirmation prompt is
+    // rejected. All other `read` calls delegate untouched to Bash's builtin.
+    private const string DryRunReadAdapter = """
+set -euo pipefail
+script_path="$1"
+target_choice="$2"
+release_choice="$3"
+
+read() {
+    if [[ "$#" -eq 4 && "$1" == "-r" && "$2" == "-p" ]]; then
+        case "$3" in
+            "Choose deployment destination [1/2/3]: ")
+                printf '%s%s\n' "$3" "$target_choice" >&2
+                printf -v "$4" '%s' "$target_choice"
+                return 0
+                ;;
+            "Choose release type [1/2/3]: ")
+                if [[ -z "$release_choice" ]]; then
+                    echo "FAIL [ZDeployPet safety] Release choice was requested but no allowlisted release choice exists." >&2
+                    return 97
+                fi
+                printf '%s%s\n' "$3" "$release_choice" >&2
+                printf -v "$4" '%s' "$release_choice"
+                return 0
+                ;;
+            "Choose [1/2]: ")
+                printf '%s1\n' "$3" >&2
+                printf -v "$4" '%s' "1"
+                return 0
+                ;;
+            "Type DEPLOY MILLENOVA to continue: ")
+                echo "FAIL [ZDeployPet safety] Live confirmation was requested during a PDA-5 dry run." >&2
+                return 97
+                ;;
+        esac
+    fi
+
+    builtin read "$@"
+}
+
+source "$script_path"
+""";
 
     public async Task<WslDryRunExecutionResult> ExecuteAsync(
         string distribution,
@@ -49,7 +98,7 @@ public sealed class WslDryRunExecutor
         ProcessStartInfo startInfo = new()
         {
             FileName = "wsl.exe",
-            RedirectStandardInput = true,
+            RedirectStandardInput = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -67,7 +116,12 @@ public sealed class WslDryRunExecutor
         startInfo.ArgumentList.Add($"SSH_AUTH_SOCK={runtime.SocketPath}");
         startInfo.ArgumentList.Add($"SSH_AGENT_PID={runtime.AgentPid.ToString(CultureInfo.InvariantCulture)}");
         startInfo.ArgumentList.Add("/usr/bin/bash");
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add(DryRunReadAdapter);
+        startInfo.ArgumentList.Add("zdeploypet-dry-run");
         startInfo.ArgumentList.Add(scriptRelativePath.Trim());
+        startInfo.ArgumentList.Add(promptPlan.TargetChoice.ToString(CultureInfo.InvariantCulture));
+        startInfo.ArgumentList.Add(promptPlan.ReleaseChoice?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
 
         try
         {
@@ -75,37 +129,40 @@ public sealed class WslDryRunExecutor
             if (!process.Start())
                 return new(false, -1, string.Empty, string.Empty, "Windows could not start the WSL dry-run process.");
 
-            // Never pre-buffer synthetic answers. The earlier PDA-5 implementation wrote
-            // target/release/mode up front, which allowed commands launched during preflight
-            // to consume later answers and caused a supposed dry run to enter live mode.
-            // Answers are now emitted only after the exact approved-script prompt is observed.
-            process.StandardInput.NewLine = "\n";
-
             object protocolGate = new();
-            using SemaphoreSlim inputGate = new(1, 1);
 
-            Task<string> stdoutTask = ReadAndDriveAsync(
+            Task<string> stdoutTask = ReadAndMonitorAsync(
                 process.StandardOutput,
                 process,
                 protocol,
                 protocolGate,
-                inputGate,
                 isError: false,
                 outputLine,
                 cancellationToken);
-            Task<string> stderrTask = ReadAndDriveAsync(
+            Task<string> stderrTask = ReadAndMonitorAsync(
                 process.StandardError,
                 process,
                 protocol,
                 protocolGate,
-                inputGate,
                 isError: true,
                 outputLine,
                 cancellationToken);
 
+            using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(MaximumExecutionTime);
+
             try
             {
-                await process.WaitForExitAsync(cancellationToken);
+                await process.WaitForExitAsync(timeout.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                KillBestEffort(process);
+                string timeoutMessage = $"Dry-run execution exceeded the {MaximumExecutionTime.TotalMinutes:0}-minute safety limit and was terminated.";
+                outputLine?.Invoke("FAIL [ZDeployPet safety] " + timeoutMessage, true);
+                string stdoutTimed = await stdoutTask;
+                string stderrTimed = await stderrTask;
+                return new(true, SafetyViolationExitCode, stdoutTimed, AppendBounded(stderrTimed, "\nFAIL [ZDeployPet safety] " + timeoutMessage + "\n"), timeoutMessage);
             }
             catch (OperationCanceledException)
             {
@@ -145,12 +202,11 @@ public sealed class WslDryRunExecutor
         }
     }
 
-    private static async Task<string> ReadAndDriveAsync(
+    private static async Task<string> ReadAndMonitorAsync(
         StreamReader reader,
         Process process,
         DryRunPromptProtocol protocol,
         object protocolGate,
-        SemaphoreSlim inputGate,
         bool isError,
         Action<string, bool>? outputLine,
         CancellationToken cancellationToken)
@@ -169,41 +225,18 @@ public sealed class WslDryRunExecutor
             AppendBounded(captured, chunk);
             EmitLiveLines(chunk, liveLine, isError, outputLine);
 
-            string? response;
             bool violation;
             lock (protocolGate)
             {
-                response = protocol.Observe(chunk);
+                // The read adapter already supplies the allowlisted answers. Observe still
+                // advances the protocol stages and detects any attempt to enter live mode;
+                // the returned answer is intentionally ignored and is never written to stdin.
+                _ = protocol.Observe(chunk);
                 violation = protocol.SafetyViolation;
             }
 
             if (violation)
-            {
                 KillBestEffort(process);
-                continue;
-            }
-
-            if (response is null)
-                continue;
-
-            await inputGate.WaitAsync(cancellationToken);
-            try
-            {
-                if (!process.HasExited)
-                {
-                    await process.StandardInput.WriteLineAsync(response.AsMemory(), cancellationToken);
-                    await process.StandardInput.FlushAsync(cancellationToken);
-                }
-            }
-            catch (IOException)
-            {
-                // The process may have exited between observing a prompt and writing the
-                // allowlisted answer. Process/report truth below remains authoritative.
-            }
-            finally
-            {
-                inputGate.Release();
-            }
         }
 
         EmitPendingLiveLine(liveLine, isError, outputLine);
