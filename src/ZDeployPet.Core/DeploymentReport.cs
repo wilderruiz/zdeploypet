@@ -49,6 +49,98 @@ public sealed record DeploymentReportParseResult(
         new(false, null, errors);
 }
 
+public sealed record DeploymentReportHistoryCandidate(
+    string CanonicalJsonPath,
+    string Json);
+
+public sealed record DeploymentReportHistorySelection(
+    IReadOnlyList<DeploymentReport> Reports,
+    int RejectedCount,
+    int DuplicateCount,
+    bool CandidateLimitReached,
+    bool RowLimitReached);
+
+public static class DeploymentReportHistory
+{
+    public static DeploymentReportHistorySelection SelectTrusted(
+        IEnumerable<DeploymentReportHistoryCandidate> candidates,
+        string canonicalRoot,
+        int maximumCandidates,
+        int maximumRows)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        if (!DeploymentReportPathBoundary.TryNormalizeCanonicalPosixPath(canonicalRoot, out string normalizedRoot))
+            throw new ArgumentException("A safe absolute canonical report root is required.", nameof(canonicalRoot));
+        if (maximumCandidates <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maximumCandidates));
+        if (maximumRows <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maximumRows));
+
+        List<DeploymentReport> trusted = [];
+        HashSet<string> deploymentIds = new(StringComparer.Ordinal);
+        int rejected = 0;
+        int duplicates = 0;
+        int processed = 0;
+        bool candidateLimitReached = false;
+
+        foreach (DeploymentReportHistoryCandidate candidate in candidates)
+        {
+            if (processed >= maximumCandidates)
+            {
+                candidateLimitReached = true;
+                break;
+            }
+            processed++;
+
+            if (!DeploymentReportPathBoundary.IsWithinCanonicalRoot(normalizedRoot, candidate.CanonicalJsonPath))
+            {
+                rejected++;
+                continue;
+            }
+
+            DeploymentReportParseResult parsed = DeploymentReportParser.Parse(candidate.Json);
+            if (!parsed.Success || parsed.Report is null ||
+                !ArtifactsStayInsideRoot(normalizedRoot, parsed.Report.Artifacts))
+            {
+                rejected++;
+                continue;
+            }
+
+            if (!deploymentIds.Add(parsed.Report.DeploymentId))
+            {
+                duplicates++;
+                continue;
+            }
+
+            trusted.Add(parsed.Report);
+        }
+
+        trusted.Sort((left, right) =>
+        {
+            int byStarted = right.StartedAt.CompareTo(left.StartedAt);
+            return byStarted != 0
+                ? byStarted
+                : StringComparer.Ordinal.Compare(right.DeploymentId, left.DeploymentId);
+        });
+
+        bool rowLimitReached = trusted.Count > maximumRows;
+        if (rowLimitReached)
+            trusted = trusted.Take(maximumRows).ToList();
+
+        return new DeploymentReportHistorySelection(
+            trusted,
+            rejected,
+            duplicates,
+            candidateLimitReached,
+            rowLimitReached);
+    }
+
+    private static bool ArtifactsStayInsideRoot(string canonicalRoot, DeploymentReportArtifacts artifacts)
+        => DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, artifacts.FullLog)
+           && DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, artifacts.Summary)
+           && DeploymentReportPathBoundary.IsWithinCanonicalRoot(canonicalRoot, artifacts.Json);
+}
+
 public static class DeploymentReportParser
 {
     public const int SupportedSchemaVersion = 1;
