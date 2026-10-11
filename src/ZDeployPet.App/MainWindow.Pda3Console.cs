@@ -20,7 +20,8 @@ public partial class MainWindow
     {
         DryRun,
         LiveDeploy,
-        ZDeployPet
+        ZDeployPet,
+        Reports
     }
 
     private ColumnDefinition? _activityPaneColumn;
@@ -35,6 +36,8 @@ public partial class MainWindow
     private bool _embeddedActivityHooked;
     private readonly List<ActivityRow> _embeddedActivityRows = [];
     private GridLength _rememberedActivityPaneWidth = new(430);
+    private string _embeddedReportText = string.Empty;
+    private string _embeddedReportStatus = "No report selected. Choose Summary or Full log from Latest deployment report or Deployment history.";
 
     private FrameworkElement BuildEmbeddedActivityConsole()
     {
@@ -56,11 +59,11 @@ public partial class MainWindow
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         Button help = HelpTipFactory.Create(new HelpTipSpec(
-            "Read the live ZDeployPet consoles.",
-            "Dry run, future live deployment, and ZDeployPet application activity are separated so deployment output is not buried in routine shell events.",
-            WhenToUse: "Keep Dry run selected while previewing deploy_millenova.sh. Use ZDeployPet when troubleshooting session, report, probe or application behavior.",
-            WhatItDoes: "Each deployment tab shows only its latest run. Historical deployment evidence stays in Deployment history. Dry-run shell lines are rendered exactly as the script printed them after sanitization.",
-            Safety: "Console output is observational and sanitized. It never grants deployment authority or exposes passwords, passphrases or private-key contents."));
+            "Read current deployment output, ZDeployPet activity and trusted reports.",
+            "Dry Run and Live deploy retain only their latest execution. ZDeployPet contains bounded app activity. Reports is one shared read-only viewer reused for Summary and Full log artifacts.",
+            WhenToUse: "Use Dry Run or Live deploy while an execution is active, ZDeployPet for application diagnostics, and Reports when inspecting the latest or historical reporter evidence.",
+            WhatItDoes: "The four permanent tabs avoid accumulating runs, report tabs or popup viewers. Historical deployment evidence remains in Deployment history and opens into the shared Reports tab.",
+            Safety: "Output and report content are observational/read-only. Report reads retain PDA-4 canonical-path and size validation and never grant deployment authority."));
         help.Margin = new Thickness(8, 0, 0, 0);
         help.HorizontalAlignment = HorizontalAlignment.Right;
         help.VerticalAlignment = VerticalAlignment.Top;
@@ -73,14 +76,14 @@ public partial class MainWindow
         };
         heading.Children.Add(new TextBlock
         {
-            Text = "Console / Activity",
+            Text = "Output / Reports",
             FontSize = 20,
             FontWeight = FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap
         });
         heading.Children.Add(new TextBlock
         {
-            Text = "Latest Dry run / Live deploy output plus bounded ZDeployPet activity.",
+            Text = "Latest Dry Run / Live deploy output, bounded ZDeployPet activity, and one shared report viewer.",
             Margin = new Thickness(0, 4, 0, 0),
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray),
             TextWrapping = TextWrapping.Wrap
@@ -155,21 +158,10 @@ public partial class MainWindow
             HorizontalAlignment = HorizontalAlignment.Stretch,
             SelectedIndex = 0
         };
-        _activityConsoleTabs.Items.Add(new TabItem
-        {
-            Header = "Dry run",
-            Tag = EmbeddedConsoleChannel.DryRun
-        });
-        _activityConsoleTabs.Items.Add(new TabItem
-        {
-            Header = "Live deploy",
-            Tag = EmbeddedConsoleChannel.LiveDeploy
-        });
-        _activityConsoleTabs.Items.Add(new TabItem
-        {
-            Header = "ZDeployPet",
-            Tag = EmbeddedConsoleChannel.ZDeployPet
-        });
+        _activityConsoleTabs.Items.Add(BuildConsoleTab("Dry Run", EmbeddedConsoleChannel.DryRun, Brushes.Goldenrod));
+        _activityConsoleTabs.Items.Add(BuildConsoleTab("Live deploy", EmbeddedConsoleChannel.LiveDeploy, Brushes.LightCoral));
+        _activityConsoleTabs.Items.Add(BuildConsoleTab("ZDeployPet", EmbeddedConsoleChannel.ZDeployPet, Brushes.LightSteelBlue));
+        _activityConsoleTabs.Items.Add(BuildConsoleTab("Reports", EmbeddedConsoleChannel.Reports, Brushes.LightSeaGreen));
         _activityConsoleTabs.SelectionChanged += (_, _) => RefreshEmbeddedActivityConsole();
         Grid.SetRow(_activityConsoleTabs, 2);
         root.Children.Add(_activityConsoleTabs);
@@ -254,10 +246,6 @@ public partial class MainWindow
         Grid.SetRow(footer, 4);
         root.Children.Add(footer);
 
-        // WPF can otherwise keep Auto-sized descendants at their previous desired
-        // width after a GridSplitter move. Constrain every responsive surface to the
-        // live console viewport so header, state strip, tabs, console and footer all
-        // obey the pane edge immediately.
         root.SizeChanged += (_, e) =>
         {
             double available = Math.Max(0, e.NewSize.Width);
@@ -305,6 +293,14 @@ public partial class MainWindow
         return root;
     }
 
+    private static TabItem BuildConsoleTab(string header, EmbeddedConsoleChannel channel, Brush accent)
+        => new()
+        {
+            Header = header,
+            Tag = channel,
+            Foreground = accent
+        };
+
     private void EmbeddedActivity_EntryAdded(object? sender, ShellActivityEntry entry)
     {
         Dispatcher.InvokeAsync(() =>
@@ -323,9 +319,6 @@ public partial class MainWindow
             string.Equals(entry.Category, LiveDeployActivityCategory, StringComparison.OrdinalIgnoreCase) &&
             entry.Message.StartsWith("Live deployment started", StringComparison.OrdinalIgnoreCase);
 
-        // Deployment history already owns previous-run evidence. The embedded console
-        // is intentionally a current/latest-run surface so repeated executions do not
-        // grow an unbounded WPF text workload during a long-lived app session.
         if (startsDryRun)
             _embeddedActivityRows.RemoveAll(row => IsRowInChannel(row, EmbeddedConsoleChannel.DryRun));
         else if (startsLiveDeploy)
@@ -352,8 +345,16 @@ public partial class MainWindow
         if (_activityConsoleTextBox is null) return;
 
         EmbeddedConsoleChannel channel = GetSelectedConsoleChannel();
-        List<ActivityRow> rows = _embeddedActivityRows.Where(row => IsRowInChannel(row, channel)).ToList();
+        if (channel == EmbeddedConsoleChannel.Reports)
+        {
+            _activityConsoleTextBox.Text = _embeddedReportText;
+            _activityConsoleTextBox.ScrollToHome();
+            if (_activityStatusText is not null)
+                _activityStatusText.Text = _embeddedReportStatus;
+            return;
+        }
 
+        List<ActivityRow> rows = _embeddedActivityRows.Where(row => IsRowInChannel(row, channel)).ToList();
         StringBuilder text = new();
         foreach (ActivityRow row in rows)
             text.AppendLine(FormatEmbeddedActivityRow(row));
@@ -383,6 +384,7 @@ public partial class MainWindow
             EmbeddedConsoleChannel.DryRun => dry,
             EmbeddedConsoleChannel.LiveDeploy => live,
             EmbeddedConsoleChannel.ZDeployPet => !dry && !live,
+            EmbeddedConsoleChannel.Reports => false,
             _ => false
         };
     }
@@ -404,7 +406,8 @@ public partial class MainWindow
         {
             EmbeddedConsoleChannel.DryRun => "dry-run",
             EmbeddedConsoleChannel.LiveDeploy => "live-deploy",
-            _ => "ZDeployPet"
+            EmbeddedConsoleChannel.ZDeployPet => "ZDeployPet",
+            _ => "report"
         };
         _activityStatusText.Text = $"{visibleCount} {label} line{(visibleCount == 1 ? string.Empty : "s")}";
     }
@@ -424,16 +427,20 @@ public partial class MainWindow
 
     private void EmbeddedCopyAll_Click(object sender, RoutedEventArgs e)
     {
-        EmbeddedConsoleChannel channel = GetSelectedConsoleChannel();
-        ActivityRow[] rows = _embeddedActivityRows.Where(row => IsRowInChannel(row, channel)).ToArray();
-        if (rows.Length == 0)
+        if (_activityConsoleTextBox is null || string.IsNullOrWhiteSpace(_activityConsoleTextBox.Text))
         {
-            if (_activityStatusText is not null) _activityStatusText.Text = "No lines in this console yet.";
+            if (_activityStatusText is not null) _activityStatusText.Text = "No text in this view yet.";
             return;
         }
 
-        Clipboard.SetText(string.Join(Environment.NewLine, rows.Select(FormatEmbeddedActivityRow)));
-        if (_activityStatusText is not null) _activityStatusText.Text = $"Copied all {rows.Length} lines from this console.";
+        Clipboard.SetText(_activityConsoleTextBox.Text);
+        EmbeddedConsoleChannel channel = GetSelectedConsoleChannel();
+        if (_activityStatusText is not null)
+        {
+            _activityStatusText.Text = channel == EmbeddedConsoleChannel.Reports
+                ? "Copied the complete displayed report artifact."
+                : "Copied all displayed console lines.";
+        }
     }
 
     private static ActivityRow ToEmbeddedActivityRow(ShellActivityEntry entry) => new(
@@ -444,14 +451,39 @@ public partial class MainWindow
 
     private static string FormatEmbeddedActivityRow(ActivityRow row)
     {
-        // Deployment-script output is already a console stream. Render it as the script
-        // printed it instead of wrapping every line in ZDeployPet's activity metadata.
-        // The message has still passed through ShellRuntime sanitization before arriving here.
         if (string.Equals(row.Category, RawDryScriptCategory, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(row.Category, RawLiveScriptCategory, StringComparison.OrdinalIgnoreCase))
             return row.Message;
 
         return $"{row.LocalTime} | {row.Level} | {row.Category} | {row.Message}";
+    }
+
+    private void ShowEmbeddedReportArtifact(string status, string content)
+    {
+        _embeddedReportStatus = status;
+        _embeddedReportText = content ?? string.Empty;
+        EnsureEmbeddedActivityPaneVisible();
+
+        if (_activityConsoleTabs is not null)
+            _activityConsoleTabs.SelectedIndex = 3;
+
+        RefreshEmbeddedActivityConsole();
+        _activityConsoleTextBox?.Focus();
+    }
+
+    private void EnsureEmbeddedActivityPaneVisible()
+    {
+        if (_activityPaneColumn is null || _activitySplitterColumn is null || _activityPane is null || _activityPaneSplitter is null)
+            return;
+
+        if (_activityPane.Visibility == Visibility.Visible)
+            return;
+
+        _activityPaneColumn.MinWidth = MinimumActivityPaneWidth;
+        _activityPaneColumn.Width = _rememberedActivityPaneWidth;
+        _activitySplitterColumn.Width = new GridLength(5);
+        _activityPaneSplitter.Visibility = Visibility.Visible;
+        _activityPane.Visibility = Visibility.Visible;
     }
 
     private void ToggleEmbeddedActivityPane()
@@ -469,16 +501,12 @@ public partial class MainWindow
             _activityPaneSplitter.Visibility = Visibility.Collapsed;
             _activityPaneColumn.Width = new GridLength(0);
             _activitySplitterColumn.Width = new GridLength(0);
-            ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Console / Activity pane hidden.");
+            ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Output / Reports pane hidden.");
         }
         else
         {
-            _activityPaneColumn.MinWidth = MinimumActivityPaneWidth;
-            _activityPaneColumn.Width = _rememberedActivityPaneWidth;
-            _activitySplitterColumn.Width = new GridLength(5);
-            _activityPaneSplitter.Visibility = Visibility.Visible;
-            _activityPane.Visibility = Visibility.Visible;
-            ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Console / Activity pane shown.");
+            EnsureEmbeddedActivityPaneVisible();
+            ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Output / Reports pane shown.");
         }
     }
 }
