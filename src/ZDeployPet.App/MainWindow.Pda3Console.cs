@@ -10,6 +10,7 @@ public partial class MainWindow
 {
     private const double MinimumActivityPaneWidth = 220;
     private const double MinimumOperatorPaneWidth = 420;
+    private const int MaximumEmbeddedActivityRows = 500;
     private const string DryRunActivityCategory = "Dry run";
     private const string LiveDeployActivityCategory = "Live deploy";
     private const string RawDryScriptCategory = "deploy_millenova.sh";
@@ -58,7 +59,7 @@ public partial class MainWindow
             "Read the live ZDeployPet consoles.",
             "Dry run, future live deployment, and ZDeployPet application activity are separated so deployment output is not buried in routine shell events.",
             WhenToUse: "Keep Dry run selected while previewing deploy_millenova.sh. Use ZDeployPet when troubleshooting session, report, probe or application behavior.",
-            WhatItDoes: "Each tab filters the bounded in-memory activity stream into its own console. Dry-run shell lines are rendered exactly as the script printed them after sanitization.",
+            WhatItDoes: "Each deployment tab shows only its latest run. Historical deployment evidence stays in Deployment history. Dry-run shell lines are rendered exactly as the script printed them after sanitization.",
             Safety: "Console output is observational and sanitized. It never grants deployment authority or exposes passwords, passphrases or private-key contents."));
         help.Margin = new Thickness(8, 0, 0, 0);
         help.HorizontalAlignment = HorizontalAlignment.Right;
@@ -79,7 +80,7 @@ public partial class MainWindow
         });
         heading.Children.Add(new TextBlock
         {
-            Text = "Separated deployment and ZDeployPet logs from this session.",
+            Text = "Latest Dry run / Live deploy output plus bounded ZDeployPet activity.",
             Margin = new Thickness(0, 4, 0, 0),
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray),
             TextWrapping = TextWrapping.Wrap
@@ -294,7 +295,7 @@ public partial class MainWindow
         {
             _embeddedActivityHooked = true;
             foreach (ShellActivityEntry entry in ShellRuntime.Activity.Snapshot())
-                _embeddedActivityRows.Add(ToEmbeddedActivityRow(entry));
+                AddEmbeddedActivityEntry(entry, selectChannel: false);
             ShellRuntime.Activity.EntryAdded += EmbeddedActivity_EntryAdded;
             ShellRuntime.State.PropertyChanged += EmbeddedActivity_StateChanged;
         }
@@ -308,21 +309,39 @@ public partial class MainWindow
     {
         Dispatcher.InvokeAsync(() =>
         {
-            _embeddedActivityRows.Add(ToEmbeddedActivityRow(entry));
-
-            // Deployment output gets visual priority while it is running, without
-            // mixing routine application/session messages into the same log stream.
-            if (_activityConsoleTabs is not null &&
-                string.Equals(entry.Category, DryRunActivityCategory, StringComparison.OrdinalIgnoreCase) &&
-                entry.Message.StartsWith("Dry run started", StringComparison.OrdinalIgnoreCase))
-            {
-                _activityConsoleTabs.SelectedIndex = 0;
-            }
-            else
-            {
-                RefreshEmbeddedActivityConsole();
-            }
+            AddEmbeddedActivityEntry(entry, selectChannel: true);
+            RefreshEmbeddedActivityConsole();
         });
+    }
+
+    private void AddEmbeddedActivityEntry(ShellActivityEntry entry, bool selectChannel)
+    {
+        bool startsDryRun =
+            string.Equals(entry.Category, DryRunActivityCategory, StringComparison.OrdinalIgnoreCase) &&
+            entry.Message.StartsWith("Dry run started", StringComparison.OrdinalIgnoreCase);
+        bool startsLiveDeploy =
+            string.Equals(entry.Category, LiveDeployActivityCategory, StringComparison.OrdinalIgnoreCase) &&
+            entry.Message.StartsWith("Live deployment started", StringComparison.OrdinalIgnoreCase);
+
+        // Deployment history already owns previous-run evidence. The embedded console
+        // is intentionally a current/latest-run surface so repeated executions do not
+        // grow an unbounded WPF text workload during a long-lived app session.
+        if (startsDryRun)
+            _embeddedActivityRows.RemoveAll(row => IsRowInChannel(row, EmbeddedConsoleChannel.DryRun));
+        else if (startsLiveDeploy)
+            _embeddedActivityRows.RemoveAll(row => IsRowInChannel(row, EmbeddedConsoleChannel.LiveDeploy));
+
+        _embeddedActivityRows.Add(ToEmbeddedActivityRow(entry));
+        if (_embeddedActivityRows.Count > MaximumEmbeddedActivityRows)
+            _embeddedActivityRows.RemoveRange(0, _embeddedActivityRows.Count - MaximumEmbeddedActivityRows);
+
+        if (!selectChannel || _activityConsoleTabs is null)
+            return;
+
+        if (startsDryRun)
+            _activityConsoleTabs.SelectedIndex = 0;
+        else if (startsLiveDeploy)
+            _activityConsoleTabs.SelectedIndex = 1;
     }
 
     private void EmbeddedActivity_StateChanged(object? sender, PropertyChangedEventArgs e) =>
