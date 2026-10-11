@@ -23,6 +23,14 @@ public partial class MainWindow
         DiscoveryPanel.RowDefinitions.Insert(1, new RowDefinition { Height = GridLength.Auto });
         Grid.SetRow(ResultsTextBox, 2);
 
+        // Keep a neutral Grid host for the access card. PDA-5/PDA-6 attach their
+        // independent Dry run / Live deploy actions to later rows in this host.
+        // The legacy Turn on/Turn off button is intentionally not restored here;
+        // ZDeploy Pet itself owns that toggle now.
+        Grid cardGrid = new();
+        cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
         StackPanel copy = new();
         copy.Children.Add(new TextBlock
         {
@@ -48,6 +56,8 @@ public partial class MainWindow
         };
         copy.Children.Add(_operatorAccessStateText);
         copy.Children.Add(_operatorAccessMessageText);
+        Grid.SetRow(copy, 0);
+        cardGrid.Children.Add(copy);
 
         _operatorAccessCard = new Border
         {
@@ -56,7 +66,7 @@ public partial class MainWindow
             Background = FindBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray),
             BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
             BorderThickness = new Thickness(1),
-            Child = copy
+            Child = cardGrid
         };
         Grid.SetRow(_operatorAccessCard, 1);
         DiscoveryPanel.Children.Add(_operatorAccessCard);
