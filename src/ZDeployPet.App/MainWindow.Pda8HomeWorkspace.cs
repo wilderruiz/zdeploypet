@@ -218,11 +218,7 @@ public partial class MainWindow
 
     private static void DetachWorkspaceElement(UIElement element)
     {
-        DependencyObject? parent = element is FrameworkElement frameworkElement
-            ? frameworkElement.Parent
-            : null;
-
-        parent ??= LogicalTreeHelper.GetParent(element);
+        DependencyObject? parent = LogicalTreeHelper.GetParent(element);
         parent ??= VisualTreeHelper.GetParent(element);
 
         switch (parent)
