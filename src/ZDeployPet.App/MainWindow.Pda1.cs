@@ -120,17 +120,12 @@ public partial class MainWindow
 
     private void RefreshPda1ActionVisibility()
     {
-        Visibility actionVisibility =
-            DiscoveryPanel.Visibility == Visibility.Visible && _activeProfile is not null
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-
-        // PDA-3 simple operator mode owns deployment access in the main discovery
-        // surface. Keep the detailed access/session windows available from the top
-        // menu as diagnostics, but remove their duplicate daily buttons here.
+        // Profile/readiness tools now live under the Profile toolbar rather than
+        // the Home footer. Detailed access/session windows remain available from
+        // the top Project / Profile menu for diagnostics.
         AccessOnboardingButton.Visibility = Visibility.Collapsed;
         if (_deploymentSessionButton is not null) _deploymentSessionButton.Visibility = Visibility.Collapsed;
-        if (_gitSafetyButton is not null) _gitSafetyButton.Visibility = actionVisibility;
+        if (_gitSafetyButton is not null) _gitSafetyButton.Visibility = Visibility.Collapsed;
 
         ShellRuntime.State.UpdateProfile(_activeProfile?.Name);
     }
