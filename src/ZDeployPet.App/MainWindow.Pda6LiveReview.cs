@@ -15,31 +15,15 @@ public partial class MainWindow
         if (_liveReviewButton is not null || _operatorAccessCard?.Child is not Grid accessGrid)
             return;
 
-        while (accessGrid.RowDefinitions.Count < 2)
-            accessGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        EnsureDeploymentActionCardLayout(accessGrid);
 
-        _liveReviewButton = new Button
-        {
-            Content = "Live deploy review…",
-            Padding = new Thickness(16, 9, 16, 9),
-            Margin = new Thickness(0, 10, 0, 0),
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Visibility = Visibility.Visible,
-            IsEnabled = false
-        };
+        _liveReviewButton = CreateDeploymentActionCard("LIVE", "Live deploy review");
+        _liveReviewButton.Margin = new Thickness(0);
+        _liveReviewButton.IsEnabled = false;
         _liveReviewButton.Click += LiveReview_Click;
-        Grid.SetRow(_liveReviewButton, 1);
-        Grid.SetColumnSpan(_liveReviewButton, 2);
+        Grid.SetRow(_liveReviewButton, 0);
+        Grid.SetColumn(_liveReviewButton, 1);
         accessGrid.Children.Add(_liveReviewButton);
-
-        HelpTipFactory.AttachToButton(
-            _liveReviewButton,
-            new HelpTipSpec(
-                "Open the immutable live-deployment review.",
-                "PDA-6 freezes the exact profile, target, release choice, script path and script SHA-256 before live execution can be authorized.",
-                WhenToUse: "Available only while ZDeploy Pet is READY with all configured target probes passed.",
-                WhatItDoes: "Creates a review snapshot, requires you to manually type the exact configured confirmation phrase, revalidates the frozen state immediately before launch, then runs only the approved project script.",
-                Safety: "The confirmation field always starts blank. ZDeployPet never auto-fills or synthesizes the phrase. Any changed script/session/target/release state invalidates confirmation, and live execution is never retried automatically."));
 
         DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda6LiveReviewVisibility();
         RefreshPda6LiveReviewVisibility();
@@ -56,7 +40,7 @@ public partial class MainWindow
 
         _liveReviewButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
         _liveReviewButton.IsEnabled = shellVisible && accessReady && !_liveExecutionBusy && !_deploymentExecutionGate.IsRunning;
-        _liveReviewButton.Content = _liveExecutionBusy ? "Live deploy running…" : "Live deploy review…";
+        _liveReviewButton.Content = BuildDeploymentActionCardContent(_liveExecutionBusy ? "LIVE…" : "LIVE");
     }
 
     private void LiveReview_Click(object sender, RoutedEventArgs e)
