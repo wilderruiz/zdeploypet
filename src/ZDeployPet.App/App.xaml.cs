@@ -30,6 +30,7 @@ public partial class App : Application
         }
 
         LoadPda8VisualTheme();
+        LoadPda8ShellTheme();
 
         _singleInstanceActivationEvent = new EventWaitHandle(
             initialState: false,
@@ -46,7 +47,17 @@ public partial class App : Application
                 if (sender is not Window window) return;
                 window.Icon = ProductIconFactory.CreateWindowIcon();
                 ThemeRuntime.Apply(window);
+                NativeWindowChromeRuntime.Apply(window);
+                Pda8ShellRuntime.ApplyWindow(window);
                 AccessibilityRuntime.Apply(window);
+            }));
+
+        EventManager.RegisterClassHandler(
+            typeof(Button),
+            FrameworkElement.LoadedEvent,
+            new RoutedEventHandler((sender, _) =>
+            {
+                if (sender is Button button) Pda8ShellRuntime.ApplyButton(button);
             }));
 
         EventManager.RegisterClassHandler(
@@ -91,6 +102,18 @@ public partial class App : Application
         {
             Source = new Uri(
                 "pack://application:,,,/ZDeployPet;component/Themes/Pda8VisualTheme.xaml",
+                UriKind.Absolute)
+        };
+
+        Resources.MergedDictionaries.Add(theme);
+    }
+
+    private void LoadPda8ShellTheme()
+    {
+        ResourceDictionary theme = new()
+        {
+            Source = new Uri(
+                "pack://application:,,,/ZDeployPet;component/Themes/Pda8ShellTheme.xaml",
                 UriKind.Absolute)
         };
 
