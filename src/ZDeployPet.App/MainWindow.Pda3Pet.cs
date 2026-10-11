@@ -20,6 +20,7 @@ public partial class MainWindow
             Margin = new Thickness(0),
             Visibility = Visibility.Collapsed
         };
+        _petCompanion.Click += async (_, _) => await ToggleOperatorAccessAsync();
 
         Grid.SetRow(_petCompanion, 0);
         shellGrid.Children.Add(_petCompanion);
@@ -36,6 +37,15 @@ public partial class MainWindow
             ? Visibility.Visible
             : Visibility.Collapsed;
         if (_petCompanion.Visibility != Visibility.Visible) return;
+
+        bool executionBusy = _dryRunExecutionBusy || _liveExecutionBusy;
+        _petCompanion.SetActionEnabled(!_operatorAccessBusy && !executionBusy);
+
+        if (_liveExecutionBusy)
+        {
+            _petCompanion.SetState(PetCompanionState.Running, "Live deployment in progress.");
+            return;
+        }
 
         if (_dryRunExecutionBusy)
         {
