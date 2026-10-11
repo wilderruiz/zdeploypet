@@ -41,9 +41,11 @@ public partial class MainWindow
             _deploymentSession.TargetsReady &&
             _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring;
 
+        bool enabled = shellVisible && accessReady && !_dryRunExecutionBusy;
         _dryRunButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
-        _dryRunButton.IsEnabled = shellVisible && accessReady && !_dryRunExecutionBusy;
+        _dryRunButton.IsEnabled = enabled;
         _dryRunButton.Content = BuildDeploymentActionCardContent(_dryRunExecutionBusy ? "DRY…" : "DRY");
+        ApplyDeploymentActionVisual(_dryRunButton, enabled, isLive: false);
         if (_deploymentActionsHelpButton is not null)
             _deploymentActionsHelpButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
         RefreshPda6LiveReviewVisibility();
@@ -146,6 +148,27 @@ public partial class MainWindow
         };
 
         return button;
+    }
+
+    private void ApplyDeploymentActionVisual(Button button, bool enabled, bool isLive)
+    {
+        if (!enabled)
+        {
+            button.Background = FindBrush("AppSurfaceBrush", Brushes.DarkSlateGray);
+            button.BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray);
+            button.Opacity = 0.72;
+            button.Cursor = System.Windows.Input.Cursors.Arrow;
+            return;
+        }
+
+        button.Background = new SolidColorBrush(isLive
+            ? Color.FromRgb(0x24, 0x3A, 0x2C)
+            : Color.FromRgb(0x24, 0x36, 0x4A));
+        button.BorderBrush = new SolidColorBrush(isLive
+            ? Color.FromRgb(0x4E, 0x8B, 0x63)
+            : Color.FromRgb(0x4F, 0x6F, 0x96));
+        button.Opacity = 1.0;
+        button.Cursor = System.Windows.Input.Cursors.Hand;
     }
 
     private FrameworkElement BuildDeploymentActionCardContent(string label)
