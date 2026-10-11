@@ -17,10 +17,15 @@ public partial class PetCompanionControl : UserControl
     public PetCompanionControl()
     {
         InitializeComponent();
+        ActionButton.Click += (_, e) => Click?.Invoke(this, e);
         SetState(PetCompanionState.Locked, "Deployment access is off.");
     }
 
+    public event RoutedEventHandler? Click;
+
     public PetCompanionState State { get; private set; } = PetCompanionState.Locked;
+
+    public void SetActionEnabled(bool enabled) => ActionButton.IsEnabled = enabled;
 
     public void SetState(PetCompanionState state, string message)
     {
@@ -68,7 +73,14 @@ public partial class PetCompanionControl : UserControl
         FaceBorder.BorderBrush = accent;
         LeftEar.Stroke = accent;
         RightEar.Stroke = accent;
-        ToolTip = $"ZPet status: {stateText}. {MessageText.Text} ZPet mirrors status only and cannot unlock access, deploy, or bypass confirmation.";
+
+        string action = state switch
+        {
+            PetCompanionState.Ready => "Click to turn deployment access off.",
+            PetCompanionState.Running => "Deployment work is in progress.",
+            _ => "Click to turn deployment access on or continue setup."
+        };
+        ActionButton.ToolTip = $"ZDeploy Pet status: {stateText}. {MessageText.Text} {action}";
     }
 
     private static Brush FindBrush(string key, Brush fallback)
