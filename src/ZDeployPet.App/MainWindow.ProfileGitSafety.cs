@@ -22,7 +22,43 @@ public partial class MainWindow
 
         _profileGitSafetyMenuInitialized = true;
 
-        _profileGitSafetyMenu = new ContextMenu();
+        Style menuItemStyle = new(typeof(MenuItem));
+        menuItemStyle.Setters.Add(new Setter(Control.BackgroundProperty, AppSurface));
+        menuItemStyle.Setters.Add(new Setter(Control.ForegroundProperty, AppText));
+        menuItemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(14, 8, 14, 8)));
+        menuItemStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+
+        Trigger highlighted = new()
+        {
+            Property = MenuItem.IsHighlightedProperty,
+            Value = true
+        };
+        highlighted.Setters.Add(new Setter(Control.BackgroundProperty, AppSurfaceRaised));
+        highlighted.Setters.Add(new Setter(Control.ForegroundProperty, AppText));
+        menuItemStyle.Triggers.Add(highlighted);
+
+        Trigger disabled = new()
+        {
+            Property = UIElement.IsEnabledProperty,
+            Value = false
+        };
+        disabled.Setters.Add(new Setter(UIElement.OpacityProperty, 0.45));
+        disabled.Setters.Add(new Setter(Control.BackgroundProperty, AppSurface));
+        disabled.Setters.Add(new Setter(Control.ForegroundProperty, AppText));
+        menuItemStyle.Triggers.Add(disabled);
+
+        _profileGitSafetyMenu = new ContextMenu
+        {
+            Background = AppSurface,
+            Foreground = AppText,
+            BorderBrush = AppBorder,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(2),
+            ItemContainerStyle = menuItemStyle
+        };
+        _profileGitSafetyMenu.Resources[SystemColors.HighlightBrushKey] = AppSurfaceRaised;
+        _profileGitSafetyMenu.Resources[SystemColors.HighlightTextBrushKey] = AppText;
+
         _profileGitScanItem = new MenuItem { Header = "Scan repository" };
         _profileGitScanItem.Click += async (_, _) => await RunProfileGitSafetyScanAsync();
         _profileGitSafetyMenu.Items.Add(_profileGitScanItem);
@@ -41,16 +77,17 @@ public partial class MainWindow
 
         if (_profileStageToolbar?.Child is StackPanel row && row.Children.Count > 1 && row.Children[1] is Button gitInfo)
         {
-            HelpTipFactory.AttachToButton(
-                gitInfo,
-                new HelpTipSpec(
-                    "Keep deployment private keys outside Git.",
-                    "ZDeployPet deployment private keys belong only in WSL ~/.ssh, never inside the project repository. Git safety scans tracked files and unignored untracked files for common private-key material and ZDeployPet-style private-key filenames.",
-                    WhenToUse: "Run the scan before release/push-oriented work and whenever deployment credentials or local repository files change.",
-                    WhatItDoes: "The Git icon opens a small menu. Scan repository is read-only. After a scan, Add/update .gitignore safety block becomes available only when the active repository can use the managed defense-in-depth block. That action updates only the clearly marked ZDeployPet block and preserves the rest of .gitignore.",
-                    Example: "A managed key such as zdeploypet_millenova_ed25519 must stay in WSL ~/.ssh. Its public .pub half may be installed on a server, but the private file must never appear inside the project repository.",
-                    Safety: "The scanner never copies, uploads, stages or deletes keys. Adding .gitignore does not untrack a secret that Git already knows about and cannot make an already tracked secret safe.",
-                    Tip: "Public .pub files are deliberately not blanket-ignored because public keys are not secrets and some projects intentionally version them."));
+            HelpTipSpec mergedGitHelp = new(
+                "Keep deployment private keys outside Git.",
+                "ZDeployPet deployment private keys belong only in WSL ~/.ssh, never inside the project repository. Git safety scans tracked files and unignored untracked files for common private-key material and ZDeployPet-style private-key filenames.",
+                WhenToUse: "Run the scan before release/push-oriented work and whenever deployment credentials or local repository files change.",
+                WhatItDoes: "The Git icon opens a small menu. Scan repository is read-only. After a scan, Add/update .gitignore safety block becomes available only when the active repository can use the managed defense-in-depth block. That action updates only the clearly marked ZDeployPet block and preserves the rest of .gitignore.",
+                Example: "A managed key such as zdeploypet_millenova_ed25519 must stay in WSL ~/.ssh. Its public .pub half may be installed on a server, but the private file must never appear inside the project repository.",
+                Safety: "The scanner never copies, uploads, stages or deletes keys. Adding .gitignore does not untrack a secret that Git already knows about and cannot make an already tracked secret safe.",
+                Tip: "Public .pub files are deliberately not blanket-ignored because public keys are not secrets and some projects intentionally version them.");
+
+            Button mergedHelpButton = HelpTipFactory.Create(mergedGitHelp);
+            gitInfo.ToolTip = mergedHelpButton.ToolTip;
         }
     }
 
