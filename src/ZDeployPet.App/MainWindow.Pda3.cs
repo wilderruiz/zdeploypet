@@ -41,6 +41,7 @@ public partial class MainWindow
         EnsureActivityButton();
         InitializePda5DryRun();
         InitializePda6LiveReview();
+        InitializePda7IncidentPreview();
         ApplyResponsiveActionSpacing();
         RefreshPda3ActionVisibility();
     }
