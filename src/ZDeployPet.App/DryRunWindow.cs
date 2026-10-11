@@ -67,6 +67,17 @@ public sealed class DryRunWindow : Window
         };
     }
 
+    public UIElement TakeEmbeddedContent()
+    {
+        if (Content is not UIElement content)
+            throw new InvalidOperationException("Dry-run workflow content is unavailable.");
+
+        Content = null;
+        return content;
+    }
+
+    public Task PrepareEmbeddedAsync() => RefreshApprovalStateAsync();
+
     private UIElement BuildContent()
     {
         ScrollViewer scroll = new()
@@ -76,7 +87,7 @@ public sealed class DryRunWindow : Window
 
         StackPanel body = new()
         {
-            Margin = new Thickness(24)
+            Margin = new Thickness(0)
         };
         body.Children.Add(new TextBlock
         {
@@ -268,8 +279,9 @@ public sealed class DryRunWindow : Window
         if (!DeploymentScriptApprovalValidator.IsSha256(_currentSha256))
             return;
 
+        Window owner = Application.Current.MainWindow ?? this;
         MessageBoxResult confirmation = MessageBox.Show(
-            this,
+            owner,
             $"Approve this exact deployment script for dry-run execution?\n\nScript: {_profile.ScriptRelativePath}\nSHA-256: {_currentSha256}\n\nAny later script change will block execution until you explicitly approve the new fingerprint.",
             "Approve deployment script",
             MessageBoxButton.YesNo,
@@ -379,7 +391,7 @@ public sealed class DryRunWindow : Window
             _targetCombo.IsEnabled = false;
             _releaseCombo.IsEnabled = false;
             _executionStateChanged(true);
-            SetStatus("RUNNING — the approved script is executing in WSL dry-run mode. Live deploy_millenova.sh output is streaming to Console / Activity.");
+            SetStatus("RUNNING — the approved script is executing in WSL dry-run mode. Live deploy_millenova.sh output is streaming to Output / Reports.");
             ShellRuntime.Activity.Add(
                 ShellActivityLevel.Info,
                 "Dry run",
@@ -421,7 +433,7 @@ public sealed class DryRunWindow : Window
 
                 SetStatus($"PROCESS COMPLETE — exit code {result.ExitCode}. Refreshing authoritative deployment report…");
                 await _refreshReports();
-                SetStatus($"PROCESS COMPLETE — exit code {result.ExitCode}. Review Latest deployment report / Deployment history for authoritative reporter truth.", result.ExitCode != 0);
+                SetStatus($"PROCESS COMPLETE — exit code {result.ExitCode}. Review REPORTS for authoritative reporter truth.", result.ExitCode != 0);
             }
             catch (OperationCanceledException)
             {
