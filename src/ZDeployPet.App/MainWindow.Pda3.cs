@@ -9,7 +9,6 @@ namespace ZDeployPet.App;
 public partial class MainWindow
 {
     private bool _pda3ShellHooked;
-    private Button? _activityButton;
     private WrapPanel? _responsiveActionsPanel;
 
     private void InitializePda3Shell()
@@ -18,9 +17,10 @@ public partial class MainWindow
         {
             _pda3ShellHooked = true;
             ApplyMainWindowThemeFixups();
-            DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda3ActionVisibility();
+            DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshLegacyFooterStatusVisibility();
             SetupPanel.IsVisibleChanged += (_, _) =>
             {
+                RefreshLegacyFooterStatusVisibility();
                 if (SetupPanel.Visibility == Visibility.Visible)
                 {
                     ApplyMainWindowThemeFixups();
@@ -39,12 +39,11 @@ public partial class MainWindow
         InitializePda4ReportMonitor();
         NormalizeDiscoverySurfaceRows();
         EnsureResponsiveActionPanel();
-        EnsureActivityButton();
         InitializePda5DryRun();
         InitializePda6LiveReview();
         InitializePda7IncidentPreview();
         ApplyResponsiveActionSpacing();
-        RefreshPda3ActionVisibility();
+        RefreshLegacyFooterStatusVisibility();
     }
 
     private void NormalizeDiscoverySurfaceRows()
@@ -199,36 +198,12 @@ public partial class MainWindow
         }
     }
 
-    private void EnsureActivityButton()
+    private void RefreshLegacyFooterStatusVisibility()
     {
-        if (_activityButton is not null || AccessOnboardingButton.Parent is not Panel actions) return;
-
-        _activityButton = new Button
-        {
-            Content = "Console",
-            Padding = new Thickness(16, 9, 16, 9),
-            Visibility = Visibility.Collapsed
-        };
-        _activityButton.Click += Activity_Click;
-        actions.Children.Add(_activityButton);
-
-        HelpTipFactory.AttachToButton(
-            _activityButton,
-            new HelpTipSpec(
-                "Show or hide the live ZDeployPet Console / Activity pane.",
-                "The console is docked on the right side of the main shell and follows application, profile, deployment-session, probe and Git-safety activity in real time.",
-                WhenToUse: "Keep it visible while operating ZDeployPet when you want immediate confirmation of each action, or hide it temporarily when you need more workspace.",
-                WhatItDoes: "The pane is resizable with the vertical splitter and reads the same bounded sanitized in-memory activity stream used by diagnostics.",
-                Safety: "Entries are sanitized before display. Private-key markers and common password, passphrase, token and secret assignments are redacted, and deployment authority is never exposed through the log."));
-    }
-
-    private void RefreshPda3ActionVisibility()
-    {
-        if (_activityButton is null) return;
-        _activityButton.Visibility = DiscoveryPanel.Visibility == Visibility.Visible
+        // Home has its own navigation/state surfaces now. The legacy footer
+        // status line is only useful while editing or validating a profile.
+        StatusText.Visibility = SetupPanel.Visibility == Visibility.Visible
             ? Visibility.Visible
             : Visibility.Collapsed;
     }
-
-    private void Activity_Click(object sender, RoutedEventArgs e) => ToggleEmbeddedActivityPane();
 }
