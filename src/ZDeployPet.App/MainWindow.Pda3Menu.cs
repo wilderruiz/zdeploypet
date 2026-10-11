@@ -87,7 +87,13 @@ public partial class MainWindow
         Content = shell;
 
         SetupPanel.IsVisibleChanged += (_, _) => RefreshProfileStageToolbarVisibility();
+        DiscoveryPanel.IsVisibleChanged += (_, _) =>
+        {
+            if (DiscoveryPanel.Visibility != Visibility.Visible) return;
+            Dispatcher.BeginInvoke(new Action(HideLegacyProfileFooterActions));
+        };
         RefreshProfileStageToolbarVisibility();
+        HideLegacyProfileFooterActions();
 
         MinWidth = Math.Max(MinWidth, MinimumOperatorPaneWidth + MinimumActivityPaneWidth + 45);
         if (Width < 1180) Width = 1180;
@@ -402,6 +408,7 @@ public partial class MainWindow
         }
 
         ShowDiscovery(_activeProfile, "Home");
+        HideLegacyProfileFooterActions();
         RefreshProfileStageToolbarVisibility();
         RefreshPetCompanion();
         RefreshPda5DryRunVisibility();
@@ -432,6 +439,14 @@ public partial class MainWindow
         bool hasProfile = _activeProfile is not null;
         if (_profileGitSafetyButton is not null) _profileGitSafetyButton.IsEnabled = hasProfile;
         if (_profileDiscoveryButton is not null) _profileDiscoveryButton.IsEnabled = hasProfile;
+    }
+
+    private void HideLegacyProfileFooterActions()
+    {
+        EditProfileButton.Visibility = Visibility.Collapsed;
+        DiscoverButton.Visibility = Visibility.Collapsed;
+        if (_gitSafetyButton is not null)
+            _gitSafetyButton.Visibility = Visibility.Collapsed;
     }
 
     private FrameworkElement CreatePopupMenu(string label, Func<Popup, UIElement> buildContent)
