@@ -43,6 +43,7 @@ public partial class MainWindow
         InitializePda6LiveReview();
         InitializePda7IncidentPreview();
         InitializePda8HomeWorkspace();
+        InitializePda8ContextStrip();
         ApplyResponsiveActionSpacing();
         RefreshLegacyFooterStatusVisibility();
     }
