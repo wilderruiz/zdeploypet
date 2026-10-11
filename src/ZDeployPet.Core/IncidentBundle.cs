@@ -65,6 +65,12 @@ public static partial class IncidentEvidenceSanitizer
 
         foreach (IncidentEvidenceInput item in items.Take(IncidentBundleLimits.MaximumItems))
         {
+            if (!Enum.IsDefined(item.Kind))
+            {
+                errors.Add($"Unsupported incident-evidence kind: {(int)item.Kind}.");
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(item.Label))
             {
                 errors.Add("Every incident-evidence item requires a non-empty label.");
@@ -126,6 +132,7 @@ public static partial class IncidentEvidenceSanitizer
         sanitized = ReplaceAndTrack(SshAgentAssignmentRegex(), sanitized, "$1" + AgentSocketRedacted, ref changed);
         sanitized = ReplaceAndTrack(SshAgentSocketPathRegex(), sanitized, AgentSocketRedacted, ref changed);
         sanitized = ReplaceAndTrack(PrivateKeyPathRegex(), sanitized, PrivateKeyPathRedacted, ref changed);
+        sanitized = ReplaceAndTrack(WindowsPrivateKeyPathRegex(), sanitized, PrivateKeyPathRedacted, ref changed);
 
         return new SanitizationResult(sanitized, changed);
     }
@@ -171,4 +178,7 @@ public static partial class IncidentEvidenceSanitizer
 
     [GeneratedRegex("(?:~|/home/[^/\\s]+|/root)/\\.ssh/(?:id_[A-Za-z0-9_.-]+|[^/\\s]+\\.(?:pem|key))", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex PrivateKeyPathRegex();
+
+    [GeneratedRegex(@"(?:[A-Za-z]:\\Users\\[^\\\s]+|%USERPROFILE%)\\\.ssh\\(?:id_[A-Za-z0-9_.-]+|[^\\\s]+\.(?:pem|key))", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex WindowsPrivateKeyPathRegex();
 }
