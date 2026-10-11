@@ -1,6 +1,6 @@
 # PDA-6 — Live executor and exact human confirmation
 
-**Status:** 🟡 ACTIVE — guarded live executor wired to reviewed UI; published build/runtime smoke still required
+**Status:** ✅ ACCEPTED 2026-10-11 — guarded live executor, exact human confirmation and reporter-authoritative production smoke passed
 
 PDA-6 extends the accepted PDA-5 execution foundation to live deployment. The safety boundary is stricter than dry run: ZDeployPet may prepare and display an immutable review, but it must never synthesize, prefill, auto-type, paste, or otherwise supply the operator's live confirmation phrase.
 
@@ -8,7 +8,7 @@ PDA-6 extends the accepted PDA-5 execution foundation to live deployment. The sa
 
 The project-owned deployment script remains the deployment engine and the structured reporter remains authoritative after execution.
 
-PDA-6 must preserve all PDA-5 execution controls and additionally require:
+PDA-6 preserves all PDA-5 execution controls and additionally requires:
 
 - an immutable pre-deployment review snapshot;
 - exact human confirmation typed by the operator;
@@ -46,32 +46,46 @@ The confirmation input always starts blank. Editing it after validation disarms 
 - has a 30-minute hard ceiling;
 - never auto-retries after cancellation, timeout, failure or partial deployment.
 
-## Current implementation slice
+## Accepted implementation
 
-Implemented on `main`:
+Accepted on `main`:
 
 - Core immutable review/confirmation contracts and negative tests;
 - immutable WPF review surface with blank confirmation input;
 - `Live deploy review…` available only while deployment access is ON / READY;
 - target/release changes invalidate the review;
-- published-development review-only UI smoke passed on 2026-10-10;
-- live prompt protocol and staged WSL executor with safety tests;
-- exact confirmation validation now arms a separate **Start LIVE deployment** button;
-- any text edit after validation immediately disarms that button;
+- wrong confirmation is rejected; exact human-entered confirmation arms launch; editing the field after validation disarms it;
 - immediately before launch, ZDeployPet rechecks script SHA/approval, READY bounded-agent runtime, frozen target/release/phrase and the global execution gate;
 - one global execution lease spans the full live run;
 - natural script output is emitted only to the `deploy_millenova.live.sh` / **Live deploy** console channel;
 - completion refreshes PDA-4 latest/history evidence and treats reporter truth as authoritative;
 - cancellation/failure messaging explicitly warns that a partial deployment may exist and no retry is attempted;
-- confirmation text is never written to activity logs.
+- confirmation text is never written to activity logs;
+- Release tests/build passed before production smoke;
+- published-development review/arming smoke passed;
+- one explicit operator-controlled real Millenova live deployment completed successfully from ZDeployPet.
 
-Still required before acceptance:
+## Production acceptance evidence — 2026-10-11
 
-- published Release build/test of this wired slice;
-- operator UI smoke proving validate/disarm/revalidate behavior;
-- one explicit operator-controlled real Millenova live deployment from ZDeployPet;
-- final reporter confirmation of expected `live` target/result;
-- any regression fixes exposed by that smoke.
+The accepted smoke used **Both targets / PATCH** from an immutable review. The operator manually typed the exact configured confirmation phrase and launched the live run intentionally.
+
+Observed live-protocol evidence:
+
+- selected target: Hostinger frontend + VPS media backend;
+- release transition: `v4.4.24 -> v4.4.25`;
+- deployment mode: live (`2`);
+- `LIVE MILLENOVA DEPLOYMENT` appeared before writes;
+- the exact live confirmation prompt appeared and accepted only the operator-entered phrase;
+- VPS sync passed;
+- VPS production activation passed, including `npm audit` with 0 vulnerabilities, 75/75 backend tests, restart on `:9400`, and healthy media-auth runtime;
+- Hostinger frontend sync passed;
+- Hostinger config sync passed with no changes;
+- `MILLENOVA DEPLOYMENT COMPLETE` appeared;
+- process exit code was `0`;
+- no automatic retry was attempted;
+- reporter artifacts recorded deployment id `20261011-050132_v4.4.25_live_both`, `previous_release=4.4.24`, `release=4.4.25`, `mode=live`, `result=pass`, `exit_status=0`, duration `56` seconds.
+
+This closes the PDA-6 acceptance gate.
 
 ## Implementation sequence
 
@@ -85,24 +99,22 @@ Still required before acceptance:
 8. ✅ one execution lease for the full run; no auto-retry;
 9. ✅ PDA-4 report refresh wired after completion;
 10. ✅ Core live-protocol negative tests in place;
-11. 🟡 published-development build + UI smoke of the wired live path;
-12. ⬜ explicit operator-controlled real live smoke and reporter acceptance.
+11. ✅ published-development build + UI arming smoke passed;
+12. ✅ explicit operator-controlled real live smoke + reporter PASS accepted.
 
 ## Acceptance gate
 
-PDA-6 is accepted only when:
-
-- live execution cannot begin without an immutable review;
-- exact operator-entered confirmation is required;
-- ZDeployPet never auto-types, auto-fills, pastes, derives or synthesizes the confirmation phrase;
-- any material change after review invalidates confirmation;
-- the current script fingerprint is rechecked immediately before launch;
-- deployment access is revalidated immediately before launch;
-- target/release remain allowlisted and bounded;
-- concurrent execution is blocked;
-- the exact confirmation reaches only the approved script's exact live-confirmation prompt;
-- the app never auto-retries a partial live deployment;
-- natural live output is isolated in the Live deploy console tab;
-- PDA-4 reporter evidence is refreshed and authoritative after completion;
-- automated Core/executor safety tests pass;
-- an explicit operator-controlled real Millenova live deployment completes from ZDeployPet and the reporter records the expected live result.
+✅ Live execution cannot begin without an immutable review.  
+✅ Exact operator-entered confirmation is required.  
+✅ ZDeployPet never auto-types, auto-fills, pastes, derives or synthesizes the confirmation phrase.  
+✅ Any material change after review invalidates confirmation.  
+✅ Current script fingerprint is rechecked immediately before launch.  
+✅ Deployment access is revalidated immediately before launch.  
+✅ Target/release remain allowlisted and bounded.  
+✅ Concurrent execution is blocked.  
+✅ Exact confirmation reaches only the approved script's exact live-confirmation prompt.  
+✅ Partial live deployments are never auto-retried.  
+✅ Natural live output is isolated in the Live deploy console tab.  
+✅ PDA-4 reporter evidence refreshes and remains authoritative after completion.  
+✅ Automated Core/executor safety tests passed.  
+✅ Explicit real Millenova live deployment completed from ZDeployPet and reporter recorded the expected live PASS result.
