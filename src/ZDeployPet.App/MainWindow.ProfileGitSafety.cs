@@ -24,6 +24,20 @@ public partial class MainWindow
 
         _profileGitSafetyMenuInitialized = true;
 
+        if (_profileStageToolbar?.Child is StackPanel toolbarRow &&
+            toolbarRow.Children.Count > 0 &&
+            ReferenceEquals(toolbarRow.Children[0], _profileGitSafetyButton))
+        {
+            Button cleanGitButton = CreateProfileToolButton(
+                "Git safety",
+                "Git safety",
+                BuildSourceControlIcon());
+
+            toolbarRow.Children.RemoveAt(0);
+            toolbarRow.Children.Insert(0, cleanGitButton);
+            _profileGitSafetyButton = cleanGitButton;
+        }
+
         StackPanel menuRows = new()
         {
             Background = AppSurface,
@@ -65,8 +79,7 @@ public partial class MainWindow
             Child = popupSurface
         };
 
-        _profileGitSafetyButton.PreviewMouseLeftButtonUp += ProfileGitSafetyButton_PreviewMouseLeftButtonUp;
-        _profileGitSafetyButton.PreviewKeyDown += ProfileGitSafetyButton_PreviewKeyDown;
+        _profileGitSafetyButton.Click += (_, _) => OpenProfileGitSafetyMenu();
 
         if (_profileStageToolbar?.Child is StackPanel row && row.Children.Count > 1 && row.Children[1] is Button gitInfo)
         {
@@ -136,21 +149,6 @@ public partial class MainWindow
 
         border.AppendChild(presenter);
         return new ControlTemplate(typeof(Button)) { VisualTree = border };
-    }
-
-    private void ProfileGitSafetyButton_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        e.Handled = true;
-        OpenProfileGitSafetyMenu();
-    }
-
-    private void ProfileGitSafetyButton_PreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key is not Key.Enter and not Key.Space)
-            return;
-
-        e.Handled = true;
-        OpenProfileGitSafetyMenu();
     }
 
     private void OpenProfileGitSafetyMenu()
