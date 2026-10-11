@@ -2,6 +2,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Microsoft.Win32;
 using ZDeployPet.Core;
 
 namespace ZDeployPet.App;
@@ -21,8 +22,11 @@ internal sealed class IncidentBundlePreviewWindow : Window
     private readonly CheckBox _zdeployPetCheck;
     private readonly Button _buildPreviewButton;
     private readonly Button _copyAllButton;
+    private readonly Button _exportButton;
     private readonly TextBlock _statusText;
     private readonly TextBox _previewText;
+
+    private bool _hasBuiltSanitizedPreview;
 
     public IncidentBundlePreviewWindow(
         DeploymentProfile profile,
@@ -59,7 +63,7 @@ internal sealed class IncidentBundlePreviewWindow : Window
         });
         heading.Children.Add(new TextBlock
         {
-            Text = "Select only the evidence you want to inspect. ZDeployPet reads trusted report artifacts and bounded in-memory consoles, sanitizes them, and shows the exact preview. Nothing is exported in this PDA-7 slice.",
+            Text = "Select only the evidence you want to inspect. ZDeployPet reads trusted report artifacts and bounded in-memory consoles, sanitizes them, and shows the exact content before any local export.",
             Margin = new Thickness(0, 6, 0, 14),
             TextWrapping = TextWrapping.Wrap,
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
@@ -99,6 +103,12 @@ internal sealed class IncidentBundlePreviewWindow : Window
         AddSelection(selectionGrid, _dryRunCheck, 2, 1);
         AddSelection(selectionGrid, _liveDeployCheck, 3, 0);
         AddSelection(selectionGrid, _zdeployPetCheck, 3, 1);
+
+        foreach (CheckBox checkBox in new[] { _jsonCheck, _summaryCheck, _fullLogCheck, _dryRunCheck, _liveDeployCheck, _zdeployPetCheck })
+        {
+            checkBox.Checked += EvidenceSelectionChanged;
+            checkBox.Unchecked += EvidenceSelectionChanged;
+        }
 
         selectionCard.Child = selectionGrid;
         Grid.SetRow(selectionCard, 1);
@@ -144,7 +154,7 @@ internal sealed class IncidentBundlePreviewWindow : Window
             Foreground = FindBrush("AppTextBrush", Brushes.White),
             BorderBrush = FindBrush("AppBorderBrush", Brushes.Gray),
             BorderThickness = new Thickness(1),
-            Text = "PREVIEW ONLY — no bundle has been exported."
+            Text = "PREVIEW NOT BUILT — no bundle has been exported."
         };
         Grid.SetRow(_previewText, 3);
         root.Children.Add(_previewText);
@@ -165,6 +175,16 @@ internal sealed class IncidentBundlePreviewWindow : Window
         _copyAllButton.Click += CopyAll_Click;
         actions.Children.Add(_copyAllButton);
 
+        _exportButton = new Button
+        {
+            Content = "Export sanitized bundle…",
+            Padding = new Thickness(16, 8, 16, 8),
+            Margin = new Thickness(0, 0, 10, 0),
+            IsEnabled = false
+        };
+        _exportButton.Click += Export_Click;
+        actions.Children.Add(_exportButton);
+
         Button close = new()
         {
             Content = "Close",
@@ -181,21 +201,14 @@ internal sealed class IncidentBundlePreviewWindow : Window
 
     private async Task BuildPreviewAsync()
     {
+        SetBuiltPreviewState(false);
         _buildPreviewButton.IsEnabled = false;
-        _copyAllButton.IsEnabled = false;
         _statusText.Text = "READING… collecting selected trusted evidence.";
-        _previewText.Text = "PREVIEW ONLY — collecting and sanitizing selected evidence…";
+        _previewText.Text = "Collecting and sanitizing selected evidence…";
 
         try
         {
-            IncidentEvidenceSelection selection = new(
-                IncludeDeploymentJson: _jsonCheck.IsChecked == true,
-                IncludeDeploymentSummary: _summaryCheck.IsChecked == true,
-                IncludeDeploymentFullLog: _fullLogCheck.IsChecked == true,
-                IncludeDryRunConsole: _dryRunCheck.IsChecked == true,
-                IncludeLiveDeployConsole: _liveDeployCheck.IsChecked == true,
-                IncludeZDeployPetConsole: _zdeployPetCheck.IsChecked == true);
-
+            IncidentEvidenceSelection selection = CurrentSelection();
             IncidentEvidenceCollectionResult collection = await _collector.CollectAsync(
                 _profile,
                 _report,
@@ -224,14 +237,14 @@ internal sealed class IncidentBundlePreviewWindow : Window
             int truncated = bundle.Evidence.Count(item => item.Truncated);
             _statusText.Text = $"READY — {bundle.Evidence.Count} included item(s), {redacted} redacted, {truncated} truncated, {bundle.TotalCharacters:N0} characters.";
             _statusText.Foreground = FindBrush("AppSuccessBrush", Brushes.LightGreen);
-            _previewText.Text = BuildPreviewText(bundle, selection);
-            _copyAllButton.IsEnabled = true;
+            _previewText.Text = BuildBundleText(bundle, selection);
+            SetBuiltPreviewState(true);
         }
         catch (Exception exception)
         {
             _statusText.Text = "ERROR — incident preview could not be built.";
             _statusText.Foreground = FindBrush("AppAccentBrush", Brushes.IndianRed);
-            _previewText.Text = "PREVIEW ONLY\n\nERROR\n" + exception.Message;
+            _previewText.Text = "PREVIEW BLOCKED\n\nERROR\n" + exception.Message;
         }
         finally
         {
@@ -241,33 +254,129 @@ internal sealed class IncidentBundlePreviewWindow : Window
 
     private void CopyAll_Click(object sender, RoutedEventArgs e)
     {
-        if (!_copyAllButton.IsEnabled || string.IsNullOrWhiteSpace(_previewText.Text))
+        if (!_hasBuiltSanitizedPreview || string.IsNullOrWhiteSpace(_previewText.Text))
             return;
 
         try
         {
             Clipboard.SetText(_previewText.Text);
-            _statusText.Text = "COPIED — sanitized preview copied to the Windows clipboard.";
+            _statusText.Text = "COPIED — sanitized bundle content copied to the Windows clipboard.";
             _statusText.Foreground = FindBrush("AppSuccessBrush", Brushes.LightGreen);
         }
         catch (Exception exception)
         {
-            _statusText.Text = "ERROR — sanitized preview could not be copied to the clipboard.";
+            _statusText.Text = "ERROR — sanitized bundle content could not be copied to the clipboard.";
             _statusText.Foreground = FindBrush("AppAccentBrush", Brushes.IndianRed);
-            MessageBox.Show(
-                this,
-                exception.Message,
-                "Copy sanitized preview",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            MessageBox.Show(this, exception.Message, "Copy sanitized bundle", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private string BuildPreviewText(IncidentBundleBuildResult bundle, IncidentEvidenceSelection selection)
+    private void Export_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_hasBuiltSanitizedPreview || string.IsNullOrWhiteSpace(_previewText.Text))
+            return;
+
+        SaveFileDialog dialog = new()
+        {
+            Title = "Export sanitized ZDeployPet incident bundle",
+            Filter = "Text file (*.txt)|*.txt",
+            DefaultExt = IncidentBundleExportPolicy.RequiredExtension,
+            AddExtension = true,
+            OverwritePrompt = true,
+            FileName = IncidentBundleExportPolicy.BuildSuggestedFileName(_report.DeploymentId)
+        };
+
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        IncidentBundleExportValidationResult validation = IncidentBundleExportPolicy.ValidateDestination(
+            dialog.FileName,
+            _profile.WindowsProjectPath);
+
+        if (!validation.Success || string.IsNullOrWhiteSpace(validation.CanonicalPath))
+        {
+            _statusText.Text = "BLOCKED — unsafe incident-bundle export destination.";
+            _statusText.Foreground = FindBrush("AppAccentBrush", Brushes.IndianRed);
+            MessageBox.Show(
+                this,
+                string.Join(Environment.NewLine, validation.Errors),
+                "Incident bundle export blocked",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        string destination = validation.CanonicalPath;
+        string? directory = Path.GetDirectoryName(destination);
+        if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+        {
+            _statusText.Text = "BLOCKED — export directory does not exist.";
+            _statusText.Foreground = FindBrush("AppAccentBrush", Brushes.IndianRed);
+            return;
+        }
+
+        string temporaryPath = Path.Combine(directory, $".{Path.GetFileName(destination)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            File.WriteAllText(temporaryPath, _previewText.Text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            File.Move(temporaryPath, destination, overwrite: true);
+
+            _statusText.Text = $"EXPORTED — sanitized bundle saved to {destination}";
+            _statusText.Foreground = FindBrush("AppSuccessBrush", Brushes.LightGreen);
+            ShellRuntime.Activity.Add(
+                ShellActivityLevel.Info,
+                "Incident",
+                $"Exported sanitized incident bundle for deployment {_report.DeploymentId} to a local operator-selected path.");
+        }
+        catch (Exception exception)
+        {
+            try
+            {
+                if (File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
+            }
+            catch
+            {
+                // Best-effort cleanup only; never mask the original export failure.
+            }
+
+            _statusText.Text = "ERROR — sanitized incident bundle could not be exported.";
+            _statusText.Foreground = FindBrush("AppAccentBrush", Brushes.IndianRed);
+            MessageBox.Show(this, exception.Message, "Incident bundle export", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void EvidenceSelectionChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_hasBuiltSanitizedPreview)
+            return;
+
+        SetBuiltPreviewState(false);
+        _statusText.Text = "SELECTION CHANGED — rebuild the sanitized preview before copying or exporting.";
+        _statusText.Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray);
+    }
+
+    private void SetBuiltPreviewState(bool ready)
+    {
+        _hasBuiltSanitizedPreview = ready;
+        _copyAllButton.IsEnabled = ready;
+        _exportButton.IsEnabled = ready;
+    }
+
+    private IncidentEvidenceSelection CurrentSelection()
+        => new(
+            IncludeDeploymentJson: _jsonCheck.IsChecked == true,
+            IncludeDeploymentSummary: _summaryCheck.IsChecked == true,
+            IncludeDeploymentFullLog: _fullLogCheck.IsChecked == true,
+            IncludeDryRunConsole: _dryRunCheck.IsChecked == true,
+            IncludeLiveDeployConsole: _liveDeployCheck.IsChecked == true,
+            IncludeZDeployPetConsole: _zdeployPetCheck.IsChecked == true);
+
+    private string BuildBundleText(IncidentBundleBuildResult bundle, IncidentEvidenceSelection selection)
     {
         StringBuilder output = new();
-        output.AppendLine("ZDEPLOYPET SANITIZED INCIDENT BUNDLE PREVIEW");
-        output.AppendLine("PREVIEW ONLY — NOTHING HAS BEEN EXPORTED");
+        output.AppendLine("ZDEPLOYPET SANITIZED INCIDENT BUNDLE");
+        output.AppendLine("DIAGNOSTIC EVIDENCE ONLY — DOES NOT GRANT DEPLOYMENT AUTHORITY");
         output.AppendLine();
         output.AppendLine($"Profile: {_profile.Name}");
         output.AppendLine($"Deployment ID: {_report.DeploymentId}");
@@ -277,10 +386,9 @@ internal sealed class IncidentBundlePreviewWindow : Window
         output.AppendLine($"Sanitized characters: {bundle.TotalCharacters}");
         output.AppendLine();
         output.AppendLine("OMITTED BY OPERATOR");
-        foreach (string omitted in GetOmittedLabels(selection))
-            output.AppendLine("- " + omitted);
-        if (GetOmittedLabels(selection).Count == 0)
-            output.AppendLine("- none");
+        IReadOnlyList<string> omitted = GetOmittedLabels(selection);
+        if (omitted.Count == 0) output.AppendLine("- none");
+        else foreach (string label in omitted) output.AppendLine("- " + label);
         output.AppendLine();
 
         for (int index = 0; index < bundle.Evidence.Count; index++)
@@ -297,14 +405,14 @@ internal sealed class IncidentBundlePreviewWindow : Window
         }
 
         output.AppendLine(new string('=', 72));
-        output.AppendLine("END OF PREVIEW — no file export action exists in this build.");
+        output.AppendLine("END OF SANITIZED INCIDENT BUNDLE");
         return output.ToString();
     }
 
     private string BuildErrorPreview(IReadOnlyList<string> errors, IncidentEvidenceSelection selection)
     {
         StringBuilder output = new();
-        output.AppendLine("ZDEPLOYPET SANITIZED INCIDENT BUNDLE PREVIEW");
+        output.AppendLine("ZDEPLOYPET SANITIZED INCIDENT BUNDLE");
         output.AppendLine("PREVIEW BLOCKED — NOTHING HAS BEEN EXPORTED");
         output.AppendLine();
         foreach (string error in errors)
