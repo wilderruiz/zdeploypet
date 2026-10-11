@@ -13,6 +13,7 @@ public partial class MainWindow
     private ContextMenu? _profileGitSafetyMenu;
     private MenuItem? _profileGitScanItem;
     private MenuItem? _profileGitIgnoreItem;
+    private bool _profileGitIgnoreAvailable;
     private bool _profileGitSafetyBusy;
     private bool _profileGitSafetyMenuInitialized;
 
@@ -39,16 +40,6 @@ public partial class MainWindow
         highlighted.Setters.Add(new Setter(Control.ForegroundProperty, AppText));
         menuItemStyle.Triggers.Add(highlighted);
 
-        Trigger disabled = new()
-        {
-            Property = UIElement.IsEnabledProperty,
-            Value = false
-        };
-        disabled.Setters.Add(new Setter(UIElement.OpacityProperty, 0.45));
-        disabled.Setters.Add(new Setter(Control.BackgroundProperty, AppSurface));
-        disabled.Setters.Add(new Setter(Control.ForegroundProperty, AppText));
-        menuItemStyle.Triggers.Add(disabled);
-
         _profileGitSafetyMenu = new ContextMenu
         {
             Background = AppSurface,
@@ -65,11 +56,11 @@ public partial class MainWindow
 
         _profileGitIgnoreItem = new MenuItem
         {
-            Header = "Add/update .gitignore safety block",
-            IsEnabled = false
+            Header = "Add/update .gitignore safety block"
         };
         _profileGitIgnoreItem.Click += async (_, _) => await ApplyProfileGitIgnoreAsync();
         _profileGitSafetyMenu.Items.Add(_profileGitIgnoreItem);
+        SetProfileGitIgnoreAvailable(false);
 
         _profileGitSafetyButton.ContextMenu = _profileGitSafetyMenu;
         _profileGitSafetyButton.PreviewMouseLeftButtonDown += ProfileGitSafetyButton_PreviewMouseLeftButtonDown;
@@ -139,7 +130,7 @@ public partial class MainWindow
             return;
         }
 
-        _profileGitIgnoreItem!.IsEnabled = false;
+        SetProfileGitIgnoreAvailable(false);
         _profileGitSafetyMenu.PlacementTarget = _profileGitSafetyButton;
         _profileGitSafetyMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
         _profileGitSafetyMenu.IsOpen = true;
@@ -201,14 +192,12 @@ public partial class MainWindow
                     "Do not push or release while findings remain. .gitignore cannot make an already tracked secret safe; remove the material and rotate or revoke exposed credentials when necessary.");
             }
 
-            if (_profileGitIgnoreItem is not null)
-                _profileGitIgnoreItem.IsEnabled = report.IsGitRepository && !report.ManagedIgnoreBlockPresent;
+            SetProfileGitIgnoreAvailable(report.IsGitRepository && !report.ManagedIgnoreBlockPresent);
         }
         catch (Exception exception)
         {
             ShellRuntime.Activity.Add(ShellActivityLevel.Error, "Git safety", $"Git safety scan failed: {exception.Message}");
-            if (_profileGitIgnoreItem is not null)
-                _profileGitIgnoreItem.IsEnabled = false;
+            SetProfileGitIgnoreAvailable(false);
         }
         finally
         {
@@ -218,7 +207,7 @@ public partial class MainWindow
 
     private async Task ApplyProfileGitIgnoreAsync()
     {
-        if (_activeProfile is null || _profileGitSafetyBusy || _profileGitIgnoreItem?.IsEnabled != true)
+        if (_activeProfile is null || _profileGitSafetyBusy || !_profileGitIgnoreAvailable)
             return;
 
         MessageBoxResult answer = MessageBox.Show(
@@ -259,13 +248,26 @@ public partial class MainWindow
         }
     }
 
+    private void SetProfileGitIgnoreAvailable(bool available)
+    {
+        _profileGitIgnoreAvailable = available;
+        if (_profileGitIgnoreItem is null)
+            return;
+
+        _profileGitIgnoreItem.IsHitTestVisible = available;
+        _profileGitIgnoreItem.Focusable = available;
+        _profileGitIgnoreItem.Opacity = available ? 1.0 : 0.45;
+        _profileGitIgnoreItem.Background = AppSurface;
+        _profileGitIgnoreItem.Foreground = AppText;
+    }
+
     private void SetProfileGitSafetyBusy(bool busy)
     {
         _profileGitSafetyBusy = busy;
         if (_profileGitScanItem is not null)
             _profileGitScanItem.IsEnabled = !busy;
-        if (busy && _profileGitIgnoreItem is not null)
-            _profileGitIgnoreItem.IsEnabled = false;
+        if (busy)
+            SetProfileGitIgnoreAvailable(false);
         if (_profileGitSafetyButton is not null)
             _profileGitSafetyButton.IsEnabled = !busy && _activeProfile is not null;
     }
