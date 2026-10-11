@@ -357,7 +357,9 @@ public partial class MainWindow
         List<ActivityRow> rows = _embeddedActivityRows.Where(row => IsRowInChannel(row, channel)).ToList();
         StringBuilder text = new();
         foreach (ActivityRow row in rows)
-            text.AppendLine(FormatEmbeddedActivityRow(row));
+            text.AppendLine(channel == EmbeddedConsoleChannel.ZDeployPet
+                ? FormatZDeployPetActivityRow(row)
+                : FormatEmbeddedActivityRow(row));
 
         _activityConsoleTextBox.Text = text.ToString().TrimEnd();
         _activityConsoleTextBox.ScrollToEnd();
@@ -456,6 +458,19 @@ public partial class MainWindow
             return row.Message;
 
         return $"{row.LocalTime} | {row.Level} | {row.Category} | {row.Message}";
+    }
+
+    private static string FormatZDeployPetActivityRow(ActivityRow row)
+    {
+        string symbol = row.Level switch
+        {
+            "SUCCESS" => "✓",
+            "WARNING" => "!",
+            "ERROR" => "×",
+            _ => "›"
+        };
+
+        return $"{row.LocalTime}  {symbol}  {row.Message}";
     }
 
     private void ShowEmbeddedReportArtifact(string status, string content)
