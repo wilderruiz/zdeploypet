@@ -38,9 +38,11 @@ public partial class MainWindow
             _deploymentSession.TargetsReady &&
             _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring;
 
+        bool enabled = shellVisible && accessReady && !_liveExecutionBusy && !_deploymentExecutionGate.IsRunning;
         _liveReviewButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
-        _liveReviewButton.IsEnabled = shellVisible && accessReady && !_liveExecutionBusy && !_deploymentExecutionGate.IsRunning;
+        _liveReviewButton.IsEnabled = enabled;
         _liveReviewButton.Content = BuildDeploymentActionCardContent(_liveExecutionBusy ? "LIVE…" : "LIVE");
+        ApplyDeploymentActionVisual(_liveReviewButton, enabled, isLive: true);
     }
 
     private void LiveReview_Click(object sender, RoutedEventArgs e)
