@@ -26,11 +26,11 @@ public partial class MainWindow
         HelpTipFactory.AttachToButton(
             _incidentPreviewButton,
             new HelpTipSpec(
-                "Build a sanitized incident-bundle preview.",
-                "PDA-7 collects only explicitly selected trusted reporter artifacts and the existing bounded in-memory console channels, then applies deterministic redaction before showing the exact preview.",
+                "Build and optionally export a sanitized incident bundle.",
+                "PDA-7 collects only explicitly selected trusted reporter artifacts and the existing bounded in-memory console channels, then applies deterministic redaction before showing the exact content.",
                 WhenToUse: "Use this when you need diagnostic evidence for yourself or a coding agent. Deployment access does not need to be ON because collection is read-only.",
-                WhatItDoes: "Lets you choose deployment JSON/summary/full-log evidence and Dry run / Live deploy / ZDeployPet console evidence. The preview shows exactly what is included, redacted, truncated, or omitted.",
-                Safety: "This slice cannot export anything. It performs no recursive filesystem scan, cannot accept arbitrary paths, and grants no deployment authority."));
+                WhatItDoes: "Lets you choose deployment JSON/summary/full-log evidence and Dry run / Live deploy / ZDeployPet console evidence. The preview shows exactly what is included, redacted, truncated, or omitted before any copy or local export.",
+                Safety: "Copy/export stays disabled until a sanitized preview succeeds. Export requires an explicit local .txt destination outside the active project repository; network/UNC and alternate-data-stream destinations are rejected. No deployment authority is included."));
 
         DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda7IncidentPreviewVisibility();
         RefreshPda7IncidentPreviewVisibility();
@@ -93,6 +93,6 @@ public partial class MainWindow
         ShellRuntime.Activity.Add(
             ShellActivityLevel.Info,
             "Incident",
-            $"Opened sanitized incident preview for deployment {report.DeploymentId}. No export capability is enabled.");
+            $"Opened sanitized incident preview for deployment {report.DeploymentId}. Guarded local export is available only after a successful sanitized build.");
     }
 }
