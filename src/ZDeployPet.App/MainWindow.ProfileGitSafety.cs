@@ -49,6 +49,9 @@ public partial class MainWindow
             Padding = new Thickness(2),
             ItemContainerStyle = menuItemStyle
         };
+        ScrollViewer.SetHorizontalScrollBarVisibility(_profileGitSafetyMenu, ScrollBarVisibility.Disabled);
+        ScrollViewer.SetVerticalScrollBarVisibility(_profileGitSafetyMenu, ScrollBarVisibility.Disabled);
+        ScrollViewer.SetCanContentScroll(_profileGitSafetyMenu, false);
 
         _profileGitScanItem = new MenuItem { Header = "Scan repository" };
         _profileGitScanItem.Click += async (_, _) => await RunProfileGitSafetyScanAsync();
