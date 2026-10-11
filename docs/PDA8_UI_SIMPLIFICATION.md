@@ -1,6 +1,6 @@
 # PDA-8 — Pet-first UI simplification and embedded report viewer
 
-**Status:** 🟡 ACTIVE — four-tab output/report refactor + ZDeploy Pet access toggle implemented; Release build + operator smoke pending
+**Status:** 🟡 ACTIVE — current report/output/access-toggle smoke passed; next slice is the embedded Home **DRY | LIVE | REPORTS** workspace
 
 This plan defines the operator-UX simplification work that must happen before ZDeployPet is treated as public-release ready.
 
@@ -73,7 +73,7 @@ Target format:
 
 Latest-report start/finish timestamps already use second-level precision.
 
-Implemented in the current four-tab refactor; Release/operator verification remains pending.
+Implemented and operator-smoked.
 
 ---
 
@@ -159,22 +159,19 @@ Safety/error dialogs may still appear when an artifact cannot be read safely; re
 
 # 4. Tab visual identity
 
-The four permanent tabs use restrained semantic text accents:
+The four permanent right-pane tabs use restrained semantic accents. Labels remain explicit; color is orientation assistance rather than the only state indicator.
 
-- **Dry Run** — amber/gold;
-- **Live deploy** — coral/red;
-- **ZDeployPet** — cool blue-gray;
-- **Reports** — green/teal.
+The Home deployment actions use stronger readiness identity:
 
-Labels remain explicit; color is orientation assistance rather than the only state indicator.
+- **DRY enabled** — faded dark blue;
+- **LIVE enabled** — dark green;
+- locked/unavailable actions — neutral dark surface.
 
-This first accent pass is implemented. It can be refined during the larger visual-polish slice after functional smoke.
+This is implemented and operator-smoked.
 
 ---
 
 # 5. Larger pet-first shell simplification
-
-After the four-tab/report-viewer slice is verified, simplify the main shell itself.
 
 ## 5.1 ZDeploy Pet is the deployment-access action
 
@@ -188,7 +185,6 @@ Required behavior:
 - if onboarding is incomplete, clicking it opens the existing deployment-access setup flow;
 - when access is **ON / READY**, clicking the same companion invokes the existing bounded-session lock path and turns access off;
 - no second permanent Turn on / Turn off button is shown in the Deployment access card;
-- the Deployment access card remains status/instructional text only;
 - the companion is disabled while access verification is busy;
 - the companion is also disabled during an active Dry Run or Live deployment so the bounded agent cannot be intentionally locked out from under an active execution;
 - no session, fingerprint, target-probe or live-confirmation safety invariant changes.
@@ -200,56 +196,220 @@ Implemented in:
 - `c2d8eef0eca402ba79587aaa615261cfcb391868` — removes the old Deployment access Turn on/Turn off button and keeps the same bounded access logic behind a shared toggle method;
 - `7aece50645530fd6a10c916c5f4eb0d8e33ff41f` — wires ZDeploy Pet to the access toggle and disables it during active deployment execution.
 
-Release/operator verification remains pending.
+Operator smoke passed.
 
 ## 5.2 Home becomes task-focused
 
-The normal Home surface should emphasize only:
+The normal Home surface emphasizes:
 
 - ZDeploy Pet / deployment-access state;
-- Dry Run;
-- Live deploy review;
-- compact latest-result summary.
+- the task workspace described in §5.7;
+- compact profile/project context;
+- the contextual right-side Output / Reports pane.
 
-A separate permanent Turn on / Turn off button is intentionally no longer part of the target Home design because the companion itself owns that action.
+A separate permanent Turn on / Turn off button is intentionally no longer part of Home because the companion itself owns that action.
 
 A user should be able to understand the home screen in roughly five seconds.
 
 ## 5.3 Deployment history becomes secondary
 
-The full history table should not permanently dominate Home.
+The full history table must not permanently dominate Home.
 
-Target direction:
-
-- Home shows a compact latest-result card;
-- full Deployment history is opened on demand or in a secondary section/page;
-- history remains reporter-backed and authoritative.
+Deployment history moves into the **REPORTS** workspace tab described in §5.7. It remains reporter-backed and authoritative.
 
 ## 5.4 Output pane is contextual
 
-The large right output pane should not dominate an idle app.
+The right pane is the fast/latest truth surface rather than the place for persistent controls.
 
-Target direction:
+Its four permanent channels remain:
 
-- collapse/hide when idle by default or make it easy to collapse;
-- automatically surface/focus when an execution starts or a report is explicitly opened;
-- remember sensible user preference without obscuring primary controls.
+- Dry Run;
+- Live deploy;
+- ZDeployPet;
+- Reports.
 
-## 5.5 Utility controls move out of the permanent bottom shelf
+Executions and selected report artifacts continue to focus the appropriate right-side channel automatically. The user may hide/show the pane through **View**.
 
-Current secondary actions such as Git safety, Edit profile, Run discovery, Console/viewer controls and Incident preview should move toward a compact **Tools / More** affordance rather than remain permanently exposed after setup/stabilization.
+## 5.5 Utility controls leave Home
+
+Secondary actions should not permanently occupy the normal Home surface.
+
+Current direction:
+
+- Profile/setup owns profile editing, Git safety and discovery;
+- Incident bundle preview lives under **Help**;
+- Output / Reports visibility lives under **View**;
+- Home remains deployment-task focused.
 
 ## 5.6 Reduce popup/window count
 
-Audit every secondary window. Keep separate windows only when the task genuinely needs an independent lifetime or the trusted terminal boundary requires it.
+Keep separate windows only when the task genuinely needs an independent lifetime or the trusted terminal boundary requires it.
 
-Candidate flows to integrate into the main shell or focused in-app surfaces:
+The trusted OpenSSH/passphrase terminal remains separate because ZDeployPet must not capture the private-key passphrase.
 
-- Dry run request;
-- Live deployment review;
-- routine diagnostics.
+Normal Dry Run and Live Review are explicitly scheduled for embedding in §5.7.
 
-The trusted OpenSSH/passphrase terminal boundary remains separate because ZDeployPet must not capture the private-key passphrase.
+## 5.7 NEXT — embedded Home task workspace: DRY | LIVE | REPORTS
+
+This is the **next implementation slice** after the current smoke checkpoint.
+
+### 5.7.1 Target interaction model
+
+The left side of Home becomes one tabbed operator workspace with this fixed order:
+
+```text
+DRY | LIVE | REPORTS
+```
+
+The two sides of Home then have deliberately different jobs:
+
+**Left — deliberate task / inspection workspace**
+
+- **DRY** — configure and launch the existing allowlisted dry-run flow;
+- **LIVE** — create/review/confirm the existing immutable live-deployment flow;
+- **REPORTS** — inspect the larger Latest deployment report and Deployment history surfaces.
+
+**Right — fast/latest dynamic truth**
+
+- **Dry Run** — current/latest dry execution output;
+- **Live deploy** — current/latest live execution output;
+- **ZDeployPet** — bounded app/session/probe activity;
+- **Reports** — the one currently selected Summary or Full log artifact.
+
+The right pane remains the place the operator watches during normal execution. The left REPORTS tab is deliberately secondary, for larger/history inspection.
+
+### 5.7.2 Workspace shell first
+
+Implementation must begin by creating the left-side three-tab workspace **before** moving Dry or Live logic.
+
+Required behavior:
+
+- tab order is always **DRY | LIVE | REPORTS**;
+- only one left workspace tab is visible at a time;
+- **REPORTS** remains available when deployment access is LOCKED;
+- **DRY** and **LIVE** retain existing READY/execution-gate availability rules;
+- DRY uses the existing dark-blue identity;
+- LIVE uses the existing dark-green identity;
+- REPORTS receives a restrained amber/gold identity;
+- selected state is stronger than idle state but must not rely on color alone;
+- no execution or authorization logic changes in this step.
+
+### 5.7.3 Move existing report/history content into REPORTS
+
+After the shell exists, move the existing Home report content as a unit into the **REPORTS** workspace:
+
+- Latest deployment report;
+- refresh symbol + report help;
+- View summary / View full log actions;
+- Deployment history table;
+- Summary / Full log history actions.
+
+The report actions continue to route content to the **right-side Reports channel** exactly as they do now. This move changes ownership/layout only; PDA-4 canonical-path/read-only/bounded guarantees remain unchanged.
+
+At this checkpoint the old always-visible report/history area is gone from Home. Selecting **REPORTS** reveals it.
+
+### 5.7.4 Extract DRY into one reusable surface
+
+Refactor the existing `DryRunWindow` presentation into a reusable embedded Dry Run surface rather than reimplementing its logic.
+
+The embedded DRY surface must preserve the existing PDA-5 behavior, including:
+
+- configured/approved project deployment script only;
+- current script SHA-256 fingerprint state;
+- explicit script fingerprint approval when required;
+- allowlisted target choices only;
+- bounded release choices only;
+- structurally forced dry-run mode;
+- READY target/session checks;
+- global execution gate;
+- no arbitrary command field;
+- authoritative reporter refresh after execution;
+- current/latest output streaming to the right-side **Dry Run** channel.
+
+The reusable surface becomes the single implementation of Dry Run presentation/interaction. Do **not** duplicate the guard/executor flow between popup and Home.
+
+Normal **DRY** selection on Home must stop creating a popup window once the embedded surface is operational.
+
+### 5.7.5 DRY acceptance smoke before touching LIVE
+
+Before refactoring LIVE, verify DRY end-to-end:
+
+1. LOCKED state disables DRY but REPORTS remains usable;
+2. READY enables DRY and shows its blue active identity;
+3. selecting DRY shows the embedded existing Dry Run controls;
+4. script fingerprint approval behavior is unchanged;
+5. target/release selection is unchanged;
+6. Start dry run performs no live deployment;
+7. right-side **Dry Run** automatically receives/focuses the current run;
+8. authoritative latest report/history refresh after completion;
+9. repeated DRY tab switching creates no windows and loses no critical state unexpectedly;
+10. Release build/tests pass.
+
+Only after this smoke passes should the LIVE surface be refactored.
+
+### 5.7.6 Extract LIVE into one reusable surface
+
+Refactor `LiveDeploymentReviewWindow` presentation into a reusable embedded Live Review surface, again preserving one implementation of the existing PDA-6 behavior.
+
+The embedded LIVE surface must preserve:
+
+- allowlisted target/release choices;
+- approved/current script fingerprint validation;
+- immutable review snapshot;
+- exact configured confirmation phrase display;
+- blank manual confirmation input;
+- explicit typed-confirmation validation;
+- invalidation when target/release/script/access/execution state changes;
+- immediate pre-launch revalidation;
+- READY bounded-agent runtime requirement;
+- global execution gate;
+- no automatic retry;
+- authoritative reporter refresh after execution;
+- current/latest output streaming to the right-side **Live deploy** channel.
+
+Normal **LIVE** selection on Home must stop creating a popup window once the embedded surface is operational.
+
+### 5.7.7 LIVE acceptance smoke
+
+Verify LIVE independently after embedding:
+
+1. LOCKED state disables LIVE;
+2. READY enables LIVE and shows its green active identity;
+3. selecting LIVE shows the embedded review controls;
+4. creating a review performs no deployment;
+5. changing frozen intent invalidates the review;
+6. wrong confirmation cannot arm LIVE;
+7. exact manually typed confirmation can arm LIVE only for unchanged state;
+8. launch revalidates all existing PDA-6 safety conditions;
+9. right-side **Live deploy** receives/focuses the current run;
+10. no automatic retry is introduced;
+11. authoritative report/history refresh after completion;
+12. Release build/tests pass.
+
+### 5.7.8 Retire normal Dry/Live popup launch paths last
+
+Only after both embedded surfaces pass operator smoke:
+
+- remove the normal `DryRunWindow.Show()` launch path;
+- remove the normal `LiveDeploymentReviewWindow.Show()` launch path;
+- keep legacy window classes temporarily only if still useful as compatibility wrappers during refactor;
+- delete dead window-only presentation code only after repository search proves no remaining normal launch path depends on it.
+
+This order intentionally prevents a UI refactor from weakening or accidentally rewriting accepted PDA-5/PDA-6 execution behavior.
+
+### 5.7.9 Focus rules after embedding
+
+Workspace selection and right-console focus are separate concepts:
+
+- selecting **DRY** shows the Dry Run controls on the left;
+- starting a dry execution focuses the right-side **Dry Run** channel;
+- selecting **LIVE** shows the Live Review controls on the left;
+- starting a live execution focuses the right-side **Live deploy** channel;
+- selecting **REPORTS** shows latest/history inspection on the left;
+- clicking any Summary / Full log focuses the right-side **Reports** channel;
+- ZDeployPet session/probe activity continues to focus/use the right-side **ZDeployPet** channel when appropriate.
+
+No per-run or per-report tabs/windows are introduced.
 
 ---
 
@@ -272,46 +432,56 @@ ZDeploy Pet remains non-authoritative. Text status and actual session/execution/
 
 # 7. Implementation order
 
+Completed foundation:
+
 1. ✅ latest-run-only Dry Run / Live deploy consoles and embedded hard bound;
-2. ✅ display second precision in Deployment history timestamps — implementation complete, smoke pending;
-3. ✅ add permanent **Reports** tab to the right pane — implementation complete, smoke pending;
-4. ✅ refactor Summary / Full log loading into reusable embedded report-viewer state;
-5. ✅ route Latest report Summary / Full log actions to Reports;
-6. ✅ route history Summary / Full log actions to Reports;
-7. ✅ retire popup viewers from the normal report workflow;
-8. ✅ preserve/reuse Copy all + Copy selection for all four tabs;
-9. ✅ add first restrained semantic tab accents;
-10. ✅ make **ZDeploy Pet** the single normal deployment-access toggle and remove the separate Turn on / Turn off button — implementation complete, smoke pending;
-11. 🟡 run Release build + report-viewer/console/access-toggle operator smoke;
-12. ⬜ perform broader Home/history/output/tools/popup simplification;
-13. ⬜ complete pet-first operator UX smoke before release packaging is considered final.
+2. ✅ second precision in Deployment history timestamps;
+3. ✅ permanent **Reports** tab in the right pane;
+4. ✅ reusable embedded Summary / Full log viewer state;
+5. ✅ Latest report Summary / Full log routes to right-side Reports;
+6. ✅ history Summary / Full log routes to right-side Reports;
+7. ✅ normal report popup viewers retired;
+8. ✅ Copy all + Copy selection reused across right-side channels;
+9. ✅ restrained right-tab accents and stronger DRY/LIVE readiness colors;
+10. ✅ **ZDeploy Pet** is the single normal deployment-access toggle;
+11. ✅ current Release/operator smoke for report viewer, latest-run consoles, pet access toggle and current Home polish passed.
+
+**Next implementation sequence — do in this order:**
+
+12. ⬜ create the left **DRY | LIVE | REPORTS** workspace shell only;
+13. ⬜ move Latest deployment report + Deployment history into the left **REPORTS** tab;
+14. ⬜ extract the current Dry Run window body/interaction into one reusable embeddable Dry surface;
+15. ⬜ route Home **DRY** to that embedded surface and stop normal Dry popup creation;
+16. ⬜ run Release/tests + full DRY operator smoke;
+17. ⬜ extract the current Live Review window body/interaction into one reusable embeddable Live surface;
+18. ⬜ route Home **LIVE** to that embedded surface and stop normal Live popup creation;
+19. ⬜ run Release/tests + full LIVE operator smoke;
+20. ⬜ retire/delete remaining dead normal Dry/Live window-only launch/presentation paths after dependency search;
+21. ⬜ run complete pet-first Home + right-console focus smoke;
+22. ⬜ continue remaining PDA-8 release/packaging work only after this UI slice is accepted.
 
 ---
 
-# 8. Acceptance gate for the current functional UI slice
+# 8. Acceptance gate for the embedded Home workspace
 
-The current refactor is accepted only when:
+The next slice is accepted only when:
 
-- exactly four permanent output tabs exist: Dry Run, Live deploy, ZDeployPet, Reports;
-- Dry Run shows one latest/current dry run only;
-- Live deploy shows one latest/current live run only;
-- ZDeployPet retains bounded app activity independently;
-- Reports holds one selected Summary or Full log at a time;
-- no per-run or per-report tabs accumulate;
-- all Latest report and history Summary / Full log actions reuse Reports;
-- selecting an artifact automatically focuses Reports;
-- Reports clearly identifies selected artifact/run context;
-- Copy all / Copy selection work for Reports as well as console tabs;
-- history shows seconds;
-- normal Summary / Full log clicks no longer create popup viewer windows;
-- **ZDeploy Pet** is the only normal Turn on / Turn off launcher;
-- clicking ZDeploy Pet when locked follows the existing bounded unlock/setup path;
-- clicking ZDeploy Pet when READY locks access through the existing bounded-session path;
-- the pet is keyboard accessible and cannot be used to lock access during an active deployment execution;
-- PDA-4 canonical containment/bounds/read-only guarantees are unchanged;
-- PDA-5/PDA-6 execution and authorization behavior is unchanged;
-- Release build/tests pass;
-- operator smoke confirms repeated runs/report selections do not grow an unbounded UI console or create window/tab clutter.
+- Home contains one left workspace with exactly **DRY | LIVE | REPORTS** in that order;
+- the large Latest report/history content is no longer always visible;
+- REPORTS is usable while ZDeploy Pet is LOCKED;
+- DRY/LIVE availability still comes from authoritative READY/execution state;
+- DRY uses the existing PDA-5 guard/executor logic, not a rewritten duplicate;
+- LIVE uses the existing PDA-6 immutable-review/confirmation/executor logic, not a rewritten duplicate;
+- normal DRY and LIVE use no popup windows;
+- the trusted OpenSSH/passphrase terminal remains separate;
+- Dry execution focuses the right-side Dry Run channel;
+- Live execution focuses the right-side Live deploy channel;
+- Summary/Full log inspection focuses the right-side Reports channel;
+- report/history content remains reporter-backed and read-only;
+- no per-run/per-report tabs or windows accumulate;
+- no security/authorization invariant from PDA-0 through PDA-7 changes;
+- Release build/tests pass after the DRY checkpoint, after the LIVE checkpoint and after final cleanup;
+- real Millenova smoke proves dry remains structurally dry and live still requires immutable exact confirmation.
 
 ---
 
@@ -321,14 +491,15 @@ This UX work is part of PDA-8 and must happen **before final installer/public-la
 
 Recommended PDA-8 order from this checkpoint:
 
-1. pet-first functional/UI simplification;
-2. clean-clone build/test/publish CI;
-3. release secret/artifact audit;
-4. deterministic portable package;
-5. clean-state portable smoke;
-6. installer/upgrade/uninstall lifecycle;
-7. packaged icon/shortcut parity;
-8. final repository/release-note/public-policy work;
-9. final installed + portable security/UX parity smoke.
+1. complete the embedded **DRY | LIVE | REPORTS** Home workspace;
+2. finish remaining pet-first functional/UI simplification;
+3. clean-clone build/test/publish CI;
+4. release secret/artifact audit;
+5. deterministic portable package;
+6. clean-state portable smoke;
+7. installer/upgrade/uninstall lifecycle;
+8. packaged icon/shortcut parity;
+9. final repository/release-note/public-policy work;
+10. final installed + portable security/UX parity smoke.
 
 The goal is not merely to package the current developer-oriented shell. The release should package the simplified, operator-ready ZDeployPet experience.
