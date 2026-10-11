@@ -23,6 +23,7 @@ public partial class MainWindow
         AttachDiscoveryActionHelp();
         RefreshPda1ActionVisibility();
         InitializePda3Shell();
+        InitializeProfileGitSafetyMenu();
     }
 
     private void EnsurePdaActionButtons()
@@ -170,11 +171,7 @@ public partial class MainWindow
             return;
         }
 
-        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Git safety", $"Opened repository Git safety for '{_activeProfile.Name}'.");
-        GitSafetyWindow window = new(_activeProfile)
-        {
-            Owner = this
-        };
-        window.ShowDialog();
+        ShowProfileSurface();
+        OpenProfileGitSafetyMenu();
     }
 }
