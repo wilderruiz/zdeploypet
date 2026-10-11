@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -63,7 +64,7 @@ internal sealed class IncidentBundlePreviewWindow : Window
         });
         heading.Children.Add(new TextBlock
         {
-            Text = "Select only the evidence you want to inspect. ZDeployPet reads trusted report artifacts and bounded in-memory consoles, sanitizes them, and shows the exact content before any local export.",
+            Text = "Select only the evidence you want to inspect. ZDeployPet reads trusted report artifacts and bounded in-memory consoles, sanitizes them, adds a no-authority coding-agent handoff manifest, and shows the exact content before any local export.",
             Margin = new Thickness(0, 6, 0, 14),
             TextWrapping = TextWrapping.Wrap,
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
@@ -218,26 +219,44 @@ internal sealed class IncidentBundlePreviewWindow : Window
 
             if (!collection.Success)
             {
-                _statusText.Text = "BLOCKED — one or more selected evidence items could not be collected safely.";
-                _statusText.Foreground = FindBrush("AppAccentBrush", Brushes.IndianRed);
-                _previewText.Text = BuildErrorPreview(collection.Errors, selection);
+                BlockPreview("BLOCKED — one or more selected evidence items could not be collected safely.", collection.Errors, selection);
                 return;
             }
 
             IncidentBundleBuildResult bundle = IncidentEvidenceSanitizer.Build(collection.Evidence);
             if (!bundle.Success)
             {
-                _statusText.Text = "BLOCKED — evidence sanitization/bounds validation failed.";
-                _statusText.Foreground = FindBrush("AppAccentBrush", Brushes.IndianRed);
-                _previewText.Text = BuildErrorPreview(bundle.Errors, selection);
+                BlockPreview("BLOCKED — evidence sanitization/bounds validation failed.", bundle.Errors, selection);
+                return;
+            }
+
+            IReadOnlyList<string> omitted = GetOmittedLabels(selection);
+            string repositoryLabel = Path.GetFileName(Path.TrimEndingDirectorySeparator(_profile.WindowsProjectPath));
+            if (string.IsNullOrWhiteSpace(repositoryLabel))
+                repositoryLabel = "project";
+
+            IncidentAgentHandoffManifestBuildResult manifest = IncidentAgentHandoffManifest.Build(new(
+                RepositoryLabel: repositoryLabel,
+                ProfileName: _profile.Name,
+                DeploymentId: _report.DeploymentId,
+                ReporterOutcome: _report.Outcome.ToString(),
+                Release: _report.Release,
+                Mode: _report.Mode,
+                Target: _report.Target,
+                IncludedEvidenceLabels: bundle.Evidence.Select(item => item.Label).ToArray(),
+                OmittedEvidenceLabels: omitted));
+
+            if (!manifest.Success)
+            {
+                BlockPreview("BLOCKED — coding-agent handoff manifest validation failed.", manifest.Errors, selection);
                 return;
             }
 
             int redacted = bundle.Evidence.Count(item => item.RedactionApplied);
             int truncated = bundle.Evidence.Count(item => item.Truncated);
-            _statusText.Text = $"READY — {bundle.Evidence.Count} included item(s), {redacted} redacted, {truncated} truncated, {bundle.TotalCharacters:N0} characters.";
+            _statusText.Text = $"READY — {bundle.Evidence.Count} included item(s), agent manifest included, {redacted} redacted, {truncated} truncated, {bundle.TotalCharacters:N0} evidence characters.";
             _statusText.Foreground = FindBrush("AppSuccessBrush", Brushes.LightGreen);
-            _previewText.Text = BuildBundleText(bundle, selection);
+            _previewText.Text = BuildBundleText(bundle, manifest.Manifest, omitted);
             SetBuiltPreviewState(true);
         }
         catch (Exception exception)
@@ -252,6 +271,13 @@ internal sealed class IncidentBundlePreviewWindow : Window
         }
     }
 
+    private void BlockPreview(string status, IReadOnlyList<string> errors, IncidentEvidenceSelection selection)
+    {
+        _statusText.Text = status;
+        _statusText.Foreground = FindBrush("AppAccentBrush", Brushes.IndianRed);
+        _previewText.Text = BuildErrorPreview(errors, selection);
+    }
+
     private void CopyAll_Click(object sender, RoutedEventArgs e)
     {
         if (!_hasBuiltSanitizedPreview || string.IsNullOrWhiteSpace(_previewText.Text))
@@ -260,7 +286,7 @@ internal sealed class IncidentBundlePreviewWindow : Window
         try
         {
             Clipboard.SetText(_previewText.Text);
-            _statusText.Text = "COPIED — sanitized bundle content copied to the Windows clipboard.";
+            _statusText.Text = "COPIED — sanitized bundle + agent manifest copied to the Windows clipboard.";
             _statusText.Foreground = FindBrush("AppSuccessBrush", Brushes.LightGreen);
         }
         catch (Exception exception)
@@ -321,12 +347,12 @@ internal sealed class IncidentBundlePreviewWindow : Window
             File.WriteAllText(temporaryPath, _previewText.Text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
             File.Move(temporaryPath, destination, overwrite: true);
 
-            _statusText.Text = $"EXPORTED — sanitized bundle saved to {destination}";
+            _statusText.Text = $"EXPORTED — sanitized bundle + agent manifest saved to {destination}";
             _statusText.Foreground = FindBrush("AppSuccessBrush", Brushes.LightGreen);
             ShellRuntime.Activity.Add(
                 ShellActivityLevel.Info,
                 "Incident",
-                $"Exported sanitized incident bundle for deployment {_report.DeploymentId} to a local operator-selected path.");
+                $"Exported sanitized incident bundle with no-authority agent handoff manifest for deployment {_report.DeploymentId} to a local operator-selected path.");
         }
         catch (Exception exception)
         {
@@ -372,21 +398,26 @@ internal sealed class IncidentBundlePreviewWindow : Window
             IncludeLiveDeployConsole: _liveDeployCheck.IsChecked == true,
             IncludeZDeployPetConsole: _zdeployPetCheck.IsChecked == true);
 
-    private string BuildBundleText(IncidentBundleBuildResult bundle, IncidentEvidenceSelection selection)
+    private string BuildBundleText(
+        IncidentBundleBuildResult bundle,
+        string agentManifest,
+        IReadOnlyList<string> omitted)
     {
         StringBuilder output = new();
         output.AppendLine("ZDEPLOYPET SANITIZED INCIDENT BUNDLE");
         output.AppendLine("DIAGNOSTIC EVIDENCE ONLY — DOES NOT GRANT DEPLOYMENT AUTHORITY");
         output.AppendLine();
+        output.AppendLine(agentManifest.TrimEnd());
+        output.AppendLine();
+        output.AppendLine("BUNDLE SUMMARY");
         output.AppendLine($"Profile: {_profile.Name}");
         output.AppendLine($"Deployment ID: {_report.DeploymentId}");
         output.AppendLine($"Reporter outcome: {_report.Outcome}");
         output.AppendLine($"Release / mode / target: {_report.Release} / {_report.Mode} / {_report.Target}");
         output.AppendLine($"Included items: {bundle.Evidence.Count}");
-        output.AppendLine($"Sanitized characters: {bundle.TotalCharacters}");
+        output.AppendLine($"Sanitized evidence characters: {bundle.TotalCharacters}");
         output.AppendLine();
         output.AppendLine("OMITTED BY OPERATOR");
-        IReadOnlyList<string> omitted = GetOmittedLabels(selection);
         if (omitted.Count == 0) output.AppendLine("- none");
         else foreach (string label in omitted) output.AppendLine("- " + label);
         output.AppendLine();
