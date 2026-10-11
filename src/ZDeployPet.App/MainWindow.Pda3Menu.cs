@@ -1,13 +1,16 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace ZDeployPet.App;
 
 public partial class MainWindow
 {
     private bool _pda3MenuInitialized;
+    private Button? _homeToolbarButton;
 
     private Brush AppSurface => (Brush)Application.Current.Resources["AppSurfaceBrush"];
     private Brush AppSurfaceRaised => (Brush)Application.Current.Resources["AppSurfaceRaisedBrush"];
@@ -26,6 +29,10 @@ public partial class MainWindow
         FrameworkElement menuBar = BuildTopMenu();
         DockPanel.SetDock(menuBar, Dock.Top);
         shell.Children.Add(menuBar);
+
+        FrameworkElement navigationBar = BuildNavigationToolbar();
+        DockPanel.SetDock(navigationBar, Dock.Top);
+        shell.Children.Add(navigationBar);
 
         Grid body = new();
         body.ColumnDefinitions.Add(new ColumnDefinition
@@ -76,7 +83,7 @@ public partial class MainWindow
         MinWidth = Math.Max(MinWidth, MinimumOperatorPaneWidth + MinimumActivityPaneWidth + 45);
         if (Width < 1180) Width = 1180;
 
-        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Top application menu initialized with embedded Console / Activity pane.");
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Top application menu and Home navigation toolbar initialized with embedded Output / Reports pane.");
     }
 
     private FrameworkElement BuildTopMenu()
@@ -111,7 +118,7 @@ public partial class MainWindow
         row.Children.Add(CreatePopupMenu("View", popup =>
         {
             StackPanel panel = CreatePopupPanel();
-            panel.Children.Add(CreatePopupAction("Show / hide Console / Activity", popup, ToggleEmbeddedActivityPane));
+            panel.Children.Add(CreatePopupAction("Show / hide Output / Reports", popup, ToggleEmbeddedActivityPane));
             return panel;
         }));
 
@@ -124,6 +131,104 @@ public partial class MainWindow
 
         bar.Child = row;
         return bar;
+    }
+
+    private FrameworkElement BuildNavigationToolbar()
+    {
+        Border bar = new()
+        {
+            Background = FindBrush("AppBackgroundBrush", Brushes.Black),
+            BorderBrush = AppBorder,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(10, 6, 10, 6)
+        };
+
+        StackPanel row = new()
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+
+        _homeToolbarButton = CreateToolbarButton(
+            "Home",
+            "Return to the ZDeployPet Home screen.",
+            BuildHomeIcon());
+        _homeToolbarButton.Click += (_, _) => ShowHomeSurface();
+        row.Children.Add(_homeToolbarButton);
+
+        bar.Child = row;
+        return bar;
+    }
+
+    private Button CreateToolbarButton(string automationName, string toolTip, UIElement icon)
+    {
+        Button button = new()
+        {
+            Width = 38,
+            Height = 34,
+            Margin = new Thickness(0, 0, 6, 0),
+            Padding = new Thickness(7),
+            Background = AppSurface,
+            BorderBrush = FindBrush("AppAccentBrush", Brushes.IndianRed),
+            BorderThickness = new Thickness(1),
+            Foreground = AppText,
+            Content = icon,
+            ToolTip = toolTip,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center
+        };
+        AutomationProperties.SetName(button, automationName);
+        AutomationProperties.SetHelpText(button, toolTip);
+        return button;
+    }
+
+    private UIElement BuildHomeIcon()
+    {
+        Grid icon = new() { Width = 18, Height = 18 };
+
+        Path roof = new()
+        {
+            Data = Geometry.Parse("M 2,8 L 9,2 L 16,8"),
+            Stroke = AppText,
+            StrokeThickness = 1.7,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent
+        };
+        icon.Children.Add(roof);
+
+        Path house = new()
+        {
+            Data = Geometry.Parse("M 4,7 L 4,16 L 14,16 L 14,7 M 8,16 L 8,11 L 11,11 L 11,16"),
+            Stroke = AppText,
+            StrokeThickness = 1.7,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent
+        };
+        icon.Children.Add(house);
+
+        return icon;
+    }
+
+    private void ShowHomeSurface()
+    {
+        if (_activeProfile is null)
+        {
+            ShowSetup("Create or load a local profile before opening Home.");
+            ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Home requested without an active profile; setup remains visible.");
+            return;
+        }
+
+        ShowDiscovery(_activeProfile, "Home");
+        RefreshPetCompanion();
+        RefreshPda5DryRunVisibility();
+        RefreshPda6LiveReviewVisibility();
+        _ = RefreshOperatorAccessControlAsync();
+        _ = RefreshLatestDeploymentReportAsync();
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Home opened.");
     }
 
     private FrameworkElement CreatePopupMenu(string label, Func<Popup, UIElement> buildContent)
