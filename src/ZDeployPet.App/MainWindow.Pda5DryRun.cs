@@ -9,6 +9,7 @@ public partial class MainWindow
 {
     private readonly DeploymentExecutionGate _deploymentExecutionGate = new();
     private Button? _dryRunButton;
+    private Button? _deploymentActionsHelpButton;
     private DryRunWindow? _dryRunWindow;
     private bool _dryRunExecutionBusy;
 
@@ -18,6 +19,7 @@ public partial class MainWindow
             return;
 
         EnsureDeploymentActionCardLayout(accessGrid);
+        EnsureDeploymentActionsHelp(accessGrid);
 
         _dryRunButton = CreateDeploymentActionCard("DRY", "Dry run only");
         _dryRunButton.IsEnabled = false;
@@ -42,6 +44,8 @@ public partial class MainWindow
         _dryRunButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
         _dryRunButton.IsEnabled = shellVisible && accessReady && !_dryRunExecutionBusy;
         _dryRunButton.Content = BuildDeploymentActionCardContent(_dryRunExecutionBusy ? "DRY…" : "DRY");
+        if (_deploymentActionsHelpButton is not null)
+            _deploymentActionsHelpButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
         RefreshPda6LiveReviewVisibility();
     }
 
@@ -94,13 +98,32 @@ public partial class MainWindow
         if (accessGrid.RowDefinitions.Count == 0)
             accessGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        if (accessGrid.ColumnDefinitions.Count < 2)
+        if (accessGrid.ColumnDefinitions.Count < 3)
         {
             accessGrid.ColumnDefinitions.Clear();
             accessGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             accessGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             accessGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         }
+    }
+
+    private void EnsureDeploymentActionsHelp(Grid accessGrid)
+    {
+        if (_deploymentActionsHelpButton is not null)
+            return;
+
+        _deploymentActionsHelpButton = HelpTipFactory.Create(new HelpTipSpec(
+            "Choose a deployment action.",
+            "DRY opens the allowlisted dry-run flow. LIVE opens the immutable live-deployment review. Both remain unavailable until ZDeploy Pet is READY and the bounded deployment-access checks have passed.",
+            WhenToUse: "Use DRY to verify the configured deployment script without live deployment. Use LIVE only when you intend to review and explicitly authorize a live deployment.",
+            WhatItDoes: "The two compact launchers reuse the existing PDA-5/PDA-6 execution paths; this Home card only starts those guarded workflows.",
+            Safety: "ZDeploy Pet owns access state. DRY cannot select live mode, and LIVE still requires immutable review, exact confirmation, script fingerprint revalidation, a valid READY session, and the existing execution gate."));
+        _deploymentActionsHelpButton.HorizontalAlignment = HorizontalAlignment.Right;
+        _deploymentActionsHelpButton.VerticalAlignment = VerticalAlignment.Top;
+        _deploymentActionsHelpButton.Margin = new Thickness(8, 0, 0, 0);
+        Grid.SetRow(_deploymentActionsHelpButton, 0);
+        Grid.SetColumn(_deploymentActionsHelpButton, 2);
+        accessGrid.Children.Add(_deploymentActionsHelpButton);
     }
 
     private Button CreateDeploymentActionCard(string label, string toolTip)
