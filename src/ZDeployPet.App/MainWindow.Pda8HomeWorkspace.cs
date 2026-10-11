@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using ZDeployPet.Core;
 
 namespace ZDeployPet.App;
 
@@ -14,12 +15,18 @@ public partial class MainWindow
     }
 
     private bool _pda8HomeWorkspaceInitialized;
+    private bool _homeWorkflowEmbeddingBusy;
+    private bool _homeWorkflowsEmbedded;
     private Button? _homeDryTabButton;
     private Button? _homeLiveTabButton;
     private Button? _homeReportsTabButton;
     private FrameworkElement? _homeDryContent;
     private FrameworkElement? _homeLiveContent;
     private FrameworkElement? _homeReportsContent;
+    private Grid? _homeDryBodyHost;
+    private Grid? _homeLiveBodyHost;
+    private FrameworkElement? _homeDryLockedInstructions;
+    private FrameworkElement? _homeLiveLockedInstructions;
     private HomeWorkspaceSection _homeWorkspaceSection = HomeWorkspaceSection.Reports;
 
     private void InitializePda8HomeWorkspace()
@@ -27,7 +34,7 @@ public partial class MainWindow
         if (_pda8HomeWorkspaceInitialized)
             return;
 
-        if (_operatorAccessCard?.Child is not Grid legacyActionGrid ||
+        if (_operatorAccessCard?.Child is not Grid ||
             _dryRunButton is null ||
             _liveReviewButton is null ||
             _latestReportCard is null ||
@@ -38,6 +45,8 @@ public partial class MainWindow
 
         _pda8HomeWorkspaceInitialized = true;
 
+        // The legacy DRY/LIVE buttons remain as internal state holders for PDA-5/PDA-6
+        // but are no longer part of the visible Home UI.
         DetachWorkspaceElement(_dryRunButton);
         DetachWorkspaceElement(_liveReviewButton);
         if (_deploymentActionsHelpButton is not null)
@@ -89,18 +98,10 @@ public partial class MainWindow
         Grid.SetRow(contentHost, 1);
         root.Children.Add(contentHost);
 
-        _homeDryContent = BuildTransitionalActionWorkspace(
-            "Dry run",
-            "Open the existing guarded dry-run flow. Its full controls will be embedded here in the next PDA-8 slice without changing execution authority.",
-            _dryRunButton,
-            isLive: false);
+        _homeDryContent = BuildActionWorkspaceShell(isLive: false, out _homeDryBodyHost, out _homeDryLockedInstructions);
         contentHost.Children.Add(_homeDryContent);
 
-        _homeLiveContent = BuildTransitionalActionWorkspace(
-            "Live deployment",
-            "Open the existing immutable live-deployment review. Its full confirmation flow will be embedded here after the DRY surface is verified.",
-            _liveReviewButton,
-            isLive: true);
+        _homeLiveContent = BuildActionWorkspaceShell(isLive: true, out _homeLiveBodyHost, out _homeLiveLockedInstructions);
         contentHost.Children.Add(_homeLiveContent);
 
         StackPanel reports = new();
@@ -115,13 +116,13 @@ public partial class MainWindow
         _operatorAccessCard.Child = root;
 
         SelectHomeWorkspaceSection(HomeWorkspaceSection.Reports);
+        RefreshPda8HomeWorkspaceAccessState();
     }
 
-    private FrameworkElement BuildTransitionalActionWorkspace(
-        string heading,
-        string description,
-        Button actionButton,
-        bool isLive)
+    private FrameworkElement BuildActionWorkspaceShell(
+        bool isLive,
+        out Grid bodyHost,
+        out FrameworkElement lockedInstructions)
     {
         Border surface = new()
         {
@@ -134,26 +135,195 @@ public partial class MainWindow
             CornerRadius = new CornerRadius(4)
         };
 
+        bodyHost = new Grid();
+        lockedInstructions = BuildLockedInstructions(isLive);
+        bodyHost.Children.Add(lockedInstructions);
+        surface.Child = bodyHost;
+        return surface;
+    }
+
+    private FrameworkElement BuildLockedInstructions(bool isLive)
+    {
         StackPanel body = new();
         body.Children.Add(new TextBlock
         {
-            Text = heading,
-            FontSize = 16,
+            Text = isLive ? "Live deployment" : "Dry run",
+            FontSize = 18,
             FontWeight = FontWeights.SemiBold,
             Foreground = FindBrush("AppTextBrush", Brushes.White)
         });
         body.Children.Add(new TextBlock
         {
-            Text = description,
-            Margin = new Thickness(0, 5, 0, 12),
+            Text = isLive
+                ? "Use this tab to review and explicitly authorize an immutable LIVE deployment. The deployment controls appear here only after ZDeploy Pet is READY."
+                : "Use this tab to run the configured deployment script in allowlisted dry-run mode. The deployment controls appear here only after ZDeploy Pet is READY.",
+            Margin = new Thickness(0, 6, 0, 14),
             TextWrapping = TextWrapping.Wrap,
             Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
         });
 
-        actionButton.Margin = new Thickness(0);
-        body.Children.Add(actionButton);
-        surface.Child = body;
-        return surface;
+        body.Children.Add(BuildInstructionStep(
+            "1",
+            "Click the ZDeploy Pet card at the top-right to turn deployment access on."));
+        body.Children.Add(BuildInstructionStep(
+            "2",
+            "If OpenSSH needs your private-key passphrase, enter it only in the trusted terminal that appears. ZDeployPet never receives it."));
+        body.Children.Add(BuildInstructionStep(
+            "3",
+            isLive
+                ? "When ZDeploy Pet shows READY, this tab will automatically show the live review controls here. Create the immutable review, type the exact confirmation phrase, validate it, then launch only if the frozen safety state still matches."
+                : "When ZDeploy Pet shows READY, this tab will automatically show the approved-script and dry-run controls here. Choose the target/release and start the dry run."));
+
+        return body;
+    }
+
+    private FrameworkElement BuildInstructionStep(string number, string text)
+    {
+        Grid row = new() { Margin = new Thickness(0, 0, 0, 10) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        Border badge = new()
+        {
+            MinWidth = 28,
+            MinHeight = 28,
+            Margin = new Thickness(0, 0, 10, 0),
+            Background = FindBrush("AppSurfaceRaisedBrush", Brushes.DimGray),
+            BorderBrush = FindBrush("AppBorderBrush", Brushes.Gray),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(14),
+            Child = new TextBlock
+            {
+                Text = number,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = FindBrush("AppTextBrush", Brushes.White)
+            }
+        };
+        row.Children.Add(badge);
+
+        TextBlock description = new()
+        {
+            Text = text,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
+        };
+        Grid.SetColumn(description, 1);
+        row.Children.Add(description);
+        return row;
+    }
+
+    private void RefreshPda8HomeWorkspaceAccessState()
+    {
+        if (!_pda8HomeWorkspaceInitialized || _homeDryBodyHost is null || _homeLiveBodyHost is null)
+            return;
+
+        bool accessReady =
+            _activeProfile is not null &&
+            _deploymentSession.TargetsReady &&
+            _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring;
+
+        if (!accessReady)
+        {
+            if (!_dryRunExecutionBusy && !_liveExecutionBusy && !_deploymentExecutionGate.IsRunning)
+                ResetEmbeddedDeploymentWorkflows();
+            return;
+        }
+
+        if (!_homeWorkflowsEmbedded && !_homeWorkflowEmbeddingBusy)
+            _ = EmbedDeploymentWorkflowsAsync();
+    }
+
+    private async Task EmbedDeploymentWorkflowsAsync()
+    {
+        if (_homeWorkflowEmbeddingBusy || _homeWorkflowsEmbedded || _activeProfile is null ||
+            _homeDryBodyHost is null || _homeLiveBodyHost is null)
+        {
+            return;
+        }
+
+        _homeWorkflowEmbeddingBusy = true;
+        try
+        {
+            DeploymentProfile profile = _activeProfile;
+
+            DryRunWindow dryController = new(
+                profile,
+                _deploymentSession,
+                targetsReady: () =>
+                    _deploymentSession.TargetsReady &&
+                    _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring,
+                refreshReports: async () => await RefreshLatestDeploymentReportAsync(),
+                executionStateChanged: busy =>
+                {
+                    _dryRunExecutionBusy = busy;
+                    RefreshPda5DryRunVisibility();
+                    RefreshPetCompanion();
+                },
+                executionGate: _deploymentExecutionGate);
+
+            LiveDeploymentReviewWindow liveController = new(
+                profile,
+                _deploymentSession,
+                targetsReady: () =>
+                    _deploymentSession.TargetsReady &&
+                    _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring,
+                refreshReports: async () => await RefreshLatestDeploymentReportAsync(),
+                executionStateChanged: busy =>
+                {
+                    _liveExecutionBusy = busy;
+                    RefreshPda6LiveReviewVisibility();
+                    RefreshPda5DryRunVisibility();
+                    RefreshPetCompanion();
+                },
+                executionGate: _deploymentExecutionGate);
+
+            UIElement dryContent = dryController.TakeEmbeddedContent();
+            UIElement liveContent = liveController.TakeEmbeddedContent();
+
+            _dryRunWindow = dryController;
+            _liveReviewWindow = liveController;
+
+            _homeDryBodyHost.Children.Clear();
+            _homeDryBodyHost.Children.Add(dryContent);
+            _homeLiveBodyHost.Children.Clear();
+            _homeLiveBodyHost.Children.Add(liveContent);
+
+            await dryController.PrepareEmbeddedAsync();
+            _homeWorkflowsEmbedded = true;
+        }
+        catch (Exception exception)
+        {
+            ShellRuntime.Activity.Add(
+                ShellActivityLevel.Error,
+                "Home",
+                "Could not embed the deployment workspaces: " + exception.Message);
+            ResetEmbeddedDeploymentWorkflows();
+        }
+        finally
+        {
+            _homeWorkflowEmbeddingBusy = false;
+        }
+    }
+
+    private void ResetEmbeddedDeploymentWorkflows()
+    {
+        if (_homeDryBodyHost is null || _homeLiveBodyHost is null)
+            return;
+
+        _homeDryBodyHost.Children.Clear();
+        if (_homeDryLockedInstructions is not null)
+            _homeDryBodyHost.Children.Add(_homeDryLockedInstructions);
+
+        _homeLiveBodyHost.Children.Clear();
+        if (_homeLiveLockedInstructions is not null)
+            _homeLiveBodyHost.Children.Add(_homeLiveLockedInstructions);
+
+        _dryRunWindow = null;
+        _liveReviewWindow = null;
+        _homeWorkflowsEmbedded = false;
     }
 
     private Button CreateHomeWorkspaceTab(string label, string toolTip)
