@@ -33,6 +33,7 @@ public partial class MainWindow
         }
 
         InitializePda3MenuShell();
+        InitializeProfileDiscoveryActivityRouting();
         InitializeOperatorAccessControl();
         InitializePetCompanion();
         InitializePda4ReportMonitor();
@@ -54,7 +55,12 @@ public partial class MainWindow
         Grid.SetRow(_operatorAccessCard, 1);
         Grid.SetRow(_latestReportCard, 2);
         Grid.SetRow(_deploymentHistoryCard, 3);
+
+        // Discovery diagnostics now belong to the ZDeployPet activity channel.
+        // Keep the legacy textbox hidden as an internal handoff buffer for the
+        // established discovery engine rather than exposing it on Home.
         Grid.SetRow(ResultsTextBox, 4);
+        ResultsTextBox.Visibility = Visibility.Collapsed;
     }
 
     private void ApplyMainWindowThemeFixups()
