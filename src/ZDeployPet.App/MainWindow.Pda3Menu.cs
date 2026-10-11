@@ -78,8 +78,6 @@ public partial class MainWindow
         shell.Children.Add(body);
         Content = shell;
 
-        // Keep only a practical whole-window floor. The two panes themselves own
-        // their smaller minima so the splitter can genuinely resize either side.
         MinWidth = Math.Max(MinWidth, MinimumOperatorPaneWidth + MinimumActivityPaneWidth + 45);
         if (Width < 1180) Width = 1180;
 
@@ -186,7 +184,7 @@ public partial class MainWindow
     {
         Grid icon = new() { Width = 18, Height = 18 };
 
-        Path roof = new()
+        System.Windows.Shapes.Path roof = new()
         {
             Data = Geometry.Parse("M 2,8 L 9,2 L 16,8"),
             Stroke = AppText,
@@ -198,7 +196,7 @@ public partial class MainWindow
         };
         icon.Children.Add(roof);
 
-        Path house = new()
+        System.Windows.Shapes.Path house = new()
         {
             Data = Geometry.Parse("M 4,7 L 4,16 L 14,16 L 14,7 M 8,16 L 8,11 L 11,11 L 11,16"),
             Stroke = AppText,
