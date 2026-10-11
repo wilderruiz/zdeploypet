@@ -140,6 +140,8 @@ public partial class MainWindow
         row.Children.Add(CreatePopupMenu("Help", popup =>
         {
             StackPanel panel = CreatePopupPanel();
+            panel.Children.Add(CreatePopupAction("Incident bundle preview…", popup, () => IncidentPreview_Click(this, new RoutedEventArgs())));
+            panel.Children.Add(CreatePopupSeparator());
             panel.Children.Add(CreatePopupAction("About ZDeployPet…", popup, OpenAboutWindow));
             return panel;
         }));
