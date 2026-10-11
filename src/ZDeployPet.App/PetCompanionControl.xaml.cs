@@ -37,6 +37,7 @@ public partial class PetCompanionControl : UserControl
         string eyes;
         string mouth;
         Brush accent;
+        Brush shellBackground;
 
         switch (state)
         {
@@ -44,25 +45,29 @@ public partial class PetCompanionControl : UserControl
                 stateText = "RUNNING";
                 eyes = "◦   ◦";
                 mouth = "ᴥ";
-                accent = Brushes.Goldenrod;
+                accent = FindBrush("AppWarningBrush", Brushes.Goldenrod);
+                shellBackground = FindBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray);
                 break;
             case PetCompanionState.Ready:
                 stateText = "READY";
                 eyes = "•   •";
                 mouth = "⌣";
-                accent = Brushes.MediumSeaGreen;
+                accent = FindBrush("AppSuccessBrush", Brushes.MediumSeaGreen);
+                shellBackground = FindBrush("AppLiveBrush", Brushes.DarkGreen);
                 break;
             case PetCompanionState.Error:
                 stateText = "ERROR";
                 eyes = "×   ×";
                 mouth = "⌢";
-                accent = Brushes.IndianRed;
+                accent = FindBrush("AppDangerBrush", Brushes.IndianRed);
+                shellBackground = FindBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray);
                 break;
             default:
                 stateText = "LOCKED";
                 eyes = "•   •";
                 mouth = "ᴥ";
                 accent = FindBrush("AppMutedTextBrush", Brushes.LightGray);
+                shellBackground = FindBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray);
                 break;
         }
 
@@ -75,6 +80,8 @@ public partial class PetCompanionControl : UserControl
         FaceBorder.BorderBrush = accent;
         LeftEar.Stroke = accent;
         RightEar.Stroke = accent;
+        ShellBorder.BorderBrush = accent;
+        ShellBorder.Background = shellBackground;
 
         string action = state switch
         {
