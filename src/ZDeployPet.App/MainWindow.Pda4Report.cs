@@ -194,7 +194,7 @@ public partial class MainWindow
                 "Refresh deployment reports.",
                 "ZDeployPet reads latest.json and the bounded deployment history from the configured WSL report root, validates reporter schema and checks declared artifact paths before showing trusted results.",
                 WhenToUse: "Use this after a deployment attempt or whenever you want to re-read reporter truth. While this surface is visible, ZDeployPet also performs the same read-only refresh every 15 seconds.",
-                WhatItDoes: "Refreshes both the latest card and the read-only history table. Reporter result is authoritative; process exit status or UI state cannot upgrade a failed/cancelled report to success.",
+                WhatItDoes: "Refreshes both the latest card and the read-only history table. Summary and Full log actions reuse the shared Reports tab in the Output / Reports pane.",
                 Safety: "This action and the visible-only timer are read-only. They do not modify the report directory and they do not deploy anything."));
 
         return card;
@@ -268,8 +268,8 @@ public partial class MainWindow
 
     private static Grid CreateHistoryRowGrid()
     {
-        Grid row = new() { MinWidth = 680 };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(145) });
+        Grid row = new() { MinWidth = 700 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(165) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(65) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(95) });
@@ -479,7 +479,7 @@ public partial class MainWindow
             Grid row = CreateHistoryRowGrid();
             row.Margin = new Thickness(0, 0, 0, 4);
 
-            AddHistoryText(row, 0, report.StartedAt.ToString("yyyy-MM-dd HH:mm"));
+            AddHistoryText(row, 0, report.StartedAt.ToString("yyyy-MM-dd HH:mm:ss"));
             AddHistoryText(row, 1, report.Release);
             AddHistoryText(row, 2, report.Mode.ToUpperInvariant());
             AddHistoryText(row, 3, report.Target);
@@ -563,7 +563,7 @@ public partial class MainWindow
         int limit = summary
             ? WslDeploymentReportReader.MaximumSummaryBytes
             : WslDeploymentReportReader.MaximumFullLogBytes;
-        string label = summary ? "Deployment summary" : "Deployment full log";
+        string label = summary ? "Summary" : "Full log";
 
         button.IsEnabled = false;
         try
@@ -578,36 +578,32 @@ public partial class MainWindow
             {
                 MessageBox.Show(
                     this,
-                    read.Error ?? $"{label} could not be read safely.",
-                    label,
+                    read.Error ?? $"Deployment {label.ToLowerInvariant()} could not be read safely.",
+                    $"Deployment {label.ToLowerInvariant()}",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
             }
 
-            ReportArtifactWindow window = new(
-                label,
-                $"Read-only reporter artifact • {read.CanonicalPath}",
-                read.Text)
-            {
-                Owner = this
-            };
-            window.ShowDialog();
+            string context =
+                $"{label} · v{report.Release} · {report.Mode.ToUpperInvariant()} · {report.Target} · {report.Outcome.ToString().ToUpperInvariant()}" +
+                $"  |  ID {report.DeploymentId} · {report.DurationSeconds}s · read-only";
+            ShowEmbeddedReportArtifact(context, read.Text);
 
             ShellRuntime.Activity.Add(
                 ShellActivityLevel.Info,
                 "Report",
-                $"Opened read-only {label.ToLowerInvariant()} for deployment {report.DeploymentId}.");
+                $"Loaded read-only deployment {label.ToLowerInvariant()} into Reports for deployment {report.DeploymentId}.");
         }
         catch (Exception exception)
         {
             MessageBox.Show(
                 this,
                 exception.Message,
-                label,
+                $"Deployment {label.ToLowerInvariant()}",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
-            ShellRuntime.Activity.Add(ShellActivityLevel.Error, "Report", $"Failed to open {label.ToLowerInvariant()}.");
+            ShellRuntime.Activity.Add(ShellActivityLevel.Error, "Report", $"Failed to load deployment {label.ToLowerInvariant()}.");
         }
         finally
         {
