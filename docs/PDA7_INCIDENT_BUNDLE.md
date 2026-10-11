@@ -1,6 +1,6 @@
 # PDA-7 — Sanitized incident bundle and agent handoff
 
-**Status:** 🟡 ACTIVE — Core redaction + bounded report/console collector implemented; preview/export UI not yet implemented
+**Status:** 🟡 ACTIVE — Core redaction + bounded collector + preview-only UI implemented; export/handoff still pending
 
 PDA-7 turns selected ZDeployPet evidence into a bounded, operator-reviewed debugging handoff without transferring deployment authority. The bundle is diagnostic evidence only: it must never contain credentials, private-key material, an SSH-agent capability, arbitrary environment dumps, or an executable deployment authorization.
 
@@ -26,7 +26,7 @@ No arbitrary recursive collection is permitted.
 
 ## Narrow evidence collector
 
-The first collector layer now consumes only already trusted ZDeployPet surfaces:
+The collector consumes only already trusted ZDeployPet surfaces:
 
 - one already parsed/trusted `DeploymentReport` from PDA-4;
 - that report's declared JSON, Summary and Full log paths only;
@@ -68,7 +68,31 @@ The Core sanitizer currently redacts:
 - common Unix SSH-agent socket paths;
 - common private-key paths under `~/.ssh`, `/home/<user>/.ssh`, and `/root/.ssh`.
 
-Redaction is deterministic and happens before preview/export. Evidence records retain whether redaction and truncation occurred so the future UI can tell the operator exactly what was altered.
+Redaction is deterministic and happens before preview/export. Evidence records retain whether redaction and truncation occurred so the UI can tell the operator exactly what was altered.
+
+## Preview-only operator UI
+
+`Incident preview…` is now available from the main discovery surface independently of deployment-access ON/OFF state. It requires an already trusted latest PDA-4 report and opens a modeless preview window.
+
+The operator can explicitly select:
+
+- deployment JSON;
+- deployment summary;
+- deployment full-log excerpt;
+- Dry run console;
+- Live deploy console;
+- ZDeployPet console.
+
+The preview surface then:
+
+- collects only the selected trusted sources;
+- runs the Core sanitizer and bundle bounds;
+- shows the exact sanitized content that would later be exported;
+- labels every included item with evidence kind plus `REDACTION APPLIED: YES/NO` and `TRUNCATED: YES/NO`;
+- shows an explicit `OMITTED BY OPERATOR` section for unchecked evidence;
+- shows reporter id/outcome/release/mode/target context;
+- fails closed if any selected trusted artifact cannot be safely read;
+- has **no export action** in this slice.
 
 ## Fail-closed rules
 
@@ -99,23 +123,25 @@ Implemented on `main`:
 - PDA-4 canonical-root revalidation for JSON/Summary/Full-log sources;
 - artifact reads delegated to the existing realpath/type/size-bounded WSL report reader;
 - bounded head/head+tail excerpts before Core sanitization;
-- read-only collection from Dry run / Live deploy / ZDeployPet console channels.
+- read-only collection from Dry run / Live deploy / ZDeployPet console channels;
+- preview-only WPF surface with explicit selection checkboxes;
+- exact included-content preview with redaction/truncation indicators and explicit omission list;
+- preview entry point remains read-only and does not require deployment access to be ON.
 
 Not implemented yet:
 
-- incident-bundle preview UI;
 - local export format/location;
 - handoff manifest for coding agents;
-- explicit omission list in the preview;
 - selection of a historical report row from a future preview UI (collector already accepts any trusted `DeploymentReport` supplied by the report surface);
-- real sanitized bundle smoke.
+- export-destination/path negative tests;
+- real sanitized bundle preview/export smoke.
 
 ## Implementation sequence
 
 1. ✅ Core evidence kinds, bounds and deterministic redaction;
 2. ✅ Core regression tests for first-slice secret/bounds behavior;
 3. ✅ narrow collector for trusted PDA-4 artifacts + the three existing console channels with canonical path containment;
-4. ⬜ build operator preview showing included evidence, redactions, truncation and omissions before export;
+4. ✅ operator preview showing included evidence, redactions, truncation and omissions before export;
 5. ⬜ define a deterministic local bundle format and safe destination policy;
 6. ⬜ add an agent-handoff manifest containing repository/profile/report context without secrets or deployment capability;
 7. ⬜ add negative tests for path escape/symlink/untrusted source/unsupported evidence and bundle-export destination rules;
