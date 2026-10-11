@@ -29,6 +29,8 @@ public partial class App : Application
             return;
         }
 
+        LoadPda8VisualTheme();
+
         _singleInstanceActivationEvent = new EventWaitHandle(
             initialState: false,
             EventResetMode.AutoReset,
@@ -81,6 +83,18 @@ public partial class App : Application
 
         ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Application", "ZDeployPet started.");
         base.OnStartup(e);
+    }
+
+    private void LoadPda8VisualTheme()
+    {
+        ResourceDictionary theme = new()
+        {
+            Source = new Uri(
+                "pack://application:,,,/ZDeployPet.App;component/Themes/Pda8VisualTheme.xaml",
+                UriKind.Absolute)
+        };
+
+        Resources.MergedDictionaries.Add(theme);
     }
 
     private static bool IsInsideToggleButton(DependencyObject source, ComboBox owner)
