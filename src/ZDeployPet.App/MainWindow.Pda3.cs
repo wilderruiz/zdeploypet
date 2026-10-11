@@ -42,6 +42,7 @@ public partial class MainWindow
         InitializePda5DryRun();
         InitializePda6LiveReview();
         InitializePda7IncidentPreview();
+        InitializePda8HomeWorkspace();
         ApplyResponsiveActionSpacing();
         RefreshLegacyFooterStatusVisibility();
     }
