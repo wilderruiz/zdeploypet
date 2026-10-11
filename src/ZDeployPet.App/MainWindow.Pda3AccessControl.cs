@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using ZDeployPet.Core;
 using ZDeployPet.Infrastructure;
 
@@ -10,8 +9,6 @@ public partial class MainWindow
 {
     private readonly DeploymentAccessIdentityStore _operatorAccessIdentityStore = new();
     private Border? _operatorAccessCard;
-    private TextBlock? _operatorAccessStateText;
-    private TextBlock? _operatorAccessMessageText;
     private bool _operatorAccessBusy;
     private bool _operatorAccessTargetsPassed;
 
@@ -23,48 +20,17 @@ public partial class MainWindow
         DiscoveryPanel.RowDefinitions.Insert(1, new RowDefinition { Height = GridLength.Auto });
         Grid.SetRow(ResultsTextBox, 2);
 
-        // Keep a neutral Grid host for the access card. PDA-5/PDA-6 attach their
-        // independent Dry run / Live deploy actions to later rows in this host.
-        // The legacy Turn on/Turn off button is intentionally not restored here;
-        // ZDeploy Pet itself owns that toggle now.
+        // This card is now only the action host for Dry run / Live deploy.
+        // ZDeploy Pet itself owns access state, colour, ON/OFF interaction and guidance.
         Grid cardGrid = new();
-        cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        StackPanel copy = new();
-        copy.Children.Add(new TextBlock
-        {
-            Text = "Deployment access",
-            FontWeight = FontWeights.SemiBold,
-            Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
-        });
-
-        _operatorAccessStateText = new TextBlock
-        {
-            Text = "OFF",
-            FontSize = 22,
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 3, 0, 0),
-            Foreground = FindBrush("AppTextBrush", Brushes.White)
-        };
-        _operatorAccessMessageText = new TextBlock
-        {
-            Text = "Deployment access is locked. Use ZDeploy Pet above to turn it on.",
-            Margin = new Thickness(0, 4, 0, 0),
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
-        };
-        copy.Children.Add(_operatorAccessStateText);
-        copy.Children.Add(_operatorAccessMessageText);
-        Grid.SetRow(copy, 0);
-        cardGrid.Children.Add(copy);
 
         _operatorAccessCard = new Border
         {
             Margin = new Thickness(0, 0, 0, 12),
             Padding = new Thickness(14),
-            Background = FindBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray),
-            BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
+            Background = FindBrush("AppSurfaceRaisedBrush", System.Windows.Media.Brushes.DarkSlateGray),
+            BorderBrush = FindBrush("AppBorderBrush", System.Windows.Media.Brushes.DimGray),
             BorderThickness = new Thickness(1),
             Child = cardGrid
         };
@@ -223,47 +189,12 @@ public partial class MainWindow
 
     private void RefreshOperatorAccessVisuals(bool onboardingReady)
     {
-        if (_operatorAccessCard is null || _operatorAccessStateText is null || _operatorAccessMessageText is null)
-            return;
+        _ = onboardingReady;
+        if (_operatorAccessCard is null) return;
 
         _operatorAccessCard.Visibility = DiscoveryPanel.Visibility == Visibility.Visible && _activeProfile is not null
             ? Visibility.Visible
             : Visibility.Collapsed;
-        if (_operatorAccessCard.Visibility != Visibility.Visible) return;
-
-        if (_operatorAccessBusy)
-        {
-            _operatorAccessStateText.Text = "TURNING ON…";
-            _operatorAccessMessageText.Text = "Complete the trusted OpenSSH prompt if it is waiting for the approved key passphrase. ZDeployPet is verifying the bounded session automatically.";
-            return;
-        }
-
-        bool sessionReady = _deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring;
-        if (sessionReady && _operatorAccessTargetsPassed)
-        {
-            _operatorAccessStateText.Text = "ON / READY";
-            _operatorAccessMessageText.Text = _deploymentSession.Message + " Click ZDeploy Pet to turn access off.";
-            return;
-        }
-
-        if (!onboardingReady)
-        {
-            _operatorAccessStateText.Text = "ATTENTION";
-            _operatorAccessMessageText.Text = "Deployment identity or server trust is not fully configured. Click ZDeploy Pet to continue setup.";
-            return;
-        }
-
-        if (_deploymentSession.State is DeploymentAccessSessionState.Invalid or DeploymentAccessSessionState.Expired)
-        {
-            _operatorAccessStateText.Text = "ATTENTION";
-            _operatorAccessMessageText.Text = _deploymentSession.Message + " Click ZDeploy Pet to try again.";
-            return;
-        }
-
-        _operatorAccessStateText.Text = "OFF";
-        _operatorAccessMessageText.Text = _deploymentSession.HasOwnedAgent
-            ? "The bounded agent is waiting for the approved key. Click ZDeploy Pet to finish verification."
-            : "Deployment access is configured but locked. Click ZDeploy Pet to turn it on.";
     }
 
     private void PublishOperatorAccessShellState()
