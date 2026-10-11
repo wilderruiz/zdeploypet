@@ -1,6 +1,6 @@
 # PDA-7 — Sanitized incident bundle and agent handoff
 
-**Status:** 🟡 ACTIVE — Core evidence/redaction contract implemented; collection/preview/export UI not yet implemented
+**Status:** 🟡 ACTIVE — Core redaction + bounded report/console collector implemented; preview/export UI not yet implemented
 
 PDA-7 turns selected ZDeployPet evidence into a bounded, operator-reviewed debugging handoff without transferring deployment authority. The bundle is diagnostic evidence only: it must never contain credentials, private-key material, an SSH-agent capability, arbitrary environment dumps, or an executable deployment authorization.
 
@@ -22,7 +22,26 @@ The Core contract defines explicit evidence kinds only:
 - deployment JSON excerpt/metadata;
 - bounded environment/build/runtime summary prepared by ZDeployPet.
 
-The first Core slice accepts evidence as already-selected in-memory text. It intentionally performs **no filesystem traversal and no arbitrary path reads**. Path collection and containment belong to a later collector layer and must be explicit/allowlisted.
+No arbitrary recursive collection is permitted.
+
+## Narrow evidence collector
+
+The first collector layer now consumes only already trusted ZDeployPet surfaces:
+
+- one already parsed/trusted `DeploymentReport` from PDA-4;
+- that report's declared JSON, Summary and Full log paths only;
+- the canonical report root already resolved by the PDA-4 reader;
+- a bounded snapshot of the existing in-memory Console / Activity stream.
+
+The collector does **not** accept an arbitrary artifact path from UI callers. Before every file-backed read it revalidates that all report-declared artifacts remain inside the canonical report root. The existing `WslDeploymentReportReader` then resolves the actual artifact path with `realpath`, requires a regular file, enforces the reader byte limit and rejects canonical escapes/symlink escapes.
+
+Console evidence is reconstructed only from the three existing channels:
+
+- Dry run lifecycle + raw `deploy_millenova.sh` lines;
+- Live deploy lifecycle + raw `deploy_millenova.live.sh` lines;
+- ZDeployPet application/session/report/probe activity excluding the two deployment channels.
+
+Raw script rows remain natural shell text; app lifecycle rows retain timestamp / level / category formatting. Collection is read-only and carries no deployment-session object, SSH-agent runtime or execution authority.
 
 ## Hard bounds
 
@@ -34,7 +53,9 @@ Current Core limits:
 - maximum sanitized preview/export content per item 256 KiB characters;
 - maximum total sanitized content 2 MiB characters.
 
-Oversized raw input fails closed rather than silently reading or exporting an unbounded source. Sanitized item content may be truncated only at the explicit bounded preview/export limit and carries a visible truncation marker.
+The collector also bounds text before it enters Core. Summary/JSON evidence keeps the beginning of oversized content; full logs and console streams keep bounded head + tail context with an explicit omission marker. The WSL reader remains bounded independently at its report/summary/full-log byte ceilings.
+
+Oversized raw input presented directly to the Core builder fails closed. Sanitized item content may be truncated only at the explicit bounded preview/export limit and carries a visible truncation marker.
 
 ## Deterministic redaction
 
@@ -61,7 +82,7 @@ The Core builder rejects:
 - raw item content beyond the maximum input bound;
 - bundles that exceed the total sanitized-content bound.
 
-No bundle builder API accepts a filesystem path, directory, glob, shell command, environment block, private key, SSH agent runtime, or deployment-session object.
+The collector rejects an invalid canonical report root, any report whose declared artifacts escape that root, and any artifact whose resolved canonical path escapes the root. No collector API accepts a directory, glob, shell command, raw environment block, private key, SSH agent runtime, or deployment-session capability.
 
 ## Current implementation slice
 
@@ -73,23 +94,27 @@ Implemented on `main`:
 - deterministic `IncidentEvidenceSanitizer`;
 - `IncidentBundleBuildResult` carrying errors, sanitized evidence and total size;
 - redaction/truncation metadata per item;
-- Core tests covering private-key blocks, secret assignments, bearer tokens, SSH-agent sockets, private-key paths, normal output preservation, item count limits, label controls, raw input limits and bounded truncation.
+- Core tests covering private-key blocks, secret assignments, bearer tokens, SSH-agent sockets, private-key paths, normal output preservation, item count limits, label controls, raw input limits and bounded truncation;
+- App-layer `IncidentEvidenceCollector` with explicit selection flags only;
+- PDA-4 canonical-root revalidation for JSON/Summary/Full-log sources;
+- artifact reads delegated to the existing realpath/type/size-bounded WSL report reader;
+- bounded head/head+tail excerpts before Core sanitization;
+- read-only collection from Dry run / Live deploy / ZDeployPet console channels.
 
 Not implemented yet:
 
-- evidence collector from PDA-4 report/artifact surfaces and the three console channels;
-- canonical path containment for any file-backed evidence collection;
 - incident-bundle preview UI;
 - local export format/location;
 - handoff manifest for coding agents;
 - explicit omission list in the preview;
+- selection of a historical report row from a future preview UI (collector already accepts any trusted `DeploymentReport` supplied by the report surface);
 - real sanitized bundle smoke.
 
 ## Implementation sequence
 
 1. ✅ Core evidence kinds, bounds and deterministic redaction;
 2. ✅ Core regression tests for first-slice secret/bounds behavior;
-3. ⬜ add a narrow collector that can consume only selected existing ZDeployPet evidence surfaces, with canonical path containment for file-backed report artifacts;
+3. ✅ narrow collector for trusted PDA-4 artifacts + the three existing console channels with canonical path containment;
 4. ⬜ build operator preview showing included evidence, redactions, truncation and omissions before export;
 5. ⬜ define a deterministic local bundle format and safe destination policy;
 6. ⬜ add an agent-handoff manifest containing repository/profile/report context without secrets or deployment capability;
