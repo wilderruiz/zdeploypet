@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 
 namespace ZDeployPet.App;
@@ -86,7 +85,7 @@ public partial class MainWindow
     {
         Grid glyph = new() { Width = 18, Height = 18 };
 
-        Path arc = new()
+        System.Windows.Shapes.Path arc = new()
         {
             Data = Geometry.Parse("M 14.8,5.2 A 6.2,6.2 0 1 0 15.0,12.7"),
             Stroke = brush,
@@ -97,7 +96,7 @@ public partial class MainWindow
         };
         glyph.Children.Add(arc);
 
-        Path arrow = new()
+        System.Windows.Shapes.Path arrow = new()
         {
             Data = Geometry.Parse("M 14.8,2.7 L 14.8,6.6 L 10.9,6.6"),
             Stroke = brush,
@@ -116,7 +115,7 @@ public partial class MainWindow
     {
         foreach (UIElement child in glyph.Children)
         {
-            if (child is Path path)
+            if (child is System.Windows.Shapes.Path path)
                 path.Stroke = brush;
         }
     }
@@ -129,13 +128,16 @@ public partial class MainWindow
         _homeToolbarButton.BorderBrush = AppBorder;
         _profileToolbarButton.BorderBrush = AppBorder;
 
-        RoutedEventHandler update = (_, _) =>
+        RoutedEventHandler clickUpdate = (_, _) =>
             Dispatcher.BeginInvoke(new Action(RefreshPrimaryNavigationState), DispatcherPriority.Background);
 
-        _homeToolbarButton.Click += update;
-        _profileToolbarButton.Click += update;
-        DiscoveryPanel.IsVisibleChanged += update;
-        SetupPanel.IsVisibleChanged += update;
+        DependencyPropertyChangedEventHandler visibilityUpdate = (_, _) =>
+            Dispatcher.BeginInvoke(new Action(RefreshPrimaryNavigationState), DispatcherPriority.Background);
+
+        _homeToolbarButton.Click += clickUpdate;
+        _profileToolbarButton.Click += clickUpdate;
+        DiscoveryPanel.IsVisibleChanged += visibilityUpdate;
+        SetupPanel.IsVisibleChanged += visibilityUpdate;
 
         RefreshPrimaryNavigationState();
     }
