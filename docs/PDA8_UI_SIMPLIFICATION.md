@@ -1,6 +1,6 @@
 # PDA-8 — Pet-first UI simplification and embedded report viewer
 
-**Status:** 🟡 ACTIVE — plan approved before implementation
+**Status:** 🟡 ACTIVE — four-tab output/report refactor implemented; Release build + operator smoke pending
 
 This plan defines the operator-UX simplification work that must happen before ZDeployPet is treated as public-release ready.
 
@@ -42,8 +42,6 @@ This phase changes **presentation and navigation**, not deployment authority.
 
 # 1. Immediate pre-polish functional cleanup
 
-Before restructuring the overall shell, stabilize the long-running console/viewer behavior.
-
 ## 1.1 Deployment consoles retain only one run
 
 The embedded deployment consoles are transient execution surfaces, not history stores.
@@ -59,13 +57,13 @@ Required behavior:
 - historical deployment output remains available through PDA-4 Summary / Full log artifacts and Deployment history;
 - the embedded UI buffer itself remains hard bounded so a long application session cannot create an unbounded WPF text/list workload.
 
-Implementation checkpoint already completed before this document:
+Implemented:
 
 - `bae8c50b785da1e5b296c4a5e805ce28eee53d36` — latest-run-only embedded deployment consoles plus a bounded embedded activity-row buffer.
 
 ## 1.2 Deployment history timestamp precision
 
-Deployment history must display the start time with seconds.
+Deployment history displays the start time with seconds.
 
 Target format:
 
@@ -73,59 +71,41 @@ Target format:
 2026-10-11 06:45:56
 ```
 
-not minute-only:
+Latest-report start/finish timestamps already use second-level precision.
 
-```text
-2026-10-11 06:45
-```
-
-Reason: deployments can occur within the same minute, so second precision materially improves run identification.
-
-Latest-report start/finish timestamps should remain internally consistent with the same second-level precision wherever a concise local timestamp is shown.
+Implemented in the current four-tab refactor; Release/operator verification remains pending.
 
 ---
 
 # 2. Right pane: exactly four permanent tabs
 
-The current Console / Activity pane becomes a reusable output/report surface with **exactly four permanent tabs**.
+The current Console / Activity pane becomes a reusable **Output / Reports** surface with **exactly four permanent tabs**.
 
-No per-run tabs may be created.
+No per-run or per-report tabs may be created.
 
 ## 2.1 Dry Run
 
 Purpose: current/latest single dry-run execution.
 
-Behavior:
-
 - cleared when a new dry run starts;
 - receives only Dry run lifecycle + approved script output for that run;
 - automatically receives focus when a dry run begins;
-- keeps existing Copy all and Copy selection behavior;
-- remains observational/read-only.
+- keeps Copy all and Copy selection;
+- observational/read-only.
 
 ## 2.2 Live deploy
 
 Purpose: current/latest single live deployment.
 
-Behavior:
-
 - cleared when a new live deployment starts;
 - receives only Live deploy lifecycle + approved live script output for that run;
 - automatically receives focus when a live run begins;
-- keeps existing Copy all and Copy selection behavior;
-- remains observational/read-only.
+- keeps Copy all and Copy selection;
+- observational/read-only.
 
 ## 2.3 ZDeployPet
 
-Purpose: ZDeployPet application diagnostics.
-
-Contains bounded/sanitized app-level activity such as:
-
-- profile/session state;
-- target probes;
-- report refresh/activity;
-- application lifecycle and diagnostics;
-- non-deployment shell events.
+Purpose: bounded/sanitized application diagnostics such as profile/session state, probes, report refreshes, application lifecycle and non-deployment shell events.
 
 It is not cleared when a new dry/live execution starts.
 
@@ -133,43 +113,36 @@ It is not cleared when a new dry/live execution starts.
 
 Purpose: one shared read-only report viewer for **all deployment Summary and Full log artifacts**.
 
-This tab is reused one artifact at a time.
-
 Required behavior:
 
-- clicking **Summary** anywhere in Latest deployment report or Deployment history loads that Summary into Reports;
-- clicking **Full log** anywhere loads that Full log into Reports;
-- the Reports tab replaces whatever report artifact was previously displayed;
-- clicking a report action automatically switches/focuses the right pane to Reports;
-- no new popup/window is opened for normal Summary or Full log viewing;
-- no new per-report tab is created;
-- existing Copy all and Copy selection controls are reused;
+- clicking Summary anywhere in Latest deployment report or Deployment history loads that Summary into Reports;
+- clicking Full log anywhere loads that Full log into Reports;
+- Reports replaces whatever report artifact was previously displayed;
+- selecting a report automatically exposes/focuses the right pane and selects Reports;
+- no normal Summary / Full log popup window is opened;
+- no per-report tab is created;
+- Copy all and Copy selection are reused;
 - canonical-path, bounded-read and UTF-8 behavior from PDA-4 remains authoritative;
 - Reports is always read-only.
 
+Implemented in:
+
+- `1fda174b02dd7b604be236f3df7a543e4811beb0` — permanent Reports channel, shared viewer state, four-tab pane, Copy all reuse and restrained tab accents;
+- `d923864587dcce6f13eb25362b6d493d63a5f598` — Summary / Full log routing into Reports plus history second precision.
+
 ### Reports context header
 
-The pane must clearly identify what is currently open, for example:
+The pane identifies the currently loaded artifact, for example:
 
 ```text
 Summary · v4.4.27 · DRY · hostinger · PASS
 ```
 
-or:
-
-```text
-Full log · v4.4.26 · LIVE · hostinger · PASS
-```
-
-A second compact line may include deployment id / duration where useful.
-
-The operator must never have to guess which historical run is currently displayed.
+The same status line also includes deployment id, duration and read-only context.
 
 ---
 
-# 3. Retire normal Summary / Full log popup workflow
-
-The current deployment artifact popup windows were useful during PDA-4 development but add unnecessary window fragmentation in the mature app.
+# 3. Normal report popup workflow retired
 
 For normal operation:
 
@@ -178,48 +151,39 @@ For normal operation:
 - Deployment history **Summary** routes to Reports;
 - Deployment history **Full log** routes to Reports.
 
-The old viewer implementation may be retained temporarily as internal/fallback code during migration, but the normal operator workflow must not launch those separate windows once this slice is accepted.
+The older `ReportArtifactWindow` implementation may remain in the codebase temporarily, but these normal report actions no longer instantiate it.
 
-This is the first deliberate popup reduction before the larger UI-polish work.
+Safety/error dialogs may still appear when an artifact cannot be read safely; report **content** itself stays embedded.
 
 ---
 
 # 4. Tab visual identity
 
-The four permanent tabs should be distinguishable with restrained accents rather than large blocks of color.
+The four permanent tabs use restrained semantic text accents:
 
-Suggested semantic accents:
+- **Dry Run** — amber/gold;
+- **Live deploy** — coral/red;
+- **ZDeployPet** — cool blue-gray;
+- **Reports** — green/teal.
 
-- **Dry Run** — muted amber/gold;
-- **Live deploy** — red/coral;
-- **ZDeployPet** — neutral/cool blue-gray;
-- **Reports** — green/teal or another clearly distinct read-only accent.
+Labels remain explicit; color is orientation assistance rather than the only state indicator.
 
-Use accent through one or more of:
-
-- selected-tab underline/border;
-- small status dot/icon;
-- subtle selected-background tint;
-- text accent.
-
-Do **not** turn the pane into four bright saturated blocks. ZDeployPet should remain calm and readable.
-
-Color is orientation assistance, not the only indication of state; labels remain explicit for accessibility.
+This first accent pass is implemented. It can be refined during the larger visual-polish slice after functional smoke.
 
 ---
 
 # 5. Larger pet-first shell simplification
 
-After the four-tab/report-viewer slice is stable, simplify the main shell itself.
+After the four-tab/report-viewer slice is verified, simplify the main shell itself.
 
 ## 5.1 Home becomes task-focused
 
 The normal Home surface should emphasize only:
 
 - ZPet state / deployment-access state;
-- primary access action: Turn on / Turn off;
-- Dry Run action;
-- Live deploy review action;
+- Turn on / Turn off;
+- Dry Run;
+- Live deploy review;
 - compact latest-result summary.
 
 A user should be able to understand the home screen in roughly five seconds.
@@ -246,30 +210,19 @@ Target direction:
 
 ## 5.4 Utility controls move out of the permanent bottom shelf
 
-Current secondary actions such as:
-
-- Git safety;
-- Edit profile;
-- Run discovery;
-- Console/viewer controls;
-- Incident preview;
-
-should move toward a compact **Tools / More** affordance or other secondary navigation rather than remain permanently exposed after setup/stabilization.
+Current secondary actions such as Git safety, Edit profile, Run discovery, Console/viewer controls and Incident preview should move toward a compact **Tools / More** affordance rather than remain permanently exposed after setup/stabilization.
 
 ## 5.5 Reduce popup/window count
 
-Audit every secondary window.
-
-Keep separate windows only when the task genuinely needs an independent lifetime or the trusted terminal boundary requires it.
+Audit every secondary window. Keep separate windows only when the task genuinely needs an independent lifetime or the trusted terminal boundary requires it.
 
 Candidate flows to integrate into the main shell or focused in-app surfaces:
 
 - Dry run request;
 - Live deployment review;
-- report viewing;
 - routine diagnostics.
 
-The trusted OpenSSH/passphrase terminal boundary is different: ZDeployPet must continue to avoid capturing the private-key passphrase itself.
+The trusted OpenSSH/passphrase terminal boundary remains separate because ZDeployPet must not capture the private-key passphrase.
 
 ---
 
@@ -277,11 +230,11 @@ The trusted OpenSSH/passphrase terminal boundary is different: ZDeployPet must c
 
 ZPet becomes the emotional/status anchor rather than a decorative badge.
 
-The pet can communicate the existing state machine without inventing new authority:
+Possible presentation states map onto existing authoritative state without replacing it:
 
 - **LOCKED** — resting/locked;
-- **READY** — awake/green/ready;
-- **RUNNING DRY** — busy but safe-preview state;
+- **READY** — awake/ready;
+- **RUNNING DRY** — busy safe-preview state;
 - **RUNNING LIVE** — serious active state;
 - **PASS** — brief success reaction;
 - **ATTENTION / FAILED** — clear attention state.
@@ -292,19 +245,17 @@ ZPet remains non-authoritative. Text status and actual session/execution/reporte
 
 # 7. Implementation order
 
-Implement in this order so functional cleanup precedes visual redesign:
-
 1. ✅ latest-run-only Dry Run / Live deploy consoles and embedded hard bound;
-2. ⬜ display second precision in Deployment history timestamps;
-3. ⬜ add the permanent **Reports** tab to the right pane;
-4. ⬜ refactor Summary / Full log artifact loading into a reusable embedded report-viewer state;
-5. ⬜ route Latest report Summary / Full log actions to Reports;
-6. ⬜ route history Summary / Full log actions to Reports;
-7. ⬜ retire popup viewers from the normal report workflow;
-8. ⬜ preserve/reuse Copy all + Copy selection for all four tabs;
-9. ⬜ add restrained semantic tab accents and accessibility-safe selected states;
-10. ⬜ run report-viewer/console regression smoke;
-11. ⬜ then perform broader Home/history/output/tools/popup simplification;
+2. ✅ display second precision in Deployment history timestamps — implementation complete, smoke pending;
+3. ✅ add permanent **Reports** tab to the right pane — implementation complete, smoke pending;
+4. ✅ refactor Summary / Full log loading into reusable embedded report-viewer state;
+5. ✅ route Latest report Summary / Full log actions to Reports;
+6. ✅ route history Summary / Full log actions to Reports;
+7. ✅ retire popup viewers from the normal report workflow;
+8. ✅ preserve/reuse Copy all + Copy selection for all four tabs;
+9. ✅ add first restrained semantic tab accents;
+10. 🟡 run Release build + report-viewer/console operator smoke;
+11. ⬜ perform broader Home/history/output/tools/popup simplification;
 12. ⬜ complete pet-first operator UX smoke before release packaging is considered final.
 
 ---
