@@ -181,7 +181,11 @@ public partial class MainWindow
                 result.Message);
 
             if (result.Success)
+            {
+                SetProfileGitSafetyBusy(false);
                 await RunProfileGitSafetyScanAsync();
+                return;
+            }
         }
         catch (Exception exception)
         {
