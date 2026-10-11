@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Threading;
 using ZDeployPet.Core;
 using ZDeployPet.Infrastructure;
 
@@ -141,7 +142,10 @@ public partial class MainWindow
     private void ProfileGitSafetyButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
-        OpenProfileGitSafetyMenu();
+
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(OpenProfileGitSafetyMenu));
     }
 
     private void ProfileGitSafetyButton_PreviewKeyDown(object sender, KeyEventArgs e)
