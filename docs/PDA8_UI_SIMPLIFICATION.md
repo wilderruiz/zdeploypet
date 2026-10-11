@@ -1,6 +1,6 @@
 # PDA-8 — Pet-first UI simplification and embedded report viewer
 
-**Status:** 🟡 ACTIVE — four-tab output/report refactor implemented; Release build + operator smoke pending
+**Status:** 🟡 ACTIVE — four-tab output/report refactor + ZDeploy Pet access toggle implemented; Release build + operator smoke pending
 
 This plan defines the operator-UX simplification work that must happen before ZDeployPet is treated as public-release ready.
 
@@ -176,19 +176,46 @@ This first accent pass is implemented. It can be refined during the larger visua
 
 After the four-tab/report-viewer slice is verified, simplify the main shell itself.
 
-## 5.1 Home becomes task-focused
+## 5.1 ZDeploy Pet is the deployment-access action
+
+The companion is no longer a read-only decorative badge. **ZDeploy Pet** is the single normal access launcher/toggle.
+
+Required behavior:
+
+- visible label is **ZDeploy Pet** rather than `ZPet`;
+- the companion surface is a real keyboard-focusable button;
+- when access is locked/configured, clicking it follows the existing bounded **Turn on** flow;
+- if onboarding is incomplete, clicking it opens the existing deployment-access setup flow;
+- when access is **ON / READY**, clicking the same companion invokes the existing bounded-session lock path and turns access off;
+- no second permanent Turn on / Turn off button is shown in the Deployment access card;
+- the Deployment access card remains status/instructional text only;
+- the companion is disabled while access verification is busy;
+- the companion is also disabled during an active Dry Run or Live deployment so the bounded agent cannot be intentionally locked out from under an active execution;
+- no session, fingerprint, target-probe or live-confirmation safety invariant changes.
+
+Implemented in:
+
+- `35c1b903120bdfe969fbec589122a493aaa804b3` — converts the companion visual into an accessible button and renames it **ZDeploy Pet**;
+- `8387e3a6e34c3a34e6c72679662ffbcf7fcc54d4` — exposes the companion action and state-aware action guidance;
+- `c2d8eef0eca402ba79587aaa615261cfcb391868` — removes the old Deployment access Turn on/Turn off button and keeps the same bounded access logic behind a shared toggle method;
+- `7aece50645530fd6a10c916c5f4eb0d8e33ff41f` — wires ZDeploy Pet to the access toggle and disables it during active deployment execution.
+
+Release/operator verification remains pending.
+
+## 5.2 Home becomes task-focused
 
 The normal Home surface should emphasize only:
 
-- ZPet state / deployment-access state;
-- Turn on / Turn off;
+- ZDeploy Pet / deployment-access state;
 - Dry Run;
 - Live deploy review;
 - compact latest-result summary.
 
+A separate permanent Turn on / Turn off button is intentionally no longer part of the target Home design because the companion itself owns that action.
+
 A user should be able to understand the home screen in roughly five seconds.
 
-## 5.2 Deployment history becomes secondary
+## 5.3 Deployment history becomes secondary
 
 The full history table should not permanently dominate Home.
 
@@ -198,7 +225,7 @@ Target direction:
 - full Deployment history is opened on demand or in a secondary section/page;
 - history remains reporter-backed and authoritative.
 
-## 5.3 Output pane is contextual
+## 5.4 Output pane is contextual
 
 The large right output pane should not dominate an idle app.
 
@@ -208,11 +235,11 @@ Target direction:
 - automatically surface/focus when an execution starts or a report is explicitly opened;
 - remember sensible user preference without obscuring primary controls.
 
-## 5.4 Utility controls move out of the permanent bottom shelf
+## 5.5 Utility controls move out of the permanent bottom shelf
 
 Current secondary actions such as Git safety, Edit profile, Run discovery, Console/viewer controls and Incident preview should move toward a compact **Tools / More** affordance rather than remain permanently exposed after setup/stabilization.
 
-## 5.5 Reduce popup/window count
+## 5.6 Reduce popup/window count
 
 Audit every secondary window. Keep separate windows only when the task genuinely needs an independent lifetime or the trusted terminal boundary requires it.
 
@@ -228,18 +255,18 @@ The trusted OpenSSH/passphrase terminal boundary remains separate because ZDeplo
 
 # 6. Pet-first visual hierarchy
 
-ZPet becomes the emotional/status anchor rather than a decorative badge.
+ZDeploy Pet becomes the emotional/status and primary access anchor rather than a decorative badge.
 
 Possible presentation states map onto existing authoritative state without replacing it:
 
-- **LOCKED** — resting/locked;
-- **READY** — awake/ready;
-- **RUNNING DRY** — busy safe-preview state;
-- **RUNNING LIVE** — serious active state;
+- **LOCKED** — resting/locked; click to turn access on/continue setup;
+- **READY** — awake/ready; click to turn access off;
+- **RUNNING DRY** — busy safe-preview state; access action disabled;
+- **RUNNING LIVE** — serious active state; access action disabled;
 - **PASS** — brief success reaction;
 - **ATTENTION / FAILED** — clear attention state.
 
-ZPet remains non-authoritative. Text status and actual session/execution/reporter state remain the source of truth.
+ZDeploy Pet remains non-authoritative. Text status and actual session/execution/reporter state remain the source of truth.
 
 ---
 
@@ -254,17 +281,18 @@ ZPet remains non-authoritative. Text status and actual session/execution/reporte
 7. ✅ retire popup viewers from the normal report workflow;
 8. ✅ preserve/reuse Copy all + Copy selection for all four tabs;
 9. ✅ add first restrained semantic tab accents;
-10. 🟡 run Release build + report-viewer/console operator smoke;
-11. ⬜ perform broader Home/history/output/tools/popup simplification;
-12. ⬜ complete pet-first operator UX smoke before release packaging is considered final.
+10. ✅ make **ZDeploy Pet** the single normal deployment-access toggle and remove the separate Turn on / Turn off button — implementation complete, smoke pending;
+11. 🟡 run Release build + report-viewer/console/access-toggle operator smoke;
+12. ⬜ perform broader Home/history/output/tools/popup simplification;
+13. ⬜ complete pet-first operator UX smoke before release packaging is considered final.
 
 ---
 
-# 8. Acceptance gate for the four-tab slice
+# 8. Acceptance gate for the current functional UI slice
 
-The embedded output/report refactor is accepted only when:
+The current refactor is accepted only when:
 
-- exactly four permanent tabs exist: Dry Run, Live deploy, ZDeployPet, Reports;
+- exactly four permanent output tabs exist: Dry Run, Live deploy, ZDeployPet, Reports;
 - Dry Run shows one latest/current dry run only;
 - Live deploy shows one latest/current live run only;
 - ZDeployPet retains bounded app activity independently;
@@ -276,6 +304,10 @@ The embedded output/report refactor is accepted only when:
 - Copy all / Copy selection work for Reports as well as console tabs;
 - history shows seconds;
 - normal Summary / Full log clicks no longer create popup viewer windows;
+- **ZDeploy Pet** is the only normal Turn on / Turn off launcher;
+- clicking ZDeploy Pet when locked follows the existing bounded unlock/setup path;
+- clicking ZDeploy Pet when READY locks access through the existing bounded-session path;
+- the pet is keyboard accessible and cannot be used to lock access during an active deployment execution;
 - PDA-4 canonical containment/bounds/read-only guarantees are unchanged;
 - PDA-5/PDA-6 execution and authorization behavior is unchanged;
 - Release build/tests pass;
