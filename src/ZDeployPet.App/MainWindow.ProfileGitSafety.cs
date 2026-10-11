@@ -107,7 +107,7 @@ public partial class MainWindow
         {
             RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent)
         });
-        presenter.SetBinding(TextElement.ForegroundProperty, new System.Windows.Data.Binding(nameof(Control.Foreground))
+        presenter.SetBinding(System.Windows.Documents.TextElement.ForegroundProperty, new System.Windows.Data.Binding(nameof(Control.Foreground))
         {
             RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent)
         });
