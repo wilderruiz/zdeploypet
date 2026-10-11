@@ -218,7 +218,14 @@ public partial class MainWindow
 
     private static void DetachWorkspaceElement(UIElement element)
     {
-        switch (element.Parent)
+        DependencyObject? parent = element is FrameworkElement frameworkElement
+            ? frameworkElement.Parent
+            : null;
+
+        parent ??= LogicalTreeHelper.GetParent(element);
+        parent ??= VisualTreeHelper.GetParent(element);
+
+        switch (parent)
         {
             case Panel panel:
                 panel.Children.Remove(element);
