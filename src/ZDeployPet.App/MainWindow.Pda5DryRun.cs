@@ -49,6 +49,7 @@ public partial class MainWindow
         if (_deploymentActionsHelpButton is not null)
             _deploymentActionsHelpButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
         RefreshPda6LiveReviewVisibility();
+        RefreshPda8HomeWorkspaceAccessState();
     }
 
     private void DryRun_Click(object sender, RoutedEventArgs e)
@@ -90,8 +91,8 @@ public partial class MainWindow
             RefreshPda5DryRunVisibility();
         };
 
-        // Modeless by design: the operator must be able to keep using the main shell
-        // and watch/copy Output / Reports while deploy_millenova.sh is running.
+        // Legacy compatibility path. The PDA-8 Home workspace no longer exposes
+        // this launcher; normal operation embeds the same guarded workflow in Home.
         window.Show();
     }
 
@@ -115,10 +116,10 @@ public partial class MainWindow
             return;
 
         _deploymentActionsHelpButton = HelpTipFactory.Create(new HelpTipSpec(
-            "Choose a deployment action.",
-            "DRY opens the allowlisted dry-run flow. LIVE opens the immutable live-deployment review. Both remain unavailable until ZDeploy Pet is READY and the bounded deployment-access checks have passed.",
+            "Choose a deployment workspace.",
+            "DRY contains the allowlisted dry-run flow. LIVE contains the immutable live-deployment review. Both show instructions while ZDeploy Pet is locked and populate with their guarded controls when deployment access becomes READY.",
             WhenToUse: "Use DRY to verify the configured deployment script without live deployment. Use LIVE only when you intend to review and explicitly authorize a live deployment.",
-            WhatItDoes: "The two compact launchers reuse the existing PDA-5/PDA-6 execution paths; this Home card only starts those guarded workflows.",
+            WhatItDoes: "The Home tabs reuse the existing PDA-5/PDA-6 workflow logic in-place; normal operation no longer needs separate Dry/Live windows.",
             Safety: "ZDeploy Pet owns access state. DRY cannot select live mode, and LIVE still requires immutable review, exact confirmation, script fingerprint revalidation, a valid READY session, and the existing execution gate."));
         _deploymentActionsHelpButton.HorizontalAlignment = HorizontalAlignment.Right;
         _deploymentActionsHelpButton.VerticalAlignment = VerticalAlignment.Top;
