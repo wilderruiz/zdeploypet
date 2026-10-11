@@ -7,6 +7,7 @@ namespace ZDeployPet.App;
 public partial class MainWindow
 {
     private bool _pda8V6SegmentedWorkspaceInitialized;
+    private bool _pda8V6WorkspaceHeadingAdded;
 
     private void InitializePda8V6SegmentedWorkspace()
     {
@@ -16,7 +17,8 @@ public partial class MainWindow
         if (_homeDryTabButton is null ||
             _homeLiveTabButton is null ||
             _homeReportsTabButton is null ||
-            _homeDryTabButton.Parent is not Grid tabs)
+            _homeDryTabButton.Parent is not Grid tabs ||
+            tabs.Parent is not Grid root)
         {
             return;
         }
@@ -26,6 +28,8 @@ public partial class MainWindow
         // V6 keeps the existing Home workspace ownership and click handlers.
         // This is presentation only: three actions now read as one compact
         // segmented selector rather than three independent command buttons.
+        CompleteV6WorkspaceHeading(root, tabs);
+
         tabs.Margin = new Thickness(0, 0, 0, 12);
         tabs.VerticalAlignment = VerticalAlignment.Top;
 
@@ -43,6 +47,49 @@ public partial class MainWindow
         _homeReportsTabButton.Click += (_, _) => RefreshV6SegmentedWorkspaceVisuals();
 
         RefreshV6SegmentedWorkspaceVisuals();
+        InitializePda8V7WorkflowVisuals();
+    }
+
+    private void CompleteV6WorkspaceHeading(Grid root, Grid tabs)
+    {
+        if (_pda8V6WorkspaceHeadingAdded)
+            return;
+
+        _pda8V6WorkspaceHeadingAdded = true;
+
+        UIElement? contentHost = root.Children
+            .Cast<UIElement>()
+            .FirstOrDefault(child => !ReferenceEquals(child, tabs));
+
+        root.RowDefinitions.Clear();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        StackPanel heading = new()
+        {
+            Margin = new Thickness(0, 0, 0, 14)
+        };
+        heading.Children.Add(new TextBlock
+        {
+            Text = "Deployment workspace",
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = FindBrush("AppTextBrush", Brushes.White)
+        });
+        heading.Children.Add(new TextBlock
+        {
+            Text = "One place for DRY, LIVE and larger report inspection.",
+            Margin = new Thickness(0, 4, 0, 0),
+            FontSize = 11,
+            Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray)
+        });
+
+        Grid.SetRow(heading, 0);
+        root.Children.Add(heading);
+        Grid.SetRow(tabs, 1);
+        if (contentHost is not null)
+            Grid.SetRow(contentHost, 2);
     }
 
     private void ApplyV6SegmentBase(Button button, Style? segmentedStyle, bool isFirst, bool isLast)
