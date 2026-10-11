@@ -84,6 +84,14 @@ public partial class MainWindow
     {
         if (_operatorAccessBusy || _activeProfile is null) return;
 
+        // Access/session activity belongs in the ZDeployPet channel. Keep the
+        // trusted terminal reserved only for secret entry; all observable status
+        // and probe progress stays in-app.
+        if (_activityPane is not null && _activityPane.Visibility != Visibility.Visible)
+            ToggleEmbeddedActivityPane();
+        if (_activityConsoleTabs is not null && _activityConsoleTabs.Items.Count >= 3)
+            _activityConsoleTabs.SelectedIndex = 2;
+
         if (_deploymentSession.State is DeploymentAccessSessionState.Ready or DeploymentAccessSessionState.Expiring &&
             _operatorAccessTargetsPassed)
         {
@@ -109,6 +117,10 @@ public partial class MainWindow
         await RunOperatorAccessBusyAsync(async () =>
         {
             _operatorAccessTargetsPassed = false;
+            ShellRuntime.Activity.Add(
+                ShellActivityLevel.Info,
+                "Session",
+                "ZDeploy Pet is preparing the bounded deployment-access session. A trusted terminal appears only if OpenSSH needs the private-key passphrase.");
 
             if (_deploymentSession.HasOwnedAgent)
                 await _deploymentSession.CheckAsync(_activeProfile);
@@ -124,7 +136,7 @@ public partial class MainWindow
             ShellRuntime.Activity.Add(
                 ShellActivityLevel.Info,
                 "Session",
-                "Turn on requested from ZDeploy Pet. Waiting for the trusted OpenSSH key prompt to complete.");
+                "Waiting for the trusted OpenSSH key prompt to complete. ZDeployPet never receives the private-key passphrase.");
 
             for (int attempt = 0; attempt < 120; attempt++)
             {
