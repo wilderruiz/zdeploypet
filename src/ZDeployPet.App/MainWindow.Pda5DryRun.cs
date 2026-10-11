@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using ZDeployPet.Core;
 
 namespace ZDeployPet.App;
@@ -16,31 +17,14 @@ public partial class MainWindow
         if (_dryRunButton is not null || _operatorAccessCard?.Child is not Grid accessGrid)
             return;
 
-        if (accessGrid.RowDefinitions.Count == 0)
-            accessGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        EnsureDeploymentActionCardLayout(accessGrid);
 
-        _dryRunButton = new Button
-        {
-            Content = "Dry run…",
-            Padding = new Thickness(16, 9, 16, 9),
-            Margin = new Thickness(0),
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Visibility = Visibility.Visible,
-            IsEnabled = false
-        };
+        _dryRunButton = CreateDeploymentActionCard("DRY", "Dry run only");
+        _dryRunButton.IsEnabled = false;
         _dryRunButton.Click += DryRun_Click;
         Grid.SetRow(_dryRunButton, 0);
-        Grid.SetColumnSpan(_dryRunButton, 2);
+        Grid.SetColumn(_dryRunButton, 0);
         accessGrid.Children.Add(_dryRunButton);
-
-        HelpTipFactory.AttachToButton(
-            _dryRunButton,
-            new HelpTipSpec(
-                "Open the allowlisted dry-run executor.",
-                "PDA-5 runs only the configured deployment script after its SHA-256 fingerprint is explicitly approved and rechecked, the bounded deployment-access session is still READY, and all configured target probes have passed.",
-                WhenToUse: "The control becomes available only while ZDeploy Pet is READY.",
-                WhatItDoes: "Lets you select an allowlisted target and bounded release type, then invokes the approved project script in dry-run mode through WSL. The dry-run window is modeless, so Output / Reports and the rest of the main shell remain usable while it runs.",
-                Safety: "There is no arbitrary command field and PDA-5 cannot select live mode. A changed script fingerprint, LOCKED/expired session, unsafe input, concurrent execution, or failed target verification blocks launch."));
 
         DiscoveryPanel.IsVisibleChanged += (_, _) => RefreshPda5DryRunVisibility();
         RefreshPda5DryRunVisibility();
@@ -57,7 +41,7 @@ public partial class MainWindow
 
         _dryRunButton.Visibility = shellVisible ? Visibility.Visible : Visibility.Collapsed;
         _dryRunButton.IsEnabled = shellVisible && accessReady && !_dryRunExecutionBusy;
-        _dryRunButton.Content = _dryRunExecutionBusy ? "Dry run running…" : "Dry run…";
+        _dryRunButton.Content = BuildDeploymentActionCardContent(_dryRunExecutionBusy ? "DRY…" : "DRY");
         RefreshPda6LiveReviewVisibility();
     }
 
@@ -104,4 +88,56 @@ public partial class MainWindow
         // and watch/copy Output / Reports while deploy_millenova.sh is running.
         window.Show();
     }
+
+    private void EnsureDeploymentActionCardLayout(Grid accessGrid)
+    {
+        if (accessGrid.RowDefinitions.Count == 0)
+            accessGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        if (accessGrid.ColumnDefinitions.Count < 2)
+        {
+            accessGrid.ColumnDefinitions.Clear();
+            accessGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            accessGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            accessGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        }
+    }
+
+    private Button CreateDeploymentActionCard(string label, string toolTip)
+    {
+        Button button = new()
+        {
+            Content = BuildDeploymentActionCardContent(label),
+            ToolTip = toolTip,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 10, 0),
+            MinWidth = 112,
+            MinHeight = 58,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = FindBrush("AppSurfaceBrush", Brushes.DarkSlateGray),
+            BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
+            BorderThickness = new Thickness(1),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            Visibility = Visibility.Visible
+        };
+
+        return button;
+    }
+
+    private FrameworkElement BuildDeploymentActionCardContent(string label)
+        => new Border
+        {
+            CornerRadius = new CornerRadius(5),
+            Padding = new Thickness(20, 12, 20, 12),
+            Child = new TextBlock
+            {
+                Text = label,
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = FindBrush("AppTextBrush", Brushes.White)
+            }
+        };
 }
