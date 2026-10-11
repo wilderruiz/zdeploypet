@@ -1,6 +1,6 @@
 # PDA-7 — Sanitized incident bundle and agent handoff
 
-**Status:** 🟡 ACTIVE — preview/export/agent-handoff smokes passed; final security regression build pending
+**Status:** ✅ ACCEPTED 2026-10-11
 
 PDA-7 turns selected ZDeployPet evidence into a bounded, operator-reviewed debugging handoff without transferring deployment authority. The bundle is diagnostic evidence only: it must never contain credentials, private-key material, an SSH-agent capability, arbitrary environment dumps, or an executable deployment authorization.
 
@@ -22,7 +22,7 @@ The Core contract defines explicit evidence kinds only:
 - deployment JSON excerpt/metadata;
 - bounded environment/build/runtime summary prepared by ZDeployPet.
 
-No arbitrary recursive collection is permitted. The Core builder now also rejects undefined/out-of-range `IncidentEvidenceKind` values instead of treating an enum cast as trusted.
+No arbitrary recursive collection is permitted. The Core builder rejects undefined/out-of-range `IncidentEvidenceKind` values instead of treating an enum cast as trusted.
 
 ## Narrow evidence collector
 
@@ -59,7 +59,7 @@ Oversized raw input presented directly to the Core builder fails closed. Sanitiz
 
 ## Deterministic redaction
 
-The Core sanitizer currently redacts:
+The Core sanitizer redacts:
 
 - PEM/OpenSSH/RSA/EC/DSA private-key blocks;
 - bearer authorization values;
@@ -75,16 +75,9 @@ Redaction is deterministic and happens before preview/export. Evidence records r
 
 `Incident preview…` is available from the main discovery surface independently of deployment-access ON/OFF state. It requires an already trusted latest PDA-4 report and opens a modeless preview window.
 
-The operator can explicitly select:
+The operator can explicitly select deployment JSON, deployment summary, deployment full-log excerpt, Dry run console, Live deploy console and ZDeployPet console.
 
-- deployment JSON;
-- deployment summary;
-- deployment full-log excerpt;
-- Dry run console;
-- Live deploy console;
-- ZDeployPet console.
-
-The preview surface then:
+The preview surface:
 
 - collects only the selected trusted sources;
 - runs the Core sanitizer and bundle bounds;
@@ -101,14 +94,7 @@ The exported `.txt` file is the exact preview text encoded as UTF-8 without a BO
 
 ## Agent-handoff manifest
 
-The deterministic manifest contains only bounded non-secret context:
-
-- repository label only, never a repository path;
-- profile display name only;
-- deployment id;
-- reporter outcome;
-- release / mode / target;
-- included and omitted evidence labels.
+The deterministic manifest contains only bounded non-secret context: repository label, profile display name, deployment id, reporter outcome, release/mode/target, and included/omitted evidence labels.
 
 It explicitly states:
 
@@ -123,74 +109,37 @@ Manifest scalar fields and evidence labels are themselves validated through the 
 
 ## Safe export destination policy
 
-The Core export policy requires:
-
-- a fully qualified local Windows path;
-- `.txt` extension;
-- no UNC/network path;
-- no alternate-data-stream path syntax;
-- a destination outside the active Windows project repository.
+The Core export policy requires a fully qualified local Windows path, `.txt` extension, no UNC/network path, no alternate-data-stream syntax, and a destination outside the active Windows project repository.
 
 The UI uses an explicit operator `SaveFileDialog`; no automatic/background export exists. The deterministic suggested filename is `zdeploypet-incident-<deployment-id>.txt`. The destination directory must already exist. The exported content starts with an explicit diagnostic-only/no-deployment-authority notice.
 
 ## Fail-closed rules
 
-The Core builder rejects:
+The Core builder rejects null/empty evidence sets, too many items, unsupported/out-of-range evidence kinds, missing/unsafe labels, null content, oversized raw items, and over-limit bundles.
 
-- null/empty evidence sets;
-- more than the maximum number of items;
-- unsupported/out-of-range evidence kinds;
-- missing labels;
-- labels with control characters or excessive length;
-- null content;
-- raw item content beyond the maximum input bound;
-- bundles that exceed the total sanitized-content bound.
-
-The collector rejects an invalid canonical report root, any report whose declared artifacts escape that root, and any artifact whose resolved canonical path escapes the root. No collector API accepts a directory, glob, shell command, raw environment block, private key, SSH agent runtime, or deployment-session capability.
+The collector rejects an invalid canonical report root, any report whose declared artifacts escape that root, and any artifact whose resolved canonical path escapes the root. No collector API accepts a directory, glob, shell command, raw environment block, private key, SSH-agent runtime or deployment-session capability.
 
 The export policy rejects relative destinations, network/UNC destinations, non-`.txt` extensions, alternate-data-stream syntax and destinations inside the active project repository.
 
-## Current implementation slice
+## Acceptance evidence
 
-Implemented on `main`:
+Accepted implementation on `main` includes the explicit evidence allowlist, bounds, deterministic sanitizer, Unix/Windows private-key-path redaction, undefined-kind rejection, canonical-root collector, bounded console/report collection, exact preview, `Copy all`, guarded local export, deterministic coding-agent manifest and export/security regression coverage.
 
-- `IncidentEvidenceKind` explicit evidence allowlist plus undefined-kind rejection;
-- `IncidentEvidenceInput` and `SanitizedIncidentEvidence` contracts;
-- `IncidentBundleLimits` hard bounds;
-- deterministic `IncidentEvidenceSanitizer` with Unix + Windows private-key-path redaction;
-- `IncidentBundleBuildResult` carrying errors, sanitized evidence and total size;
-- redaction/truncation metadata per item;
-- Core tests covering private-key blocks, secret assignments, bearer tokens, SSH-agent sockets, Unix/Windows private-key paths, unsupported evidence kinds, normal output preservation, item count limits, label controls, raw input limits and bounded truncation;
-- App-layer `IncidentEvidenceCollector` with explicit selection flags only;
-- PDA-4 canonical-root revalidation for JSON/Summary/Full-log sources;
-- artifact reads delegated to the existing realpath/type/size-bounded WSL report reader;
-- bounded head/head+tail excerpts before Core sanitization;
-- read-only collection from Dry run / Live deploy / ZDeployPet console channels;
-- preview WPF surface with explicit selection checkboxes;
-- exact included-content preview with redaction/truncation indicators and explicit omission list;
-- preview entry point remains read-only and does not require deployment access to be ON;
-- `Copy all` copies only a successfully built sanitized bundle;
-- Core `IncidentBundleExportPolicy` and deterministic filename generation;
-- guarded explicit local `.txt` export outside the active project repository;
-- selection-change invalidation before copy/export;
-- export policy regression tests for relative path, local path, UNC/network, project path, extension and alternate-data-stream cases;
-- deterministic coding-agent handoff manifest with secret-like metadata rejection and explicit no-authority rules.
-
-Operator evidence completed:
+Operator evidence:
 
 - published-development preview smoke against real Millenova deployment `20261011-051521_v4.4.25_live_vps` succeeded;
 - all six evidence selections were requested; four evidence items were available/included for that session;
 - reporter context was PASS / release `4.4.25` / live / vps;
 - initial preview reported 46,373 sanitized characters, zero Core redactions and zero Core truncations;
-- `Copy all` presence was verified in the published UI;
+- `Copy all` was verified in the published UI;
 - real local `.txt` export succeeded to an operator-selected Downloads path;
-- published agent-manifest smoke succeeded and visibly showed `Authority: NONE`, no credentials, no SSH-agent/session capability and no remote-write/deployment authorization.
+- published agent-manifest smoke visibly showed `Authority: NONE`, no credentials, no SSH-agent/session capability and no remote-write/deployment authorization;
+- final post-hardening Release build/publish passed with **0 warnings / 0 errors**;
+- final published executable SHA-256: `5B989530A81DEB80FCFD378E4B80E2DB4532D570AEB1029F8D95F06A9ED01C83`.
 
-Remaining before acceptance:
+## Final authority review
 
-- run the final Release regression/build after the last unsupported-kind/Windows-path/export-negative hardening commits;
-- perform one final authority-content review against the real exported bundle after that green build;
-- update the master implementation plan and mark PDA-7 accepted only after those checks pass.
+The accepted bundle contains diagnostic text only. It carries no private key bytes, credential values, SSH-agent socket/runtime, deployment session, confirmation phrase, remote-write primitive or execution token. The manifest explicitly declares no authority, while PDA-2/PDA-5/PDA-6 continue to require their own live runtime/fingerprint/session/human-confirmation gates. Therefore possession of an exported PDA-7 bundle cannot satisfy or bypass deployment authorization.
 
 ## Implementation sequence
 
@@ -200,22 +149,10 @@ Remaining before acceptance:
 4. ✅ operator preview showing included evidence, redactions, truncation and omissions before export;
 5. ✅ deterministic local bundle format and safe destination policy;
 6. ✅ agent-handoff manifest containing repository/profile/report context without secrets or deployment capability;
-7. 🟡 remaining negative/security hardening implemented — final Release run pending;
-8. ✅ published-development preview + real local file export + manifest UI smokes passed;
-9. 🟡 final no-deployment-authority verification pending after green Release regression.
+7. ✅ negative/security hardening for unsupported evidence, Windows/Unix key paths and export rules;
+8. ✅ published-development preview + real local file export + manifest UI smokes;
+9. ✅ final no-deployment-authority review and final green Release regression/publish.
 
 ## Acceptance gate
 
-PDA-7 is accepted only when:
-
-- evidence sources are explicit and allowlisted;
-- no arbitrary recursive collection or raw environment dump exists;
-- file-backed evidence is canonically contained within approved roots;
-- credentials, private-key material/paths, tokens and SSH-agent sockets are denied/redacted deterministically;
-- bundle/item sizes are hard bounded;
-- the operator previews exactly what will be exported and what was redacted/truncated/omitted;
-- export requires explicit operator action;
-- bundle contents grant no deployment authority and include no live session capability;
-- agent handoff clearly treats returned changes as untrusted until human review/tests/fresh authorization;
-- automated negative tests pass;
-- one real sanitized bundle smoke passes with report + console evidence.
+✅ **PASSED 2026-10-11.** Evidence sources are explicit/allowlisted and bounded; file-backed evidence is canonically contained; secrets/private-key material/paths/tokens/agent sockets are denied or deterministically redacted; operator preview matches export; export is explicit; manifest grants no deployment authority; returned patches remain untrusted; automated negative tests/build are green; and real sanitized reporter/console preview/export smokes passed.
