@@ -3,13 +3,12 @@
 > [!IMPORTANT]
 > This file is the authoritative programme index and handoff record for ZDeployPet. Update the compact overview, current handoff, affected phase, validation matrix, and next action together whenever the programme changes. Do not reconstruct status from memory when this file and repository evidence are available.
 
-**Status:** 🟡 **PDA-7 active — sanitized incident bundle and agent handoff**  
-**Reviewed repository baseline:** `main@41e38e85` (`2026-10-11`)  
-**Completed phase:** `PDA-6 — Live executor and exact confirmation`  
-**Active phase:** `PDA-7 — Sanitized incident bundle and agent handoff`  
-**Next phase after acceptance:** `PDA-8 — Hardening, packaging and public launch`  
-**Remaining phases:** 2 including active PDA-7; 1 after PDA-7 acceptance  
-**Primary outcome:** bounded deployment access, authoritative report monitoring, safe dry/live execution, then sanitized debugging evidence and public-release hardening  
+**Status:** 🟡 **PDA-8 active — hardening, packaging and public launch**  
+**Reviewed repository baseline:** `main@812ec327` (`2026-10-11`)  
+**Completed phase:** `PDA-7 — Sanitized incident bundle and agent handoff`  
+**Active phase:** `PDA-8 — Hardening, packaging and public launch`  
+**Remaining phases:** 1 including active PDA-8  
+**Primary outcome:** preserve all accepted deployment/security invariants while producing clean-clone CI, audited portable/installer releases and a public-ready repository  
 **Product boundary:** standalone Windows/.NET 8 WPF application using WSL through a narrow bridge  
 **Deployment boundary:** project-owned deployment scripts remain authoritative and are not rewritten by ZDeployPet  
 **Decision owner:** Wilder Ruiz
@@ -28,35 +27,30 @@
 | **PDA-4** | ✅ ACCEPTED 2026-10-10 | Read-only authoritative latest + historical deployment-report monitor with bounded artifact viewers and lightweight polling | [`docs/PDA4_REPORT_MONITOR.md`](docs/PDA4_REPORT_MONITOR.md) |
 | **PDA-5** | ✅ ACCEPTED 2026-10-10 | Allowlisted dry-run executor for the approved unchanged project script | [`docs/PDA5_DRY_RUN_EXECUTOR.md`](docs/PDA5_DRY_RUN_EXECUTOR.md) |
 | **PDA-6** | ✅ ACCEPTED 2026-10-11 | Live executor with immutable review, exact human confirmation, isolated live console and reporter-authoritative closeout | [`docs/PDA6_LIVE_EXECUTOR.md`](docs/PDA6_LIVE_EXECUTOR.md) |
-| **PDA-7** | 🟡 ACTIVE | Sanitized incident bundle and local/remote-agent handoff | This plan §13 |
-| **PDA-8** | ⬜ QUEUED | Security hardening, clean-clone CI, installer/portable release, desktop shortcut verification and public launch | This plan §14 |
+| **PDA-7** | ✅ ACCEPTED 2026-10-11 | Sanitized incident bundle, guarded local export and no-authority coding-agent handoff | [`docs/PDA7_INCIDENT_BUNDLE.md`](docs/PDA7_INCIDENT_BUNDLE.md) |
+| **PDA-8** | 🟡 ACTIVE | Security hardening, clean-clone CI, installer/portable release, icon/shortcut verification and public launch | This plan §14 |
 
-### Immediate next action — PDA-7
+### Immediate next action — PDA-8
 
-Implement PDA-7 in this order:
+Start PDA-8 with release engineering and reproducibility before installer polish:
 
-1. define a bounded incident-evidence contract in Core before adding export UI;
-2. allow only explicit evidence classes: selected structured report metadata, bounded summary/full-log excerpts, selected sanitized Console / Activity rows, profile display metadata that is already non-secret, and app/build/runtime diagnostics;
-3. deny private-key bytes/paths beyond safe public identity, passphrases, passwords, tokens, SSH-agent sockets, raw environment dumps, unbounded filesystem paths and arbitrary recursive file collection;
-4. apply deterministic redaction before preview/export and make redaction tests authoritative;
-5. add an operator preview showing exactly what will be included and exactly what was redacted/omitted;
-6. export a local bounded bundle only after explicit operator action; no bundle may grant deployment authority or carry a live session capability;
-7. define an agent-handoff manifest that explains repository/profile/report context without exposing secrets or requiring the agent to own deployment access;
-8. any returned patch remains untrusted until human diff review, tests, fresh script approval/fingerprint validation if applicable, and a fresh deployment authorization;
-9. add automated negative tests for secret labels, private-key material, token-shaped values, agent sockets, path escapes, oversized evidence and unsupported evidence kinds;
-10. complete one sanitized real-report/console bundle smoke before PDA-7 acceptance.
+1. define the clean-clone Release build/test/publish contract and make it run in CI without private local profiles, keys, WSL secrets or Millenova-specific state;
+2. add release secret scanning and artifact auditing for repository + produced packages;
+3. define version metadata and a deterministic portable-release layout;
+4. verify the portable package on a clean Windows/user-state boundary before introducing an installer;
+5. add the Windows installer with explicit install/uninstall/upgrade lifecycle, Start Menu entry and optional desktop shortcut;
+6. verify packaged executable/window/taskbar/installer/shortcut icon parity and preserve validated About/theme/Console/security behavior;
+7. verify upgrade/reinstall preserves only intended user state and never persists live authorization/session state;
+8. finalize license/public policy/repository hygiene/release notes;
+9. perform installed + portable security-parity smokes and audit final release artifacts for secrets/private infrastructure/private keys before acceptance.
 
 ### Recent acceptance evidence
 
-PDA-2 accepted after operator smoke confirmed one unlock establishes READY with the approved key, repeated Hostinger/VPS probes work in the bounded session, explicit Lock returns to LOCKED, app close/reopen remains LOCKED, and no app-owned passphrase field is used.
+PDA-5 accepted after a real Both targets / PATCH dry run from the ZDeployPet UI remained structurally dry, completed Hostinger/VPS previews, restored local version state, generated authoritative dry reporter artifacts and exited `0`. The earlier stdin-prefeed prototype that accidentally entered live mode remains permanently rejected negative safety evidence.
 
-PDA-3 accepted after operator smoke confirmed single-instance activation, dark/red production shell, menus/About, separated/sanitized Console / Activity, responsive layout memory, non-authoritative ZPet companion states, runtime window/taskbar identity and keyboard accessibility. Packaged executable/installer/shortcut icon parity remains intentionally deferred to PDA-8.
+PDA-6 accepted after Release tests/build, immutable review/arming smoke and one explicit operator-controlled real Both targets / PATCH live deployment. The operator manually typed the exact confirmation phrase, the script completed VPS activation + Hostinger sync, no retry occurred, and PDA-4 reporter truth recorded live PASS.
 
-PDA-4 accepted after real Millenova reporter smoke confirmed the latest PASS card, Summary / Full log viewers, newest-first 30-row history, row-specific artifacts, UTF-8 decoding, fail-closed report/path validation, passing Release tests and lightweight visible-only polling.
-
-PDA-5 accepted 2026-10-10 after the final implementation safely completed a real **Both targets / PATCH** Millenova dry run from the ZDeployPet UI: approved script fingerprint matched, access was ON / READY, the script printed `DRY RUN — NOTHING WILL BE MODIFIED`, Hostinger/VPS delta previews completed, `DRY RUN COMPLETE` appeared, local `version.txt` was restored, reporter artifacts identified `v4.4.25_dry_both`, exit code was `0`, no live authorization phrase appeared, and the final Release solution regression run was reported green. The earlier stdin-prefeed prototype that accidentally entered live mode is permanently rejected and documented as negative safety evidence.
-
-PDA-6 accepted 2026-10-11 after Release tests/build, non-deploying arming smoke and one explicit operator-controlled real **Both targets / PATCH** live deployment from ZDeployPet. The immutable review froze target/release/script SHA and required the operator to type the exact confirmation phrase manually; wrong text failed, correct text armed launch, and editing after validation disarmed it. The real run entered `LIVE MILLENOVA DEPLOYMENT`, accepted the operator-entered phrase only at the exact prompt, passed VPS sync/activation/75-of-75 backend tests/health plus Hostinger site/config sync, printed `MILLENOVA DEPLOYMENT COMPLETE`, exited `0`, attempted no retry, and reporter truth recorded `v4.4.25`, `mode=live`, `result=pass`, duration 56s.
+PDA-7 accepted 2026-10-11 after deterministic redaction/bounds, canonical trusted-source collection, exact preview, `Copy all`, guarded local `.txt` export and a no-authority coding-agent manifest were implemented and smoke-tested against real Millenova reporter/console evidence. The final post-hardening Release publish passed with 0 warnings / 0 errors; published EXE SHA-256 was `5B989530A81DEB80FCFD378E4B80E2DB4532D570AEB1029F8D95F06A9ED01C83`. The final authority review confirmed bundles carry diagnostic text only and cannot satisfy PDA-2/PDA-5/PDA-6 deployment authorization gates.
 
 ---
 
@@ -72,6 +66,7 @@ PDA-6 accepted 2026-10-11 after Release tests/build, non-deploying arming smoke 
 | [`docs/PDA4_REPORT_MONITOR.md`](docs/PDA4_REPORT_MONITOR.md) | Accepted report-monitor contract/evidence | PDA-4 evidence |
 | [`docs/PDA5_DRY_RUN_EXECUTOR.md`](docs/PDA5_DRY_RUN_EXECUTOR.md) | Accepted dry-run execution contract, incident evidence and smoke result | PDA-5 evidence |
 | [`docs/PDA6_LIVE_EXECUTOR.md`](docs/PDA6_LIVE_EXECUTOR.md) | Accepted live review/confirmation/execution contract and production smoke evidence | PDA-6 evidence |
+| [`docs/PDA7_INCIDENT_BUNDLE.md`](docs/PDA7_INCIDENT_BUNDLE.md) | Accepted sanitized incident-bundle/export/agent-handoff contract and smoke evidence | PDA-7 evidence |
 | [`docs/PRODUCT_IDENTITY.md`](docs/PRODUCT_IDENTITY.md) | Product boundary and identity direction | Naming/identity boundary |
 | [`docs/PROFILES.md`](docs/PROFILES.md) | Shareable-contract/private-binding split and profile validation | Profile contract summary |
 
@@ -112,12 +107,15 @@ AUTHORITATIVE REPORT
 structured JSON + summary + full log + history
         ↓
 SANITIZED HANDOFF
-local/remote debugging evidence without deployment authority
+local debugging evidence without deployment authority
+        ↓
+RELEASE ENGINEERING
+clean-clone CI + audited portable/installer packages
 ```
 
 The project-owned deployment script remains authoritative for build/test/source selection/transfer/activation/application health/report generation. ZDeployPet validates and invokes the already-approved script; it does not rewrite project deployment logic.
 
-Private profile/session material stays under the per-user local application boundary. Private keys stay under the selected WSL user's `~/.ssh`. Real hosts/users/ports/personal paths must not become public defaults.
+Private profile/session material stays under the per-user local application boundary. Private keys stay under the selected WSL user's `~/.ssh`. Real hosts/users/ports/personal paths must not become public defaults or release artifacts.
 
 ---
 
@@ -128,7 +126,7 @@ The implementation must not:
 - store remote account passwords, private-key passphrases, tokens or private-key bytes in normal profile/application JSON;
 - collect a private-key passphrase in an app-owned field;
 - copy private keys into source repositories, release packages or remote targets;
-- export an SSH-agent socket;
+- export an SSH-agent socket or live session capability;
 - use `StrictHostKeyChecking=no` or silently accept changed host keys;
 - expose a production HTTP deployment endpoint or generic arbitrary-command textbox;
 - silently broaden targets/destinations;
@@ -137,9 +135,10 @@ The implementation must not:
 - auto-retry a partial live deployment;
 - treat process exit code/UI state as stronger than structured reporter truth;
 - make an agent-generated patch trusted without human review/tests/fresh deployment authorization;
-- commit real infrastructure data, reports, incident bundles or credentials to the public repository.
+- commit real infrastructure data, reports, incident bundles or credentials to the public repository;
+- package local profiles, local settings, private infrastructure identifiers, deployment reports, incident bundles, key material or transient authorization/session state.
 
-Required controls include exact host-key/fingerprint validation, bounded session lifetime, lock-on-close, fixed script/action/input allowlists, script-fingerprint verification, single execution lock, canonical report/artifact path containment, bounded evidence, redaction and explicit human authorization for live deployment.
+Required controls include exact host-key/fingerprint validation, bounded session lifetime, lock-on-close, fixed script/action/input allowlists, script-fingerprint verification, single execution lock, canonical report/artifact path containment, bounded/redacted evidence, explicit human authorization for live deployment, and release-time secret/artifact auditing.
 
 ---
 
@@ -169,16 +168,7 @@ Accepted behavior includes profile-scoped Ed25519 deployment keys, explicit publ
 
 **Status:** ✅ ACCEPTED 2026-10-10
 
-Accepted outcomes:
-
-- app-owned dedicated SSH-agent session in selected WSL;
-- trusted-terminal unlock without app-owned passphrase capture;
-- loaded fingerprint must exactly match the PDA-1-approved deployment key before READY;
-- LOCKED / READY / EXPIRING / expiry behavior with bounded lease;
-- explicit Lock and lock-on-close;
-- restart never restores authorization from stale metadata alone;
-- repeated target probes work during one valid session without private-key file forwarding;
-- agent socket/session authorization is never exported.
+Accepted outcomes include an app-owned dedicated SSH-agent session in selected WSL; trusted-terminal unlock without app-owned passphrase capture; exact approved-fingerprint validation before READY; bounded lease/expiry; explicit Lock and lock-on-close; no restart authorization from stale metadata alone; repeated probes during one valid lease; and no exported agent socket/session authorization.
 
 ---
 
@@ -186,7 +176,7 @@ Accepted outcomes:
 
 **Status:** ✅ ACCEPTED 2026-10-10
 
-Accepted outcomes include single-instance shell, dark/red identity, menus/About, separated sanitized Console / Activity, responsive layout memory, ZPet state companion, runtime vector identity, focus cues and keyboard accessibility. Packaged executable/installer/desktop-shortcut icon work remains deferred to PDA-8.
+Accepted outcomes include single-instance shell, dark/red identity, menus/About, separated sanitized Console / Activity, responsive layout memory, ZPet state companion, runtime vector identity, focus cues and keyboard accessibility. Packaged executable/installer/desktop-shortcut icon parity is owned by PDA-8.
 
 ---
 
@@ -194,9 +184,9 @@ Accepted outcomes include single-instance shell, dark/red identity, menus/About,
 
 **Status:** ✅ ACCEPTED 2026-10-10
 
-Accepted outcomes include authoritative schema-v1 latest/history reporting, canonical path containment, bounded read-only Summary / Full log viewers, explicit UTF-8, newest-first deduplicated history, fail-closed malformed/untrusted handling and lightweight visible-only polling that refreshes history only for a genuinely new deployment id.
+Accepted outcomes include authoritative schema-v1 latest/history reporting, canonical path containment, bounded read-only Summary / Full log viewers, explicit UTF-8, newest-first deduplicated history, fail-closed malformed/untrusted handling and lightweight visible-only polling.
 
-Acceptance evidence and security details are maintained in [`docs/PDA4_REPORT_MONITOR.md`](docs/PDA4_REPORT_MONITOR.md).
+Full evidence: [`docs/PDA4_REPORT_MONITOR.md`](docs/PDA4_REPORT_MONITOR.md).
 
 ---
 
@@ -204,21 +194,7 @@ Acceptance evidence and security details are maintained in [`docs/PDA4_REPORT_MO
 
 **Status:** ✅ ACCEPTED 2026-10-10
 
-Accepted outcomes:
-
-- only the configured/approved script can run;
-- current script SHA-256 is rechecked immediately before execution;
-- live PDA-2 READY runtime and approved target probes are required;
-- target/release choices are allowlisted/bounded and never interpreted as arbitrary shell text;
-- one execution lease prevents overlap;
-- the rejected stdin-prefeed prototype is permanently retired;
-- fixed internal read adapter structurally forces dry mode and cannot emit live authorization;
-- any live marker fails closed;
-- success requires both `DRY RUN — NOTHING WILL BE MODIFIED` and `DRY RUN COMPLETE`;
-- Dry run / Live deploy / ZDeployPet console channels are separated;
-- PDA-4 reporter truth refreshes after completion and remains authoritative;
-- real Both targets / PATCH Millenova dry-run smoke passed with exit `0` and reporter `mode=dry`;
-- final Release solution regression run was reported green.
+Accepted outcomes include configured/approved-script-only execution, immediate SHA-256 recheck, live PDA-2 READY/target-probe prerequisite, bounded target/release inputs, one execution lease, structurally forced dry mode, live-marker fail-closed behavior, dedicated Dry run console and PDA-4 reporter-authoritative closeout. Real Both targets / PATCH dry-run smoke passed.
 
 Full evidence: [`docs/PDA5_DRY_RUN_EXECUTOR.md`](docs/PDA5_DRY_RUN_EXECUTOR.md).
 
@@ -228,35 +204,7 @@ Full evidence: [`docs/PDA5_DRY_RUN_EXECUTOR.md`](docs/PDA5_DRY_RUN_EXECUTOR.md).
 
 **Status:** ✅ ACCEPTED 2026-10-11
 
-Accepted outcomes:
-
-- immutable pre-deployment review of project/profile/target/destination/release/script fingerprint;
-- fresh PDA-2 READY revalidation immediately before launch;
-- approved-script fingerprint gate and one global dry/live execution lease;
-- exact human confirmation phrase displayed and manually typed by the operator;
-- wrong text fails closed; editing after successful validation disarms live launch;
-- app never auto-types, auto-fills, pastes, derives or synthesizes the live confirmation phrase;
-- confirmation reaches only the approved script's exact live-confirmation prompt and at most once;
-- target/release/mode inputs are bounded through the narrow live WSL adapter;
-- natural script output streams only to the **Live deploy** console channel;
-- no auto-retry of partial/failed/cancelled live deployments;
-- session/script/target/release/phrase/concurrency state is revalidated immediately before launch;
-- live protocol fails closed on dry markers, missing live proof, missing confirmation prompt or incomplete successful exit;
-- PDA-4 reporter truth refreshes after completion and remains authoritative over exit code/UI state;
-- Core/executor negative tests and Release build/tests passed;
-- explicit operator-controlled production smoke completed successfully.
-
-Production acceptance smoke:
-
-- immutable review: **Both targets / PATCH**, release preview `v4.4.24 -> v4.4.25`;
-- operator manually typed the exact configured phrase; wrong phrase was rejected and field mutation disarmed launch;
-- live script entered `LIVE MILLENOVA DEPLOYMENT` and accepted the operator-entered phrase only at the exact prompt;
-- VPS sync passed with zero changed files;
-- VPS production activation passed with 0 npm vulnerabilities, 75/75 backend tests, restart on `:9400`, and healthy media-auth runtime;
-- Hostinger site sync passed with the 7-byte version update; Hostinger config had zero changes;
-- `MILLENOVA DEPLOYMENT COMPLETE` appeared;
-- process exited `0`; no retry was attempted;
-- reporter recorded deployment id `20261011-050132_v4.4.25_live_both`, `previous_release=4.4.24`, `release=4.4.25`, `mode=live`, `result=pass`, `exit_status=0`, duration 56s.
+Accepted outcomes include immutable review, fresh READY/script/session revalidation, one execution lease, exact manually typed human confirmation, disarming on mutation, no auto-fill/synthesis, prompt-scoped single confirmation delivery, no auto-retry, live-protocol fail-closed checks and PDA-4 reporter-authoritative closeout. Real Both targets / PATCH live deployment smoke passed.
 
 Full evidence: [`docs/PDA6_LIVE_EXECUTOR.md`](docs/PDA6_LIVE_EXECUTOR.md).
 
@@ -264,35 +212,34 @@ Full evidence: [`docs/PDA6_LIVE_EXECUTOR.md`](docs/PDA6_LIVE_EXECUTOR.md).
 
 # 13. PDA-7 — Sanitized incident bundle and agent handoff
 
-**Status:** 🟡 ACTIVE
+**Status:** ✅ ACCEPTED 2026-10-11
 
-Required outcomes:
+Accepted outcomes:
 
-- bounded incident bundles from selected logs/reports/state;
-- deterministic redaction/denial of credentials, secrets, private keys, passphrases, tokens, SSH-agent sockets and unsafe paths;
-- explicit allowlist of evidence kinds and byte/line/count ceilings;
-- preview before export showing included, redacted and omitted evidence;
-- local bundle export only after explicit operator action;
-- local coding-agent handoff or explicit export without deployment authority;
-- no live agent/session capability, credential material or remote-write authority in a bundle;
-- returned patches remain untrusted until human diff review, tests and a new deployment authorization.
+- explicit allowlisted evidence kinds with undefined-kind rejection;
+- hard item/label/input/sanitized/bundle bounds;
+- deterministic redaction of private-key blocks, common secrets/tokens, SSH-agent sockets and Unix/Windows private-key paths;
+- trusted PDA-4 artifact collection with canonical containment and realpath/type/size-bounded reads;
+- bounded Dry run / Live deploy / ZDeployPet console collection;
+- exact operator preview with included/redacted/truncated/omitted evidence;
+- `Copy all` from successfully built sanitized content only;
+- explicit guarded local `.txt` export with relative/UNC/ADS/project-path/non-txt denial;
+- deterministic coding-agent manifest with `Authority: NONE` and no credential/session/remote-write capability;
+- selection mutation invalidates Copy/Export until rebuild;
+- returned agent patches remain untrusted until human review/tests/fresh authorization;
+- real preview, local export and manifest UI smokes passed;
+- final post-hardening Release publish passed with 0 warnings / 0 errors;
+- final authority review confirmed an exported bundle cannot satisfy or bypass PDA-2/PDA-5/PDA-6 authorization.
 
-Acceptance gate:
+Final published EXE SHA-256 at acceptance: `5B989530A81DEB80FCFD378E4B80E2DB4532D570AEB1029F8D95F06A9ED01C83`.
 
-- secret/private-key/token/agent-socket fixtures are redacted or rejected deterministically;
-- unsupported evidence classes and path escapes fail closed;
-- bundle size/content is bounded and deterministic;
-- preview matches exported content;
-- real reporter/console evidence can be exported without secret leakage;
-- agent handoff contains enough sanitized context to debug while carrying no deployment authority;
-- automated tests pass;
-- one operator-controlled sanitized real-evidence smoke passes.
+Full evidence: [`docs/PDA7_INCIDENT_BUNDLE.md`](docs/PDA7_INCIDENT_BUNDLE.md).
 
 ---
 
 # 14. PDA-8 — Hardening, packaging and public launch
 
-**Status:** ⬜ QUEUED
+**Status:** 🟡 ACTIVE
 
 Required outcomes:
 
@@ -303,9 +250,20 @@ Required outcomes:
 - Start Menu entry and optional desktop shortcut;
 - packaged executable/window/taskbar/installer/shortcut icon parity;
 - About/build/theme/Console/security parity with the validated local build;
-- upgrade/reinstall behavior preserving intended user state;
+- upgrade/reinstall behavior preserving intended user state only;
 - final license/public policy/repository hygiene and release notes;
-- release package contains no secrets/private infrastructure/private keys.
+- release package contains no secrets/private infrastructure/private keys/session state.
+
+Acceptance gate:
+
+- a clean clone builds/tests/publishes without private machine state;
+- CI and release scanning fail closed on prohibited secret/private artifact classes;
+- portable and installed packages launch and preserve the accepted security behavior from PDA-0 through PDA-7;
+- uninstall/reinstall/upgrade behavior is explicitly tested and does not preserve live deployment authorization;
+- package/installer/shortcut identity is consistent;
+- final distributable contents are audited and contain no private profile/settings/report/bundle/key/session material;
+- README/license/release notes/public policy accurately describe the product and security boundary;
+- one portable and one installed smoke pass on the release candidate before PDA-8 acceptance.
 
 ---
 
@@ -321,8 +279,8 @@ Required outcomes:
 | PDA-4 report monitor/history | ✅ parser/path/history-selection tests; Release run green | ✅ 2026-10-10 | ✅ real latest/history/artifact smoke |
 | PDA-5 dry-run | ✅ guardrail + prompt-protocol tests; final Release run green | ✅ 2026-10-10 | ✅ real Both targets / PATCH dry run, reporter dry PASS |
 | PDA-6 live execution | ✅ review/confirmation/live-protocol safety tests; Release build/tests green | ✅ review/arming smoke 2026-10-11 | ✅ real Both targets / PATCH live run, reporter live PASS 2026-10-11 |
-| PDA-7 incident bundle | Required | Required | Required sanitized handoff smoke |
-| PDA-8 packaging | CI/release automation | Required installed + portable smoke | Security parity with validated workflows |
+| PDA-7 incident bundle | ✅ sanitizer/bounds/manifest/export negative coverage; final Release publish green | ✅ preview/Copy/export/manifest 2026-10-11 | ✅ real reporter + console sanitized handoff smoke |
+| PDA-8 packaging | 🟡 clean-clone CI/release automation required | Required installed + portable smoke | Security parity with validated workflows |
 
 ---
 
@@ -330,32 +288,32 @@ Required outcomes:
 
 **Repository:** `wilderruiz/zdeploypet`  
 **Branch:** `main`  
-**Reviewed baseline before this plan update:** `41e38e85fa8463bd179735fca5df1030ceddd1c9`  
+**Reviewed baseline before this plan update:** `812ec32705d2a5a15e7c39e4ab3e0c2b578574ae`  
 **Known-good local publish workflow:** `scripts/publish-local.ps1`  
-**Completed:** PDA-0, PDA-0A, PDA-1, PDA-2, PDA-3, PDA-4, PDA-5, PDA-6  
-**Active:** PDA-7
+**Completed:** PDA-0, PDA-0A, PDA-1, PDA-2, PDA-3, PDA-4, PDA-5, PDA-6, PDA-7  
+**Active:** PDA-8
 
-Recent accepted evidence:
+Latest acceptance evidence:
 
-- bounded deployment access READY/LOCK/close behavior passed;
-- production shell/theme/menu/About/ZPet/accessibility behavior passed;
-- authoritative latest/history report monitoring passed against real Millenova reports;
-- separated Dry run / Live deploy / ZDeployPet console tabs are in place;
-- rejected PDA-5 stdin-prefeed prototype remains documented negative safety evidence;
-- accepted PDA-5 implementation safely forced dry mode, completed Hostinger/VPS previews, generated `v4.4.25_dry_both` reporter artifacts and exited `0`;
-- PDA-6 immutable review and exact human-confirmation arming/disarming behavior passed;
-- accepted PDA-6 real live run completed Both targets / PATCH, passed VPS activation + Hostinger sync, printed deployment complete, exited `0`, attempted no retry, and reporter recorded `v4.4.25_live_both` / `mode=live` / PASS.
+- PDA-7 real sanitized reporter/console preview succeeded;
+- real operator-selected `.txt` export succeeded;
+- coding-agent manifest smoke visibly confirmed no authority/credentials/session/remote-write capability;
+- unsupported evidence-kind and Windows private-key-path hardening added;
+- final Release build/publish after hardening: 0 warnings, 0 errors;
+- accepted published EXE SHA-256: `5B989530A81DEB80FCFD378E4B80E2DB4532D570AEB1029F8D95F06A9ED01C83`;
+- final authority-content review passed: exported evidence does not carry the runtime state or human authorization required to deploy.
 
-Next concrete implementation target — PDA-7:
+Next concrete implementation target — PDA-8:
 
-1. Core evidence-kind/size/redaction contract;
-2. deterministic secret/key/token/socket/path redaction and denial rules;
-3. selected report + console + runtime evidence collector with hard bounds;
-4. operator preview before export;
-5. sanitized local bundle format and manifest;
-6. agent-handoff metadata with no deployment authority;
-7. automated negative tests;
-8. real reporter/console sanitized bundle smoke.
+1. clean-clone CI contract and workflow;
+2. repository/package secret scan + artifact audit;
+3. deterministic versioned portable package;
+4. clean-state portable smoke;
+5. installer/uninstaller + Start Menu/optional desktop shortcut;
+6. icon and production-shell parity in packaged surfaces;
+7. upgrade/reinstall/user-state tests;
+8. license/public-policy/repository hygiene/release notes;
+9. final portable + installed release-candidate security smokes.
 
 ---
 
@@ -366,10 +324,11 @@ When resuming work:
 1. read this file first;
 2. confirm repository `main` and current checkpoint;
 3. inspect the active phase only after reading its acceptance gate;
-4. preserve all security invariants before expanding UI behavior;
-5. keep real infrastructure data and all private-key material outside the public repository;
+4. preserve all security invariants before expanding packaging/release behavior;
+5. keep real infrastructure data and all private-key material outside the public repository and release artifacts;
 6. treat `.gitignore` as defense in depth, not secret storage;
-7. for execution phases, never treat persisted session metadata alone as authorization—live ownership/liveness/fingerprint validation remains mandatory;
+7. never treat persisted session metadata alone as authorization—live ownership/liveness/fingerprint validation remains mandatory;
 8. reporter truth remains authoritative over process exit/UI state;
 9. never auto-supply the live confirmation phrase;
-10. update this plan in the same change that materially changes phase status or acceptance evidence.
+10. never package local profile/settings/report/bundle/key/session material;
+11. update this plan in the same change that materially changes phase status or acceptance evidence.
