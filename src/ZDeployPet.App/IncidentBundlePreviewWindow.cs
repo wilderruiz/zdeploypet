@@ -20,6 +20,7 @@ internal sealed class IncidentBundlePreviewWindow : Window
     private readonly CheckBox _liveDeployCheck;
     private readonly CheckBox _zdeployPetCheck;
     private readonly Button _buildPreviewButton;
+    private readonly Button _copyAllButton;
     private readonly TextBlock _statusText;
     private readonly TextBox _previewText;
 
@@ -154,6 +155,16 @@ internal sealed class IncidentBundlePreviewWindow : Window
             HorizontalAlignment = HorizontalAlignment.Right,
             Margin = new Thickness(0, 12, 0, 0)
         };
+        _copyAllButton = new Button
+        {
+            Content = "Copy all",
+            Padding = new Thickness(16, 8, 16, 8),
+            Margin = new Thickness(0, 0, 10, 0),
+            IsEnabled = false
+        };
+        _copyAllButton.Click += CopyAll_Click;
+        actions.Children.Add(_copyAllButton);
+
         Button close = new()
         {
             Content = "Close",
@@ -171,6 +182,7 @@ internal sealed class IncidentBundlePreviewWindow : Window
     private async Task BuildPreviewAsync()
     {
         _buildPreviewButton.IsEnabled = false;
+        _copyAllButton.IsEnabled = false;
         _statusText.Text = "READING… collecting selected trusted evidence.";
         _previewText.Text = "PREVIEW ONLY — collecting and sanitizing selected evidence…";
 
@@ -213,6 +225,7 @@ internal sealed class IncidentBundlePreviewWindow : Window
             _statusText.Text = $"READY — {bundle.Evidence.Count} included item(s), {redacted} redacted, {truncated} truncated, {bundle.TotalCharacters:N0} characters.";
             _statusText.Foreground = FindBrush("AppSuccessBrush", Brushes.LightGreen);
             _previewText.Text = BuildPreviewText(bundle, selection);
+            _copyAllButton.IsEnabled = true;
         }
         catch (Exception exception)
         {
@@ -223,6 +236,30 @@ internal sealed class IncidentBundlePreviewWindow : Window
         finally
         {
             _buildPreviewButton.IsEnabled = true;
+        }
+    }
+
+    private void CopyAll_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_copyAllButton.IsEnabled || string.IsNullOrWhiteSpace(_previewText.Text))
+            return;
+
+        try
+        {
+            Clipboard.SetText(_previewText.Text);
+            _statusText.Text = "COPIED — sanitized preview copied to the Windows clipboard.";
+            _statusText.Foreground = FindBrush("AppSuccessBrush", Brushes.LightGreen);
+        }
+        catch (Exception exception)
+        {
+            _statusText.Text = "ERROR — sanitized preview could not be copied to the clipboard.";
+            _statusText.Foreground = FindBrush("AppAccentBrush", Brushes.IndianRed);
+            MessageBox.Show(
+                this,
+                exception.Message,
+                "Copy sanitized preview",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -260,7 +297,7 @@ internal sealed class IncidentBundlePreviewWindow : Window
         }
 
         output.AppendLine(new string('=', 72));
-        output.AppendLine("END OF PREVIEW — no export action exists in this build.");
+        output.AppendLine("END OF PREVIEW — no file export action exists in this build.");
         return output.ToString();
     }
 
