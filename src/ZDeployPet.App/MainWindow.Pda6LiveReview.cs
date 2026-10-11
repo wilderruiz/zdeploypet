@@ -15,7 +15,8 @@ public partial class MainWindow
         if (_liveReviewButton is not null || _operatorAccessCard?.Child is not Grid accessGrid)
             return;
 
-        accessGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        while (accessGrid.RowDefinitions.Count < 2)
+            accessGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         _liveReviewButton = new Button
         {
@@ -27,7 +28,7 @@ public partial class MainWindow
             IsEnabled = false
         };
         _liveReviewButton.Click += LiveReview_Click;
-        Grid.SetRow(_liveReviewButton, 2);
+        Grid.SetRow(_liveReviewButton, 1);
         Grid.SetColumnSpan(_liveReviewButton, 2);
         accessGrid.Children.Add(_liveReviewButton);
 
@@ -36,7 +37,7 @@ public partial class MainWindow
             new HelpTipSpec(
                 "Open the immutable live-deployment review.",
                 "PDA-6 freezes the exact profile, target, release choice, script path and script SHA-256 before live execution can be authorized.",
-                WhenToUse: "Available only while Deployment access is ON / READY with all configured target probes passed.",
+                WhenToUse: "Available only while ZDeploy Pet is READY with all configured target probes passed.",
                 WhatItDoes: "Creates a review snapshot, requires you to manually type the exact configured confirmation phrase, revalidates the frozen state immediately before launch, then runs only the approved project script.",
                 Safety: "The confirmation field always starts blank. ZDeployPet never auto-fills or synthesizes the phrase. Any changed script/session/target/release state invalidates confirmation, and live execution is never retried automatically."));
 
