@@ -3,20 +3,82 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ZDeployPet UI proposal</title>
+<title>ZDeployPet UI proposal — v2</title>
 <style>
 :root{--bg:#0b1220;--bg2:#111a2b;--panel:#172238;--panel2:#1c2942;--line:#2b3a57;--text:#e8eefc;--muted:#9cadca;--blue:#3b82f6;--blue2:#24364a;--green:#22c55e;--green2:#243a2c;--red:#ef556a;--purple:#8b5cf6;--console:#050912}*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:radial-gradient(circle at 10% 0,rgba(59,130,246,.11),transparent 28%),linear-gradient(#09101c,#0b1220);color:var(--text);font-family:Inter,"Segoe UI",sans-serif}.app{width:min(1500px,calc(100vw - 24px));margin:12px auto;border:1px solid rgba(239,85,106,.6);border-radius:16px;overflow:hidden;box-shadow:0 20px 50px #0008;background:#0d1422}.title{height:42px;background:linear-gradient(90deg,#ef556a,#e7495f);display:flex;align-items:center;padding:0 14px;font-size:14px;color:#fff}.menu{height:42px;padding:0 18px;display:flex;align-items:center;gap:26px;border-bottom:1px solid var(--line);background:#111827;color:var(--muted);font-size:13px}.shell{display:grid;grid-template-columns:64px minmax(0,1.6fr) minmax(390px,1fr);min-height:860px}.rail{border-right:1px solid var(--line);padding:14px 10px;background:#0d1421;display:flex;flex-direction:column;gap:10px}.rail button{width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:#152036;color:var(--muted);font-size:19px;cursor:pointer}.rail button.active{border-color:var(--red);box-shadow:inset 3px 0 var(--red);color:white}.main{padding:26px 24px;border-right:1px solid var(--line)}.side{padding:18px 16px;background:#0b111c}.hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.hero h1{margin:0;font-size:30px}.hero p{color:var(--muted);margin:8px 0 0;font-size:14px}.pet{display:flex;align-items:center;gap:13px;min-width:230px;padding:13px 15px;border:1px solid #3b6f55;border-radius:16px;background:linear-gradient(#182b2a,#14231f);color:white;cursor:pointer}.pet.locked{border-color:#39445a;background:linear-gradient(#1a2130,#131a27)}.face{width:52px;height:52px;border:1px solid #ffffff1f;border-radius:18px;display:grid;place-items:center;font-size:25px;background:#0e1726}.pet b{display:block}.state{color:#6ee78f;font-weight:800}.pet.locked .state{color:#b7c2d7}.pet small{color:var(--muted);display:block;margin-top:4px}.strip{margin:18px 0 16px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:#152036;color:var(--muted);font-size:13px}.strip b{color:var(--text)}.workspace{border:1px solid var(--line);border-radius:16px;padding:14px;background:linear-gradient(#172238,#141d30)}.workspace-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}.workspace-head strong{font-size:15px}.workspace-head small{display:block;color:var(--muted);margin-top:4px}.info{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:var(--muted);cursor:pointer}.info:hover{background:#3b82f624;color:#dbe8ff}.tabs{display:flex;gap:8px;margin-bottom:14px}.tab{min-width:110px;padding:12px 16px;border-radius:11px;border:1px solid var(--line);background:#151f32;color:var(--text);font-weight:700;cursor:pointer}.tab.active[data-name=dry]{background:var(--blue2);border-color:#4f6f96}.tab.active[data-name=live]{background:var(--green2);border-color:#4e8b63}.tab.active[data-name=reports]{background:#302544;border-color:#6d55a0}.pane{display:none;border:1px solid var(--line);border-radius:14px;padding:16px;background:#141e31}.pane.active{display:block}.pane h2{margin:0 0 6px;font-size:20px}.pane p{color:var(--muted);line-height:1.5;font-size:14px}.steps{color:var(--muted);line-height:1.75;font-size:14px}.card{margin-top:12px;padding:15px;border:1px solid var(--line);border-radius:13px;background:#19243a}.card h3{margin:0 0 11px;font-size:16px}.mono{font-family:Consolas,monospace}.ok{color:#7ef28f;font-weight:700}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}.field select,.field input{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:#0d1524;color:var(--text)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.btn{padding:9px 13px;border-radius:9px;border:1px solid var(--line);background:#1d2a43;color:var(--text);cursor:pointer}.btn.blue{background:#294f8a;border-color:#4f6f96}.btn.green{background:#235e42;border-color:#4e8b63}.report-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.tools{display:flex;gap:4px}.tool{width:28px;height:28px;border:0;background:transparent;color:var(--muted);font-size:18px;cursor:pointer}.tool:hover{color:#dce9ff;background:#3b82f61f;border-radius:8px}.history{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}.history th,.history td{text-align:left;padding:9px 7px;border-bottom:1px solid #24324c}.history th{color:var(--muted)}.side h2{margin:0;font-size:19px}.side .sub{color:var(--muted);font-size:12px;margin:5px 0 13px}.session{display:flex;gap:18px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#172238;color:var(--muted);font-size:12px}.session b{color:var(--text)}.console-tabs{display:flex;gap:7px;margin:12px 0 9px;flex-wrap:wrap}.ctab{padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:#172238;font-size:12px}.ctab.active{border-color:var(--red);box-shadow:inset 0 -2px var(--red)}.console{height:660px;overflow:auto;padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--console);font:12px/1.45 Consolas,monospace;color:#e9f1ff;white-space:pre-wrap}.console .dim{color:#8295b7}.console .good{color:#7ef28f}.console-actions{display:flex;gap:8px;margin-top:9px}@media(max-width:1150px){.shell{grid-template-columns:64px 1fr}.side{grid-column:1/-1}.main{border-right:0}.console{height:400px}}@media(max-width:760px){.shell{grid-template-columns:1fr}.rail{flex-direction:row;border-right:0;border-bottom:1px solid var(--line)}.hero{flex-direction:column}.grid{grid-template-columns:1fr}}
+</style>
+<style>
+/* V2 — premium operations console */
+:root{--bg:#080a0d;--bg2:#0d1015;--panel:#11151b;--panel2:#161b22;--line:#262c35;--line2:#343c47;--text:#f4f1ea;--muted:#8e97a5;--blue:#80a7d8;--blue2:#172332;--green:#64d89a;--green2:#14291f;--red:#d48b68;--purple:#b6a1d8;--console:#07090c;--gold:#c9a46a;--gold2:#2b2419;--shadow:0 32px 80px rgba(0,0,0,.52)}
+*{scrollbar-color:#343b45 transparent;scrollbar-width:thin}
+body{background:radial-gradient(ellipse at 18% -10%,rgba(201,164,106,.10),transparent 34%),radial-gradient(ellipse at 92% 0,rgba(100,216,154,.055),transparent 28%),linear-gradient(180deg,#080a0d 0%,#0b0e13 100%);font-family:"Segoe UI Variable Text","Segoe UI",Inter,sans-serif;letter-spacing:-.005em}
+.app{width:min(1580px,calc(100vw - 40px));margin:20px auto;border:1px solid #303640;border-radius:20px;background:#0d1015;box-shadow:var(--shadow),inset 0 1px rgba(255,255,255,.04);overflow:hidden}
+.title{height:48px;padding:0 20px;border-bottom:1px solid #2d333b;background:linear-gradient(180deg,#171b21,#13171c);color:#e9e4da;font-size:13px;font-weight:650;letter-spacing:.02em;box-shadow:inset 0 1px rgba(255,255,255,.04)}
+.title:before{content:"";width:8px;height:8px;margin-right:11px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(201,164,106,.10)}
+.menu{height:40px;padding:0 20px;gap:30px;border-bottom:1px solid #242a32;background:#0e1217;color:#8993a0;font-size:12px}
+.menu span{padding:13px 0 11px;cursor:default}.menu span:first-child{color:#e8e3d9;box-shadow:inset 0 -1px var(--gold)}
+.shell{grid-template-columns:72px minmax(0,1.55fr) minmax(430px,.9fr);min-height:850px}
+.rail{padding:18px 14px;border-right:1px solid #242a32;background:linear-gradient(180deg,#0c1015,#0a0d11);gap:12px}
+.rail button{width:42px;height:42px;border:1px solid transparent;border-radius:12px;background:transparent;color:#717b88;font-size:18px;transition:.18s ease}
+.rail button:hover{background:#171c23;color:#d8dce1;border-color:#2a313a}.rail button.active{border-color:#51462f;background:linear-gradient(145deg,#2b261c,#191914);color:#e3c186;box-shadow:none}
+.main{padding:30px 28px 34px;border-right:1px solid #242a32;background:linear-gradient(135deg,rgba(255,255,255,.012),transparent 35%)}
+.side{padding:27px 22px 22px;background:linear-gradient(180deg,#0b0e13,#090c10)}
+.hero{align-items:center;gap:28px}.hero h1{font-size:32px;font-weight:680;letter-spacing:-.045em}.hero p{max-width:680px;margin-top:7px;color:#929ba8;font-size:13px;line-height:1.55}
+.pet{min-width:250px;padding:12px 15px;border:1px solid #345f49;border-radius:14px;background:linear-gradient(145deg,#16251e,#101a16);box-shadow:inset 0 1px rgba(255,255,255,.04),0 10px 24px rgba(0,0,0,.18);text-align:left;transition:.18s ease}
+.pet:hover{transform:translateY(-1px);border-color:#4a7b62}.pet.locked{border-color:#3a414b;background:linear-gradient(145deg,#191d24,#11151a)}
+.face{width:46px;height:46px;border-color:#2f3945;border-radius:13px;background:#0d1218;font-size:22px;box-shadow:inset 0 1px rgba(255,255,255,.03)}
+.pet b{font-size:12px;letter-spacing:.01em}.state{margin-top:2px;color:#74dfa2;font-size:12px;letter-spacing:.08em}.pet small{font-size:10px;line-height:1.35}
+.strip {
+    margin: 22px 0 18px;
+    padding: 12px 14px;
+    border: 1px solid #292f38;
+    border-radius: 10px;
+    background: #11161c;
+    color: #8f99a7;
+    font-size: 11px;
+    line-height: 1.55;
+    /* box-shadow: inset 3px 0 var(--gold); */
+}
+.strip b{color:#ddd8cd;font-weight:650}
+.workspace{padding:18px;border:1px solid #2a303900;border-radius:16px;background:linear-gradient(160deg,#141920,#10141a 48%,#0f1318);box-shadow:inset 0 1px rgba(255,255,255,.025),0 18px 40px rgba(0,0,0,.16)}
+.workspace-head{margin-bottom:16px}.workspace-head strong{font-size:14px;font-weight:650}.workspace-head small{margin-top:5px;color:#7f8996;font-size:11px}.info{border:1px solid transparent;color:#7f8996;font-family:Georgia,serif;font-size:14px}.info:hover{border-color:#353c46;background:#191e25;color:#e5dfd4}
+.tabs{display:inline-flex;gap:3px;margin:0 0 16px;padding:4px;border:1px solid #272d35;border-radius:11px;background:#0b0f14}
+.tab{min-width:104px;padding:9px 15px;border:1px solid transparent;border-radius:8px;background:transparent;color:#77818e;font-size:11px;font-weight:700;letter-spacing:.055em;transition:.16s ease}
+.tab:hover{color:#d7dbe0;background:#151a21}.tab.active[data-name=dry]{border-color:#34475b;background:#1a2633;color:#d8e8f7;box-shadow:0 2px 8px rgba(0,0,0,.25)}.tab.active[data-name=live]{border-color:#345e49;background:#17281f;color:#d9f5e5}.tab.active[data-name=reports]{border-color:#554967;background:#282131;color:#eadff4}
+.pane{border:0;border-radius:0;padding:20px;background:transparent;box-shadow:none}
+.pane h2{margin-bottom:8px;color:#f3efe7;font-size:21px;font-weight:660;letter-spacing:-.025em}.pane>p{max-width:720px;margin:0 0 18px;color:#858f9c;font-size:12px;line-height:1.65}
+.steps{font-size:12px}
+.card {
+    margin-top: 12px;
+    padding: 17px;
+    border: 1px solid #2a313a00;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #141a26, #13181e);
+    /* box-shadow: 0 8px 18px rgba(0,0,0,.12); */
+}
+.card h3{margin-bottom:13px;color:#eae5dc;font-size:14px;font-weight:650
+}.card>div:not(.grid):not(.report-head):not(.actions){font-size:12px;color:#aeb5bf}
+.mono{padding:10px 11px;border:1px solid #282f38;border-radius:8px;background:#0b0f14;color:#bac3ce;font-size:10px;overflow-wrap:anywhere}.ok{color:#6fdda0;font-size:11px;letter-spacing:.01em}
+.grid{gap:14px}.field label{margin-bottom:7px;color:#7f8996;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}.field select,.field input{padding:11px 12px;border-color:#2c333d;border-radius:9px;background:#0b0f14;color:#e7e3dc;font-size:12px;outline:none}.field select:focus,.field input:focus{border-color:#756443;box-shadow:0 0 0 3px rgba(201,164,106,.08)}
+.actions{margin-top:15px}.btn{padding:9px 13px;border-color:#303741;border-radius:8px;background:#191f27;color:#d7dbe0;font-size:11px;font-weight:620;transition:.15s ease}.btn:hover{transform:translateY(-1px);border-color:#46505c;background:#202731}.btn.blue{border-color:#39536c;background:#22384c;color:#e2f0fb}.btn.green{border-color:#3e7658;background:#20553a;color:#ecfff4;box-shadow:0 8px 18px rgba(31,98,65,.16)}
+.history{font-size:10px}.history th,.history td{padding:10px 8px;border-bottom-color:#242b33}.history th{color:#77818e;font-size:9px;letter-spacing:.05em;text-transform:uppercase}
+.side h2{color:#f1ede5;font-size:17px;font-weight:660;letter-spacing:-.02em}.side .sub{max-width:460px;margin:6px 0 16px;color:#7f8996;font-size:11px;line-height:1.55}
+.session{gap:22px;padding:11px 13px;border-color:#292f38;border-radius:9px;background:#11161d;color:#8d96a3;font-size:10px}.session b{color:#dcd7ce;font-weight:650}
+.console-tabs{gap:2px;margin:14px 0 8px;padding-bottom:0;border-bottom:1px solid #242a32}.ctab{padding:9px 11px;border:0;border-radius:0;background:transparent;color:#727c89;font-size:10px;font-weight:650}.ctab.active{color:#e8e2d8;border:0;box-shadow:inset 0 -1px var(--gold)}
+.console{height:655px;padding:16px;border-color:#252c34;border-radius:11px;background:linear-gradient(180deg,#07090c,#080b0f);font:11px/1.6 "Cascadia Mono",Consolas,monospace;color:#d8dde5;box-shadow:inset 0 8px 24px rgba(0,0,0,.25)}.console .dim{color:#667282}.console .good{color:#69d99c}.console-actions{justify-content:flex-end;margin-top:10px}
+@media(max-width:1150px){.app{width:calc(100vw - 20px);margin:10px auto}.shell{grid-template-columns:64px 1fr}.side{grid-column:1/-1;border-top:1px solid #242a32}.main{border-right:0}.console{height:360px}}
+@media(max-width:760px){.app{width:100%;margin:0;border:0;border-radius:0}.title{height:44px}.menu{overflow:auto}.shell{grid-template-columns:1fr}.rail{flex-direction:row;padding:10px;border-right:0;border-bottom:1px solid #242a32}.main,.side{padding:20px 14px}.hero{align-items:stretch}.hero h1{font-size:28px}.pet{width:100%}.strip{overflow-wrap:anywhere}.tabs{display:flex}.tab{min-width:0;flex:1}.pane{padding:15px}.grid{grid-template-columns:1fr}.history{display:block;overflow:auto}}
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="title">🐾&nbsp;&nbsp; ZDeployPet — UI proposal</div>
+  <div class="title">ZDeployPet&nbsp;&nbsp;·&nbsp;&nbsp; Deployment Control</div>
   <div class="menu"><span>Project / Profile</span><span>View</span><span>Help</span></div>
   <div class="shell">
     <nav class="rail"><button class="active" title="Home">⌂</button><button title="Profile">♙</button></nav>
     <main class="main">
       <div class="hero">
-        <div><h1>ZDeployPet</h1><p>Friendly bounded deployment control with a GitHub-like dark surface and a little VS Code discipline.</p></div>
+        <div><h1>Deployment workspace</h1><p>A controlled release surface for verified scripts, immutable reviews and trusted deployment evidence.</p></div>
         <button id="pet" class="pet"><span class="face">🐱</span><span><b>ZDeploy Pet</b><span id="state" class="state">READY</span><small id="hint">Approved targets are ready.</small></span></button>
       </div>
       <div class="strip"><b>Profile:</b> Millenova &nbsp;•&nbsp; <b>Project:</b> H:\PROGRAMMING\public_html\millenova &nbsp;•&nbsp; <b>WSL:</b> Ubuntu-24.04 &nbsp;•&nbsp; <b>Runner:</b> deploy_millenova.sh &nbsp;•&nbsp; <b>Targets:</b> 2 &nbsp;•&nbsp; <b>Destinations:</b> 3</div>
@@ -50,7 +112,7 @@
       </section>
     </main>
     <aside class="side">
-      <div style="display:flex;justify-content:space-between"><div><h2>Output / Reports</h2><div class="sub">Latest Dry Run / Live deploy output, bounded ZDeployPet activity, and one shared report viewer.</div></div><div class="info">i</div></div>
+      <div style="display:flex;justify-content:space-between"><div><h2>Activity &amp; reports</h2><div class="sub">Live deployment output, bounded ZDeployPet activity and trusted release records.</div></div><div class="info">i</div></div>
       <div class="session"><span><b>Profile</b> Millenova</span><span><b>Session</b> <span id="session">READY until 12/10/2026 03:58</span></span></div>
       <div class="console-tabs"><span class="ctab">Dry Run</span><span class="ctab">Live deploy</span><span class="ctab active">ZDeployPet</span><span class="ctab">Reports</span></div>
       <div class="console" id="console"><span class="dim">2026-10-11 19:58:03</span>  ›  ZDeployPet started.
