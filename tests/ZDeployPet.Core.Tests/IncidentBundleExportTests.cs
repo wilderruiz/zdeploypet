@@ -17,6 +17,19 @@ public sealed class IncidentBundleExportTests
     }
 
     [Theory]
+    [InlineData("incident.txt")]
+    [InlineData(@"Documents\incident.txt")]
+    public void ValidateDestination_RejectsRelativePaths(string destination)
+    {
+        IncidentBundleExportValidationResult result = IncidentBundleExportPolicy.ValidateDestination(
+            destination,
+            @"C:\Dev\ZDeployPet");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, error => error.Contains("fully qualified", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
     [InlineData(@"\\server\share\incident.txt")]
     [InlineData("//server/share/incident.txt")]
     public void ValidateDestination_RejectsNetworkPaths(string destination)
@@ -29,11 +42,13 @@ public sealed class IncidentBundleExportTests
         Assert.Contains(result.Errors, error => error.Contains("Network/UNC", StringComparison.OrdinalIgnoreCase));
     }
 
-    [Fact]
-    public void ValidateDestination_RejectsProjectRepositoryPath()
+    [Theory]
+    [InlineData(@"C:\Dev\ZDeployPet\incident.txt")]
+    [InlineData(@"C:\Dev\ZDeployPet\artifacts\incident.txt")]
+    public void ValidateDestination_RejectsProjectRepositoryPath(string destination)
     {
         IncidentBundleExportValidationResult result = IncidentBundleExportPolicy.ValidateDestination(
-            @"C:\Dev\ZDeployPet\artifacts\incident.txt",
+            destination,
             @"C:\Dev\ZDeployPet");
 
         Assert.False(result.Success);
