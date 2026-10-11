@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Threading;
 using ZDeployPet.Core;
 using ZDeployPet.Infrastructure;
 
@@ -66,7 +65,7 @@ public partial class MainWindow
             Child = popupSurface
         };
 
-        _profileGitSafetyButton.PreviewMouseLeftButtonDown += ProfileGitSafetyButton_PreviewMouseLeftButtonDown;
+        _profileGitSafetyButton.PreviewMouseLeftButtonUp += ProfileGitSafetyButton_PreviewMouseLeftButtonUp;
         _profileGitSafetyButton.PreviewKeyDown += ProfileGitSafetyButton_PreviewKeyDown;
 
         if (_profileStageToolbar?.Child is StackPanel row && row.Children.Count > 1 && row.Children[1] is Button gitInfo)
@@ -139,13 +138,10 @@ public partial class MainWindow
         return new ControlTemplate(typeof(Button)) { VisualTree = border };
     }
 
-    private void ProfileGitSafetyButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void ProfileGitSafetyButton_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
-
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.Input,
-            new Action(OpenProfileGitSafetyMenu));
+        OpenProfileGitSafetyMenu();
     }
 
     private void ProfileGitSafetyButton_PreviewKeyDown(object sender, KeyEventArgs e)
