@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media;
 using ZDeployPet.Core;
 using ZDeployPet.Infrastructure;
 
@@ -10,9 +10,9 @@ namespace ZDeployPet.App;
 public partial class MainWindow
 {
     private readonly GitSafetyService _profileGitSafety = new();
-    private ContextMenu? _profileGitSafetyMenu;
-    private MenuItem? _profileGitScanItem;
-    private MenuItem? _profileGitIgnoreItem;
+    private Popup? _profileGitSafetyPopup;
+    private Button? _profileGitScanItem;
+    private Button? _profileGitIgnoreItem;
     private bool _profileGitIgnoreAvailable;
     private bool _profileGitSafetyBusy;
     private bool _profileGitSafetyMenuInitialized;
@@ -24,48 +24,47 @@ public partial class MainWindow
 
         _profileGitSafetyMenuInitialized = true;
 
-        Style menuItemStyle = new(typeof(MenuItem));
-        menuItemStyle.Setters.Add(new Setter(Control.BackgroundProperty, AppSurface));
-        menuItemStyle.Setters.Add(new Setter(Control.ForegroundProperty, AppText));
-        menuItemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(14, 8, 14, 8)));
-        menuItemStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
-        menuItemStyle.Setters.Add(new Setter(Control.TemplateProperty, BuildProfileGitMenuItemTemplate()));
-
-        Trigger highlighted = new()
-        {
-            Property = MenuItem.IsHighlightedProperty,
-            Value = true
-        };
-        highlighted.Setters.Add(new Setter(Control.BackgroundProperty, AppSurfaceRaised));
-        highlighted.Setters.Add(new Setter(Control.ForegroundProperty, AppText));
-        menuItemStyle.Triggers.Add(highlighted);
-
-        _profileGitSafetyMenu = new ContextMenu
+        StackPanel menuRows = new()
         {
             Background = AppSurface,
-            Foreground = AppText,
+            MinWidth = 270
+        };
+
+        _profileGitScanItem = CreateProfileGitPopupRow("Scan repository");
+        _profileGitScanItem.Click += async (_, _) =>
+        {
+            CloseProfileGitSafetyPopup();
+            await RunProfileGitSafetyScanAsync();
+        };
+        menuRows.Children.Add(_profileGitScanItem);
+
+        _profileGitIgnoreItem = CreateProfileGitPopupRow("Add/update .gitignore safety block");
+        _profileGitIgnoreItem.Click += async (_, _) =>
+        {
+            CloseProfileGitSafetyPopup();
+            await ApplyProfileGitIgnoreAsync();
+        };
+        menuRows.Children.Add(_profileGitIgnoreItem);
+        SetProfileGitIgnoreAvailable(false);
+
+        Border popupSurface = new()
+        {
+            Background = AppSurface,
             BorderBrush = AppBorder,
             BorderThickness = new Thickness(1),
             Padding = new Thickness(2),
-            ItemContainerStyle = menuItemStyle
+            Child = menuRows
         };
-        ScrollViewer.SetHorizontalScrollBarVisibility(_profileGitSafetyMenu, ScrollBarVisibility.Disabled);
-        ScrollViewer.SetVerticalScrollBarVisibility(_profileGitSafetyMenu, ScrollBarVisibility.Disabled);
-        ScrollViewer.SetCanContentScroll(_profileGitSafetyMenu, false);
 
-        _profileGitScanItem = new MenuItem { Header = "Scan repository" };
-        _profileGitScanItem.Click += async (_, _) => await RunProfileGitSafetyScanAsync();
-        _profileGitSafetyMenu.Items.Add(_profileGitScanItem);
-
-        _profileGitIgnoreItem = new MenuItem
+        _profileGitSafetyPopup = new Popup
         {
-            Header = "Add/update .gitignore safety block"
+            PlacementTarget = _profileGitSafetyButton,
+            Placement = PlacementMode.Bottom,
+            StaysOpen = false,
+            AllowsTransparency = true,
+            Child = popupSurface
         };
-        _profileGitIgnoreItem.Click += async (_, _) => await ApplyProfileGitIgnoreAsync();
-        _profileGitSafetyMenu.Items.Add(_profileGitIgnoreItem);
-        SetProfileGitIgnoreAvailable(false);
 
-        _profileGitSafetyButton.ContextMenu = _profileGitSafetyMenu;
         _profileGitSafetyButton.PreviewMouseLeftButtonDown += ProfileGitSafetyButton_PreviewMouseLeftButtonDown;
         _profileGitSafetyButton.PreviewKeyDown += ProfileGitSafetyButton_PreviewKeyDown;
 
@@ -85,7 +84,33 @@ public partial class MainWindow
         }
     }
 
-    private static ControlTemplate BuildProfileGitMenuItemTemplate()
+    private Button CreateProfileGitPopupRow(string label)
+    {
+        Button row = new()
+        {
+            Content = label,
+            Background = AppSurface,
+            Foreground = AppText,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(14, 9, 14, 9),
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            FocusVisualStyle = null,
+            Cursor = Cursors.Hand,
+            Template = BuildProfileGitPopupRowTemplate()
+        };
+
+        row.MouseEnter += (_, _) =>
+        {
+            if (row.IsHitTestVisible)
+                row.Background = AppSurfaceRaised;
+        };
+        row.MouseLeave += (_, _) => row.Background = AppSurface;
+
+        return row;
+    }
+
+    private static ControlTemplate BuildProfileGitPopupRowTemplate()
     {
         FrameworkElementFactory border = new(typeof(Border));
         border.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding(nameof(Control.Background))
@@ -94,10 +119,13 @@ public partial class MainWindow
         });
 
         FrameworkElementFactory presenter = new(typeof(ContentPresenter));
-        presenter.SetValue(ContentPresenter.MarginProperty, new Thickness(14, 8, 14, 8));
-        presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
         presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
-        presenter.SetBinding(ContentPresenter.ContentProperty, new System.Windows.Data.Binding(nameof(MenuItem.Header))
+        presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+        presenter.SetBinding(ContentPresenter.ContentProperty, new System.Windows.Data.Binding(nameof(ContentControl.Content))
+        {
+            RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent)
+        });
+        presenter.SetBinding(ContentPresenter.MarginProperty, new System.Windows.Data.Binding(nameof(Control.Padding))
         {
             RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent)
         });
@@ -107,7 +135,7 @@ public partial class MainWindow
         });
 
         border.AppendChild(presenter);
-        return new ControlTemplate(typeof(MenuItem)) { VisualTree = border };
+        return new ControlTemplate(typeof(Button)) { VisualTree = border };
     }
 
     private void ProfileGitSafetyButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -127,16 +155,20 @@ public partial class MainWindow
 
     private void OpenProfileGitSafetyMenu()
     {
-        if (_activeProfile is null || _profileGitSafetyButton is null || _profileGitSafetyMenu is null)
+        if (_activeProfile is null || _profileGitSafetyButton is null || _profileGitSafetyPopup is null)
         {
             StatusText.Text = "Save and validate a deployment profile before running Git safety checks.";
             return;
         }
 
-        SetProfileGitIgnoreAvailable(false);
-        _profileGitSafetyMenu.PlacementTarget = _profileGitSafetyButton;
-        _profileGitSafetyMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-        _profileGitSafetyMenu.IsOpen = true;
+        _profileGitSafetyPopup.PlacementTarget = _profileGitSafetyButton;
+        _profileGitSafetyPopup.IsOpen = true;
+    }
+
+    private void CloseProfileGitSafetyPopup()
+    {
+        if (_profileGitSafetyPopup is not null)
+            _profileGitSafetyPopup.IsOpen = false;
     }
 
     private async Task RunProfileGitSafetyScanAsync()
@@ -254,21 +286,26 @@ public partial class MainWindow
     private void SetProfileGitIgnoreAvailable(bool available)
     {
         _profileGitIgnoreAvailable = available;
-        if (_profileGitIgnoreItem is null)
+        SetProfileGitPopupRowAvailable(_profileGitIgnoreItem, available);
+    }
+
+    private void SetProfileGitPopupRowAvailable(Button? row, bool available)
+    {
+        if (row is null)
             return;
 
-        _profileGitIgnoreItem.IsHitTestVisible = available;
-        _profileGitIgnoreItem.Focusable = available;
-        _profileGitIgnoreItem.Opacity = available ? 1.0 : 0.45;
-        _profileGitIgnoreItem.Background = AppSurface;
-        _profileGitIgnoreItem.Foreground = AppText;
+        row.IsHitTestVisible = available;
+        row.Focusable = available;
+        row.Opacity = available ? 1.0 : 0.45;
+        row.Cursor = available ? Cursors.Hand : Cursors.Arrow;
+        row.Background = AppSurface;
+        row.Foreground = AppText;
     }
 
     private void SetProfileGitSafetyBusy(bool busy)
     {
         _profileGitSafetyBusy = busy;
-        if (_profileGitScanItem is not null)
-            _profileGitScanItem.IsEnabled = !busy;
+        SetProfileGitPopupRowAvailable(_profileGitScanItem, !busy);
         if (busy)
             SetProfileGitIgnoreAvailable(false);
         if (_profileGitSafetyButton is not null)
