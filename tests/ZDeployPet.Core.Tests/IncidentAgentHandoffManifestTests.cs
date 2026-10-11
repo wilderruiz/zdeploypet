@@ -39,6 +39,7 @@ public sealed class IncidentAgentHandoffManifestTests
     [InlineData("token=abcdef")]
     [InlineData("password=hunter2")]
     [InlineData("/home/example/.ssh/id_ed25519")]
+    [InlineData(@"C:\Users\Example\.ssh\id_ed25519")]
     [InlineData("SSH_AUTH_SOCK=/tmp/ssh-AbCd/agent.42")]
     public void Build_RejectsSecretLikeManifestMetadata(string unsafeRepositoryLabel)
     {
