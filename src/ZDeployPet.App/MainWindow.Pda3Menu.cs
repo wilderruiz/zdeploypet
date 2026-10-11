@@ -11,6 +11,10 @@ public partial class MainWindow
 {
     private bool _pda3MenuInitialized;
     private Button? _homeToolbarButton;
+    private Button? _profileToolbarButton;
+    private Border? _profileStageToolbar;
+    private Button? _profileGitSafetyButton;
+    private Button? _profileDiscoveryButton;
 
     private Brush AppSurface => (Brush)Application.Current.Resources["AppSurfaceBrush"];
     private Brush AppSurfaceRaised => (Brush)Application.Current.Resources["AppSurfaceRaisedBrush"];
@@ -33,6 +37,10 @@ public partial class MainWindow
         FrameworkElement navigationBar = BuildNavigationToolbar();
         DockPanel.SetDock(navigationBar, Dock.Top);
         shell.Children.Add(navigationBar);
+
+        _profileStageToolbar = BuildProfileStageToolbar();
+        DockPanel.SetDock(_profileStageToolbar, Dock.Top);
+        shell.Children.Add(_profileStageToolbar);
 
         Grid body = new();
         body.ColumnDefinitions.Add(new ColumnDefinition
@@ -78,10 +86,13 @@ public partial class MainWindow
         shell.Children.Add(body);
         Content = shell;
 
+        SetupPanel.IsVisibleChanged += (_, _) => RefreshProfileStageToolbarVisibility();
+        RefreshProfileStageToolbarVisibility();
+
         MinWidth = Math.Max(MinWidth, MinimumOperatorPaneWidth + MinimumActivityPaneWidth + 45);
         if (Width < 1180) Width = 1180;
 
-        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Top application menu and Home navigation toolbar initialized with embedded Output / Reports pane.");
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Top application menu and Home/Profile navigation initialized with embedded Output / Reports pane.");
     }
 
     private FrameworkElement BuildTopMenu()
@@ -103,7 +114,7 @@ public partial class MainWindow
         row.Children.Add(CreatePopupMenu("Project / Profile", popup =>
         {
             StackPanel panel = CreatePopupPanel();
-            panel.Children.Add(CreatePopupAction("Edit profile", popup, () => EditProfile_Click(this, new RoutedEventArgs())));
+            panel.Children.Add(CreatePopupAction("Edit profile", popup, ShowProfileSurface));
             panel.Children.Add(CreatePopupSeparator());
             panel.Children.Add(CreatePopupAction("Deployment access…", popup, () => AccessOnboarding_Click(this, new RoutedEventArgs())));
             panel.Children.Add(CreatePopupAction("Session…", popup, () => DeploymentSession_Click(this, new RoutedEventArgs())));
@@ -154,6 +165,67 @@ public partial class MainWindow
         _homeToolbarButton.Click += (_, _) => ShowHomeSurface();
         row.Children.Add(_homeToolbarButton);
 
+        _profileToolbarButton = CreateToolbarButton(
+            "Profile",
+            "Open the active deployment profile and its setup/readiness tools.",
+            BuildProfileIcon());
+        _profileToolbarButton.Click += (_, _) => ShowProfileSurface();
+        row.Children.Add(_profileToolbarButton);
+
+        bar.Child = row;
+        return bar;
+    }
+
+    private Border BuildProfileStageToolbar()
+    {
+        Border bar = new()
+        {
+            Background = AppSurface,
+            BorderBrush = AppBorder,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(12, 5, 12, 5),
+            Visibility = Visibility.Collapsed
+        };
+
+        StackPanel row = new()
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        _profileGitSafetyButton = CreateProfileToolButton(
+            "Git safety",
+            "Git safety",
+            BuildSourceControlIcon());
+        _profileGitSafetyButton.Click += (_, _) => GitSafety_Click(this, new RoutedEventArgs());
+        row.Children.Add(_profileGitSafetyButton);
+
+        Button gitInfo = HelpTipFactory.Create(new HelpTipSpec(
+            "Check repository Git safety.",
+            "Scans the active project for private-key material that could accidentally enter Git and provides the existing narrow ZDeployPet .gitignore safety option.",
+            WhenToUse: "Use after changing deployment credentials or repository files, and before release-oriented work.",
+            WhatItDoes: "The scan is read-only unless you explicitly choose the managed .gitignore action inside Git safety.",
+            Safety: "It never makes an already tracked secret safe automatically and does not delete repository files."));
+        gitInfo.Margin = new Thickness(0, 0, 14, 0);
+        row.Children.Add(gitInfo);
+
+        _profileDiscoveryButton = CreateProfileToolButton(
+            "Run discovery",
+            "Run discovery",
+            BuildDiscoveryIcon());
+        _profileDiscoveryButton.Click += (_, _) => DiscoverButton_Click(this, new RoutedEventArgs());
+        row.Children.Add(_profileDiscoveryButton);
+
+        Button discoveryInfo = HelpTipFactory.Create(new HelpTipSpec(
+            "Inspect the profile environment without changing it.",
+            "Discovery checks the active Windows project, WSL environment, deployment runner and report location against the saved profile.",
+            WhenToUse: "Run after profile changes, WSL/project-path changes, or when checking why a deployment capability is unavailable.",
+            WhatItDoes: "Performs local and WSL read-only capability checks and writes the result to the profile/discovery surface.",
+            Safety: "Discovery does not upload files, run the deployment script, modify remote folders or perform a deployment."));
+        discoveryInfo.Margin = new Thickness(0);
+        row.Children.Add(discoveryInfo);
+
         bar.Child = row;
         return bar;
     }
@@ -168,6 +240,28 @@ public partial class MainWindow
             Padding = new Thickness(7),
             Background = AppSurface,
             BorderBrush = FindBrush("AppAccentBrush", Brushes.IndianRed),
+            BorderThickness = new Thickness(1),
+            Foreground = AppText,
+            Content = icon,
+            ToolTip = toolTip,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center
+        };
+        AutomationProperties.SetName(button, automationName);
+        AutomationProperties.SetHelpText(button, toolTip);
+        return button;
+    }
+
+    private Button CreateProfileToolButton(string automationName, string toolTip, UIElement icon)
+    {
+        Button button = new()
+        {
+            Width = 34,
+            Height = 32,
+            Margin = new Thickness(0, 0, 5, 0),
+            Padding = new Thickness(6),
+            Background = AppSurfaceRaised,
+            BorderBrush = AppBorder,
             BorderThickness = new Thickness(1),
             Foreground = AppText,
             Content = icon,
@@ -211,6 +305,93 @@ public partial class MainWindow
         return icon;
     }
 
+    private UIElement BuildProfileIcon()
+    {
+        Grid icon = new() { Width = 18, Height = 18 };
+        icon.Children.Add(new Ellipse
+        {
+            Width = 6,
+            Height = 6,
+            Stroke = AppText,
+            StrokeThickness = 1.6,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 1, 0, 0)
+        });
+        icon.Children.Add(new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse("M 3,17 C 3,12 6,9 9,9 C 12,9 15,12 15,17"),
+            Stroke = AppText,
+            StrokeThickness = 1.6,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            Fill = Brushes.Transparent
+        });
+        return icon;
+    }
+
+    private UIElement BuildSourceControlIcon()
+    {
+        Grid icon = new() { Width = 18, Height = 18 };
+        Line trunk = new()
+        {
+            X1 = 5, Y1 = 4, X2 = 5, Y2 = 14,
+            Stroke = AppText,
+            StrokeThickness = 1.5
+        };
+        Line branch = new()
+        {
+            X1 = 5, Y1 = 8, X2 = 13, Y2 = 8,
+            Stroke = AppText,
+            StrokeThickness = 1.5
+        };
+        icon.Children.Add(trunk);
+        icon.Children.Add(branch);
+        icon.Children.Add(BuildNode(5, 3));
+        icon.Children.Add(BuildNode(5, 14));
+        icon.Children.Add(BuildNode(13, 8));
+        return icon;
+    }
+
+    private UIElement BuildDiscoveryIcon()
+    {
+        Grid icon = new() { Width = 18, Height = 18 };
+        icon.Children.Add(new Ellipse
+        {
+            Width = 9,
+            Height = 9,
+            Stroke = AppText,
+            StrokeThickness = 1.6,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(2, 2, 0, 0)
+        });
+        icon.Children.Add(new Line
+        {
+            X1 = 10,
+            Y1 = 10,
+            X2 = 16,
+            Y2 = 16,
+            Stroke = AppText,
+            StrokeThickness = 1.8,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round
+        });
+        return icon;
+    }
+
+    private Ellipse BuildNode(double centerX, double centerY) => new()
+    {
+        Width = 4,
+        Height = 4,
+        Fill = AppSurface,
+        Stroke = AppText,
+        StrokeThickness = 1.4,
+        HorizontalAlignment = HorizontalAlignment.Left,
+        VerticalAlignment = VerticalAlignment.Top,
+        Margin = new Thickness(centerX - 2, centerY - 2, 0, 0)
+    };
+
     private void ShowHomeSurface()
     {
         if (_activeProfile is null)
@@ -221,12 +402,36 @@ public partial class MainWindow
         }
 
         ShowDiscovery(_activeProfile, "Home");
+        RefreshProfileStageToolbarVisibility();
         RefreshPetCompanion();
         RefreshPda5DryRunVisibility();
         RefreshPda6LiveReviewVisibility();
         _ = RefreshOperatorAccessControlAsync();
         _ = RefreshLatestDeploymentReportAsync();
         ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Home opened.");
+    }
+
+    private void ShowProfileSurface()
+    {
+        if (_activeProfile is not null)
+            PopulateEditor(_activeProfile);
+
+        ShowSetup(_activeProfile is null
+            ? "Create or load a deployment profile."
+            : "Profile setup and readiness tools. Changes remain local until saved.");
+        RefreshProfileStageToolbarVisibility();
+        ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Profile opened.");
+    }
+
+    private void RefreshProfileStageToolbarVisibility()
+    {
+        if (_profileStageToolbar is null) return;
+        bool visible = SetupPanel.Visibility == Visibility.Visible;
+        _profileStageToolbar.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+
+        bool hasProfile = _activeProfile is not null;
+        if (_profileGitSafetyButton is not null) _profileGitSafetyButton.IsEnabled = hasProfile;
+        if (_profileDiscoveryButton is not null) _profileDiscoveryButton.IsEnabled = hasProfile;
     }
 
     private FrameworkElement CreatePopupMenu(string label, Func<Popup, UIElement> buildContent)
