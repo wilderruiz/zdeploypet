@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using ZDeployPet.Core;
 using ZDeployPet.Infrastructure;
 
@@ -27,6 +28,7 @@ public partial class MainWindow
         menuItemStyle.Setters.Add(new Setter(Control.ForegroundProperty, AppText));
         menuItemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(14, 8, 14, 8)));
         menuItemStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+        menuItemStyle.Setters.Add(new Setter(Control.TemplateProperty, BuildProfileGitMenuItemTemplate()));
 
         Trigger highlighted = new()
         {
@@ -56,8 +58,6 @@ public partial class MainWindow
             Padding = new Thickness(2),
             ItemContainerStyle = menuItemStyle
         };
-        _profileGitSafetyMenu.Resources[SystemColors.HighlightBrushKey] = AppSurfaceRaised;
-        _profileGitSafetyMenu.Resources[SystemColors.HighlightTextBrushKey] = AppText;
 
         _profileGitScanItem = new MenuItem { Header = "Scan repository" };
         _profileGitScanItem.Click += async (_, _) => await RunProfileGitSafetyScanAsync();
@@ -89,6 +89,31 @@ public partial class MainWindow
             Button mergedHelpButton = HelpTipFactory.Create(mergedGitHelp);
             gitInfo.ToolTip = mergedHelpButton.ToolTip;
         }
+    }
+
+    private static ControlTemplate BuildProfileGitMenuItemTemplate()
+    {
+        FrameworkElementFactory border = new(typeof(Border));
+        border.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding(nameof(Control.Background))
+        {
+            RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent)
+        });
+
+        FrameworkElementFactory presenter = new(typeof(ContentPresenter));
+        presenter.SetValue(ContentPresenter.MarginProperty, new Thickness(14, 8, 14, 8));
+        presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+        presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        presenter.SetBinding(ContentPresenter.ContentProperty, new System.Windows.Data.Binding(nameof(MenuItem.Header))
+        {
+            RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent)
+        });
+        presenter.SetBinding(TextElement.ForegroundProperty, new System.Windows.Data.Binding(nameof(Control.Foreground))
+        {
+            RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent)
+        });
+
+        border.AppendChild(presenter);
+        return new ControlTemplate(typeof(MenuItem)) { VisualTree = border };
     }
 
     private void ProfileGitSafetyButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
