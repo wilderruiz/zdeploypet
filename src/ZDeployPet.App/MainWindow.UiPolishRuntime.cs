@@ -8,7 +8,10 @@ namespace ZDeployPet.App;
 public partial class MainWindow
 {
     private static readonly bool UiPolishRuntimeRegistered = RegisterUiPolishRuntime();
-    private bool _uiPolishRuntimeApplied;
+    private bool _uiPolishRuntimeStarted;
+    private bool _reportHeaderPolishApplied;
+    private bool _primaryNavigationPolishApplied;
+    private DispatcherTimer? _uiPolishRetryTimer;
 
     private static bool RegisterUiPolishRuntime()
     {
@@ -21,19 +24,49 @@ public partial class MainWindow
 
     private static void MainWindowUiPolishLoaded(object sender, RoutedEventArgs e)
     {
-        if (sender is not MainWindow window || window._uiPolishRuntimeApplied)
+        if (sender is not MainWindow window || window._uiPolishRuntimeStarted)
             return;
 
-        window._uiPolishRuntimeApplied = true;
-        window.Dispatcher.BeginInvoke(
-            new Action(window.ApplyUiPolishRuntime),
-            DispatcherPriority.Loaded);
+        window._uiPolishRuntimeStarted = true;
+        window.StartUiPolishRuntime();
+    }
+
+    private void StartUiPolishRuntime()
+    {
+        ApplyUiPolishRuntime();
+        if (_reportHeaderPolishApplied && _primaryNavigationPolishApplied)
+            return;
+
+        _uiPolishRetryTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(100)
+        };
+        _uiPolishRetryTimer.Tick += (_, _) =>
+        {
+            ApplyUiPolishRuntime();
+            if (_reportHeaderPolishApplied && _primaryNavigationPolishApplied)
+            {
+                _uiPolishRetryTimer?.Stop();
+                _uiPolishRetryTimer = null;
+            }
+        };
+        _uiPolishRetryTimer.Start();
+        Closed += (_, _) => _uiPolishRetryTimer?.Stop();
     }
 
     private void ApplyUiPolishRuntime()
     {
-        PolishLatestReportHeaderActions();
-        PolishPrimaryNavigationState();
+        if (!_reportHeaderPolishApplied && _latestReportRefreshButton?.Parent is Grid)
+        {
+            PolishLatestReportHeaderActions();
+            _reportHeaderPolishApplied = true;
+        }
+
+        if (!_primaryNavigationPolishApplied && _homeToolbarButton is not null && _profileToolbarButton is not null)
+        {
+            PolishPrimaryNavigationState();
+            _primaryNavigationPolishApplied = true;
+        }
     }
 
     private void PolishLatestReportHeaderActions()
@@ -55,7 +88,7 @@ public partial class MainWindow
         refresh.Width = 28;
         refresh.Height = 28;
         refresh.Padding = new Thickness(3);
-        refresh.Margin = new Thickness(0, 0, help is null ? 0 : 30, 0);
+        refresh.Margin = new Thickness(0, 0, help is null ? 0 : 32, 0);
         refresh.HorizontalAlignment = HorizontalAlignment.Right;
         refresh.VerticalAlignment = VerticalAlignment.Top;
         refresh.Background = Brushes.Transparent;
@@ -130,7 +163,6 @@ public partial class MainWindow
 
         RoutedEventHandler clickUpdate = (_, _) =>
             Dispatcher.BeginInvoke(new Action(RefreshPrimaryNavigationState), DispatcherPriority.Background);
-
         DependencyPropertyChangedEventHandler visibilityUpdate = (_, _) =>
             Dispatcher.BeginInvoke(new Action(RefreshPrimaryNavigationState), DispatcherPriority.Background);
 
