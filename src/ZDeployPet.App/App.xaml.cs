@@ -90,7 +90,7 @@ public partial class App : Application
         ResourceDictionary theme = new()
         {
             Source = new Uri(
-                "pack://application:,,,/ZDeployPet.App;component/Themes/Pda8VisualTheme.xaml",
+                "pack://application:,,,/ZDeployPet;component/Themes/Pda8VisualTheme.xaml",
                 UriKind.Absolute)
         };
 
