@@ -18,6 +18,8 @@ public partial class PetCompanionControl : UserControl
     {
         InitializeComponent();
         ActionButton.Click += (_, e) => Click?.Invoke(this, e);
+        ToolTipService.SetInitialShowDelay(ActionButton, 250);
+        ToolTipService.SetShowDuration(ActionButton, 20000);
         SetState(PetCompanionState.Locked, "Deployment access is off.");
     }
 
@@ -76,11 +78,21 @@ public partial class PetCompanionControl : UserControl
 
         string action = state switch
         {
-            PetCompanionState.Ready => "Click to turn deployment access off.",
-            PetCompanionState.Running => "Deployment work is in progress.",
-            _ => "Click to turn deployment access on or continue setup."
+            PetCompanionState.Ready => "Click ZDeploy Pet to turn deployment access off.",
+            PetCompanionState.Running => "Deployment/session work is in progress; the access action is temporarily unavailable.",
+            PetCompanionState.Error => "Click ZDeploy Pet to retry or continue deployment-access setup.",
+            _ => "Click ZDeploy Pet to turn deployment access on or continue setup."
         };
-        ActionButton.ToolTip = $"ZDeploy Pet status: {stateText}. {MessageText.Text} {action}";
+
+        string detail = state switch
+        {
+            PetCompanionState.Ready => "READY means the approved key is loaded in the bounded app-owned ssh-agent and the configured target probes passed.",
+            PetCompanionState.Running => "ZDeployPet may open a trusted terminal only when OpenSSH needs the private-key passphrase; the passphrase is never received or stored by ZDeployPet.",
+            PetCompanionState.Error => "Open the ZDeployPet output tab for the detailed session/probe reason.",
+            _ => "Detailed session and probe messages appear in the ZDeployPet output tab."
+        };
+
+        ActionButton.ToolTip = $"ZDeploy Pet — {stateText}\n{MessageText.Text}\n\n{action}\n{detail}";
     }
 
     private static Brush FindBrush(string key, Brush fallback)
