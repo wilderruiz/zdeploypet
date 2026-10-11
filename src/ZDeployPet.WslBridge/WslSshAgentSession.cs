@@ -76,10 +76,11 @@ public sealed class WslSshAgentSession
 
         echo
         if [ "$code" -eq 0 ]; then
-          echo "OpenSSH accepted the key. Return to ZDeployPet and click Check session."
-        else
-          echo "The key was not loaded. ssh-add exit code: $code"
+          echo "OpenSSH accepted the key. Returning to ZDeployPet automatically."
+          exit 0
         fi
+
+        echo "The key was not loaded. ssh-add exit code: $code"
         echo "Press Enter to close."
         read _
         exit "$code"
@@ -178,7 +179,7 @@ public sealed class WslSshAgentSession
         }
 
         return new(true,
-            "The trusted OpenSSH unlock terminal was opened. Complete ssh-add there, then return to ZDeployPet and click Check session. ZDeployPet never receives the key passphrase.");
+            "The trusted OpenSSH unlock terminal was opened for private-key passphrase entry only. It closes automatically after ssh-add succeeds while ZDeployPet verifies the session in-app. ZDeployPet never receives the key passphrase.");
     }
 
     public async Task<WslSshAgentInspection> InspectAsync(
