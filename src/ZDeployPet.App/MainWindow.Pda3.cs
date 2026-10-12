@@ -87,7 +87,6 @@ public partial class MainWindow
         Resources[SystemColors.ControlLightLightBrushKey] = surface;
         Resources[SystemColors.ControlDarkBrushKey] = raised;
         Resources[SystemColors.ControlDarkDarkBrushKey] = raised;
-        Resources[SystemColors.ScrollBarBrushKey] = surface;
         Resources[SystemColors.InfoBrushKey] = raised;
         Resources[SystemColors.InfoTextBrushKey] = text;
         Resources[SystemColors.HighlightBrushKey] = selection;
