@@ -30,6 +30,55 @@ It must not change:
 
 The redesign must be implemented through reusable WPF resources/templates wherever possible, not by adding more one-off runtime fixups.
 
+## 1.1 Critical application lifecycle safety — closing the UI means OFF
+
+A separate lifecycle defect has been observed and must be fixed in the correct functional/lifecycle slice; **do not implement it as part of cosmetic V1–V12 work unless explicitly scheduled**.
+
+Observed failure:
+
+- ZDeploy Pet is turned ON and reaches READY;
+- the operator closes the main window with the Windows `X` button;
+- the visible UI disappears, but the `ZDeployPet` process can remain alive in the background;
+- a later attempt to launch ZDeployPet appears to fail because the previous hidden process is still running;
+- recovery currently requires locating the process manually, for example:
+
+```powershell
+Get-Process ZDeployPet -ErrorAction SilentlyContinue
+```
+
+and terminating the stale process ID before relaunching.
+
+Required invariant:
+
+> **Deployment access may be ON / READY only while the ZDeployPet UI is open or intentionally minimized. If the application UI is closed, ZDeployPet must transition to OFF and the application process must terminate cleanly.**
+
+Required behavior for the future lifecycle implementation:
+
+- clicking the main-window `X` is an **application close**, not a hide-to-background action;
+- any normal application command that closes the last/main UI window must also mean **OFF**;
+- graceful shutdown must revoke/tear down the bounded deployment-access session before process exit;
+- any app-owned SSH-agent/session resources created specifically for the bounded ZDeployPet access lease must be cleaned up according to the existing PDA-2 ownership rules;
+- a normal close must not leave a hidden `ZDeployPet.exe` process, dispatcher, tray-less shell, background worker or execution host alive;
+- **minimize is different from close**: ON / READY may remain valid while the main window is intentionally minimized because the application is still visibly represented by the normal Windows taskbar/window lifecycle;
+- if the window is restored after minimize, the current bounded-access state may continue subject to its existing lease/probe rules;
+- if the process is forcibly terminated by the OS/operator, the process itself obviously cannot run managed shutdown code; therefore startup/recovery design must ensure stale app-owned deployment-access artifacts cannot make a later launch appear ON or block normal startup indefinitely;
+- startup should detect any recoverable stale app-owned session/agent state left by an abnormal termination and reconcile it safely before allowing ON / READY again;
+- application shutdown during an active DRY or LIVE execution must follow an explicit safety policy rather than silently hiding the UI while work continues. The implementation must decide and document whether close is blocked until the execution finishes/cancels, or whether a guarded cancellation/shutdown path is used; no invisible deployment execution is acceptable;
+- `Application.Current.Shutdown()` / main-window close ownership and WPF shutdown mode must be reviewed so closing the main window actually terminates the application when no guarded execution prevents it;
+- no visual redesign phase may accidentally introduce tray/background behavior unless that becomes a separately approved feature.
+
+Lifecycle smoke acceptance when this is eventually implemented:
+
+1. launch ZDeployPet while LOCKED, close with `X`, verify no `ZDeployPet` process remains;
+2. launch, turn ZDeploy Pet ON/READY, close with `X`, verify access becomes OFF and no `ZDeployPet` process remains;
+3. immediately relaunch without manual `Get-Process` / `Stop-Process` recovery;
+4. minimize while READY and verify the application remains alive and restorable;
+5. restore from minimize and verify state remains valid only if the bounded lease/probes still permit it;
+6. exercise close during DRY/LIVE execution and verify the documented guarded behavior, with no hidden deployment continuing after the UI is gone;
+7. simulate/recover from an abnormal prior termination and verify a fresh launch does not inherit stale READY authority.
+
+This lifecycle rule is a **security/operability invariant**, not merely a UI preference, and must be preserved by all later shell/navigation changes.
+
 ---
 
 # 2. Visual language to preserve from the accepted v2 mockup
@@ -327,6 +376,8 @@ The redesign is accepted only when all of the following are true:
 - no security or execution invariant changes;
 - Release tests/build/publish pass;
 - a real Millenova dry smoke and live-review smoke still prove PDA-5/PDA-6 behavior is unchanged.
+
+The separate lifecycle-safety work is also not considered complete until the **close means OFF** invariant from section 1.1 is implemented and smoked: a normal `X` close must leave no hidden ZDeployPet process and no surviving READY deployment authority, while minimize remains the only approved UI-hidden state that may preserve ON/READY.
 
 ---
 
