@@ -115,12 +115,11 @@ public partial class MainWindow
         scroll.PanningMode = PanningMode.VerticalOnly;
         scroll.CanContentScroll = false;
 
-        // Bound the embedded workflow to the currently visible Home viewport so long
-        // immutable LIVE reviews scroll inside their tab rather than stretching the
-        // whole Home surface below the application window. At small window heights,
-        // keep enough usable space for the workflow itself.
-        if (ActualHeight > 0)
-            scroll.MaxHeight = Math.Max(320, ActualHeight - 360);
+        // V11.1 owns vertical containment through the Home grid's star-sized
+        // workspace/content rows. Do not add a second MainWindow-height-derived
+        // MaxHeight here: that legacy calculation competed with WPF measure/arrange
+        // and could become inaccurate at non-100% DPI or after shell resizing.
+        scroll.MaxHeight = double.PositiveInfinity;
     }
 
     private void StylePda8V7WorkflowCard(Border border, bool isLive)
