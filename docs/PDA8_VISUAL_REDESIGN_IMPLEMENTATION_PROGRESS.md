@@ -49,30 +49,32 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 4. Removed runtime `button.Content == "i"` repainting from `ThemeRuntime`; shared information controls are now owned by `Pda8InfoButtonTheme.xaml` and no longer risk being re-boxed by legacy runtime code.
 5. Narrowed `ApplyMainWindowThemeFixups()` by removing duplicate Profile DataGrid header/row-header normalization. The attempted removal of the MainWindow-local ToolTip bridge exposed a Profile-only white-tooltip regression, proving that bridge is still required by legacy XAML. The bridge was restored and operator smoke passed 2026-10-12. MainWindow SystemColors mappings and the local `InfoButtonStyle` compatibility bridge remain intentionally retained.
 6. Removed duplicate standalone-window theme application. `DryRunWindow`, `LiveDeploymentReviewWindow`, and `IncidentBundlePreviewWindow` keep their existing single local `ThemeRuntime.Apply(...)` pass, while the global Window Loaded hook skips those three compatibility windows. Operator smoke passed 2026-10-12.
+7. Audited and removed the remaining recursive `ThemeRuntime` legacy color-conversion layer. No legacy literal warning/info/muted colors remained in the repository, so the descendant scan and delayed recoloring passes were deleted. Operator smoke passed 2026-10-12.
 
-### V12 cleanup group 6 — implemented, awaiting operator smoke
+### Current `ThemeRuntime` boundary after cleanup group 6
 
-The remaining `ThemeRuntime` color-conversion layer was audited against the current repository.
+`ThemeRuntime` now deliberately owns only:
 
-Findings:
+- base Window background/foreground compatibility for older standalone windows;
+- shared tooltip normalization/readability via `ApplyToolTip(...)`.
 
-- legacy muted foreground literals (`#FF555555`, `#FF666666`) no longer exist outside `ThemeRuntime`;
-- legacy warning/info backgrounds (`#FFFFF5E6`, `#FFFFF6E5`, `#FFEEF6FF`) no longer exist outside `ThemeRuntime`;
-- legacy warning/neutral border colors (`#FFE6C77A`, `#FFE6C46A`, `#FFAACCE8`, `#FFC9D7E5`, `#FFD8D8D8`) no longer exist outside `ThemeRuntime`;
-- obvious equivalent named WPF brushes are not present in the repository either.
+The Window background/foreground assignment is **not yet removed**. The repository still contains several standalone/fallback windows beyond DRY/LIVE/Incident (for example About, Activity, Git Safety, Access Onboarding, Deployment Session and report artifact surfaces), so a wholesale removal would be broader than the evidence currently supports.
 
-Therefore the recursive visual-tree color rewrite, its delayed Loaded/ContextIdle re-runs, legacy color hash sets, and brush-comparison helpers were removed.
+### V12 cleanup group 7 — implemented, awaiting operator smoke
 
-`ThemeRuntime` now has a deliberately narrow compatibility boundary:
+`ApplyMainWindowThemeFixups()` still contained one obsolete SystemColors scrollbar override:
 
-- set standalone Window background and foreground from current application tokens;
-- apply the shared tooltip style and normalize tooltip logical-tree text for readability.
+- `Resources[SystemColors.ScrollBarBrushKey] = surface;`
 
-No deployment/profile behavior changed in this slice.
+V11 already owns scrollbar appearance explicitly through `Pda8InteractionTheme.xaml`, including the accepted dark scrollbar track/thumb and hover/drag states. The SystemColors scrollbar override was therefore a second legacy owner and has been removed.
 
-### Next V12 cleanup group after group 6 smoke
+No other SystemColors compatibility mappings were removed in this slice. Control, highlight, info and window brush mappings remain until each can be proven redundant against legacy XAML/control behavior.
 
-Audit whether the remaining standalone-window `ThemeRuntime.Apply(window)` base background/foreground assignment is still necessary now that DRY/LIVE/Incident constructors already set dark resource-backed Window colors. If every compatibility window owns those values explicitly, remove only that redundant Window-level application while retaining `ApplyToolTip(...)` as the dedicated tooltip compatibility bridge.
+### Next V12 cleanup group after group 7 smoke
+
+Audit the remaining MainWindow SystemColors compatibility mappings one family at a time. In particular, determine whether Window/Control/Highlight/Info brush overrides are still required by any legacy Profile/MainWindow control templates. Remove only mappings with an explicit PDA-8 owner and a clear smoke path.
+
+Do **not** remove `ThemeRuntime.Apply(window)` wholesale yet; older standalone windows still need a separate ownership audit.
 
 Smoke requirements after each V12 cleanup group:
 
