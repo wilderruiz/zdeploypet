@@ -47,19 +47,20 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 2. Removed the old recursive Profile visual-tree fixup after V10 became the explicit Profile visual owner.
 3. Removed runtime ScrollBar scanning/fade timers from `ThemeRuntime`; shared scrollbar templates are now owned by `Pda8InteractionTheme.xaml`.
 4. Removed runtime `button.Content == "i"` repainting from `ThemeRuntime`; shared information controls are now owned by `Pda8InfoButtonTheme.xaml` and no longer risk being re-boxed by legacy runtime code.
+5. Narrowed `ApplyMainWindowThemeFixups()` by removing duplicate Profile DataGrid header/row-header normalization. The attempted removal of the MainWindow-local ToolTip bridge exposed a Profile-only white-tooltip regression, proving that bridge is still required by legacy XAML. The bridge was restored and operator smoke passed 2026-10-12. MainWindow SystemColors mappings and the local `InfoButtonStyle` compatibility bridge remain intentionally retained.
 
-### V12 cleanup group 4 — implemented, awaiting operator smoke
+### V12 cleanup group 5 — implemented, awaiting operator smoke
 
-`ApplyMainWindowThemeFixups()` has been narrowed further:
+Duplicate standalone-window theme application has been removed without rewriting workflow code:
 
-- removed the MainWindow-local ToolTip resource override because V11 now supplies the application-wide implicit ToolTip style;
-- removed duplicate `TargetsGrid` / `DestinationsGrid` header and row-header normalization because V10 is the explicit Profile DataGrid owner;
-- retained the MainWindow SystemColors dark mappings for legacy XAML controls;
-- retained the local `InfoButtonStyle` compatibility bridge because `MainWindow.xaml` still declares/uses that legacy key and it must continue deriving from the shared chrome-free info style.
+- `App.xaml.cs` still owns the global Window Loaded compatibility pass for normal windows;
+- `DryRunWindow`, `LiveDeploymentReviewWindow`, and `IncidentBundlePreviewWindow` already own one local `ThemeRuntime.Apply(...)` call;
+- the global hook now skips those three compatibility windows, preventing a second recursive ThemeRuntime pass;
+- embedded DRY/LIVE workflow content remains owned by the PDA-8 MainWindow visual layers and is unaffected by this standalone-window boundary.
 
-This cleanup changes no deployment/profile behavior and should be visually neutral.
+This cleanup is intended to be visually neutral while reducing duplicate recursive theming and delayed restyling risk.
 
-### `ThemeRuntime` compatibility boundary after cleanup group 3
+### `ThemeRuntime` compatibility boundary after cleanup group 5
 
 `ThemeRuntime` is intentionally **not** removed wholesale yet. It still performs compatibility work for older standalone windows that retain legacy literal colors:
 
@@ -67,13 +68,13 @@ This cleanup changes no deployment/profile behavior and should be visually neutr
 - converts old warning/info Border backgrounds to current dark surfaces;
 - converts old warning/neutral Border colors to the current border token;
 - applies the shared tooltip style and normalizes old tooltip text;
-- is still invoked by standalone compatibility windows such as DRY, LIVE review and Incident bundle preview.
+- remains the single compatibility pass for standalone DRY, LIVE review and Incident bundle preview windows.
 
 These remaining responsibilities must be audited before any further deletion.
 
-### Next V12 cleanup group after group 4 smoke
+### Next V12 cleanup group after group 5 smoke
 
-Audit the duplicate per-window `ThemeRuntime.Apply(...)` calls. `App.xaml.cs` already invokes `ThemeRuntime.Apply(window)` for every loaded Window, so standalone DRY/LIVE/Incident windows may be doing a second redundant recursive pass. Remove those local calls only after confirming the global class-handler timing fully covers their legacy surfaces.
+Audit the remaining `ThemeRuntime` color-conversion responsibilities and identify whether any are now fully superseded by explicit PDA-8/window styles. Remove only conversions with a proven owner; do not remove `ThemeRuntime` wholesale while legacy standalone windows still depend on it.
 
 Smoke requirements after each V12 cleanup group:
 
@@ -81,6 +82,7 @@ Smoke requirements after each V12 cleanup group:
 - DRY/LIVE/REPORTS embedded surfaces are unchanged;
 - standalone/fallback DRY, LIVE review and Incident preview windows remain dark and readable;
 - shared `i` controls remain chrome-free;
+- Profile and Home tooltips remain dark and readable;
 - shared scrollbar styling remains intact;
 - refresh glyph behavior remains intact;
 - no delayed restyling/flicker appears;
