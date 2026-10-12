@@ -86,8 +86,6 @@ public partial class MainWindow
         Resources[SystemColors.ControlLightLightBrushKey] = surface;
         Resources[SystemColors.ControlDarkBrushKey] = raised;
         Resources[SystemColors.ControlDarkDarkBrushKey] = raised;
-        Resources[SystemColors.InfoBrushKey] = raised;
-        Resources[SystemColors.InfoTextBrushKey] = text;
     }
 
     private static Brush FindBrush(string key, Brush fallback)
