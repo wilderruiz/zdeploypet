@@ -31,6 +31,8 @@ This file is the live implementation checkpoint for the PDA-8 native WPF redesig
 - V11.2 — keyboard focus and disabled-state polish for shared information actions and shell/menu actions. Operator smoke passed 2026-10-12; no light OS focus chrome regression observed.
 - V11.3 — DPI/resize resilience audit. The stale `MainWindow.ActualHeight - 360` embedded-workflow height calculation was removed so V11.1 remains the sole Home vertical viewport owner. Operator smoke passed 2026-10-12.
 - Parity P1 — main/activity split restore now keeps the workspace dominant and the Activity pane secondary. Operator smoke passed 2026-10-12.
+- Parity P2 — Profile legacy GroupBox fieldsets replaced by Profile-owned dark rounded section cards. Operator smoke passed 2026-10-12.
+- Parity P3 — Profile buttons/inputs/grids softened and compacted without changing behavior. Operator smoke passed 2026-10-12, including dark dropdown selection behavior.
 
 ### Confirmed implementation details
 
@@ -47,9 +49,9 @@ A fresh side-by-side comparison of the real WPF application against `mocks up/zd
 Highest-priority remaining visual gaps:
 
 1. **Main/Activity split proportion:** closed by parity P1 and operator-smoked.
-2. **Profile legacy fieldset chrome:** P2 implemented; awaiting operator smoke. Bright Windows fieldset outlines are replaced with Profile-owned dark rounded section cards.
-3. **Profile control chrome:** buttons, inputs and grids are dark but still more rectangular/heavy than the mockup; normalize radius/padding/border grammar.
-4. **Home segmented control:** tighten DRY/LIVE/REPORTS into the shared compact capsule treatment from the mockup.
+2. **Profile legacy fieldset chrome:** closed by parity P2 and operator-smoked.
+3. **Profile control chrome:** closed by parity P3 and operator-smoked.
+4. **Home segmented control:** P4 implemented; awaiting operator smoke. DRY/LIVE/REPORTS now render inside one compact capsule rather than as three separate rounded buttons.
 5. **Surface hierarchy:** reduce remaining heavy card borders and rely more on spacing/surface contrast.
 6. **Toolbar icon chrome:** Git safety/discovery and similar icon actions should be quieter by default, with hover/active treatment rather than permanent heavy boxes.
 7. **Warm accent parity:** keep gold/warm accent sparse and consistent across active rail/menu/context states.
@@ -71,9 +73,9 @@ Implementation owner: `MainWindow.LayoutMemory.cs`.
 
 ### Parity P2 — Profile section-card ownership
 
-**Implemented 2026-10-12, awaiting operator smoke.**
+**Implemented and operator-smoked 2026-10-12.**
 
-Profile no longer relies on the stock Windows `GroupBox` fieldset template for its numbered setup sections. `MainWindow.Pda8V10ProfileVisuals.cs` now assigns a Profile-only control template that renders each section as one continuous dark rounded card with an internal header and subtle border.
+Profile no longer relies on the stock Windows `GroupBox` fieldset template for its numbered setup sections. `MainWindow.Pda8V10ProfileVisuals.cs` assigns a Profile-only control template that renders each section as one continuous dark rounded card with an internal header and subtle border.
 
 Important ownership boundary:
 
@@ -82,14 +84,44 @@ Important ownership boundary:
 - Profile `i` buttons remain independently overlaid using the shared borderless information style;
 - existing Profile controls, validation logic, grids and section content are unchanged.
 
+### Parity P3 — Profile control chrome
+
+**Implemented and operator-smoked 2026-10-12.**
+
+Profile-only control styling now softens the remaining rectangular legacy chrome without widening the change to standalone/fallback windows:
+
+- Profile action buttons use rounded dark chrome with restrained warm hover/focus treatment;
+- TextBox/ComboBox spacing is tightened and normalized;
+- Profile DataGrid presentation uses horizontal separators rather than heavy spreadsheet-like vertical lines;
+- the green `Check settings and save` action remains the single primary completion action;
+- dropdown and grid selection remain dark/readable.
+
+Implementation owner: `MainWindow.Pda8V10ProfileVisuals.cs`.
+
+### Parity P4 — Home segmented capsule
+
+**Implemented 2026-10-12, awaiting operator smoke.**
+
+The Home `DRY | LIVE | REPORTS` selector now presents the three existing buttons as one compact rounded capsule:
+
+- one outer dark capsule/border owns the group silhouette;
+- the three existing buttons are re-parented into a nested three-column segment host;
+- internal segments have zero gap and only thin separators;
+- first/last segments own only the capsule-end radii, while the middle segment remains square;
+- existing click handlers and `HomeWorkspaceSection` selection authority are unchanged;
+- DRY/LIVE/REPORTS semantic active colors remain authoritative;
+- hover/focus/pressed feedback remains native WPF and does not introduce a browser/WebView dependency.
+
+Implementation owner: `MainWindow.Pda8V6SegmentedWorkspace.cs`.
+
 Smoke acceptance:
 
-- open Profile and confirm the bright/pale fieldset outlines are gone;
-- numbered section titles remain visible and correctly aligned inside each card;
-- section `i` actions remain at the upper-right and tooltips remain dark;
-- ComboBoxes, grids and buttons still function and retain dark chrome;
-- Profile scrolling remains unchanged;
-- Home/Activity and standalone fallback windows remain visually unchanged.
+- Home shows one continuous compact `DRY | LIVE | REPORTS` capsule rather than three detached buttons;
+- switching among all three tabs still changes content correctly;
+- DRY/LIVE/REPORTS active colors remain visible and only the selected segment reads active;
+- no extra gap, double outer border, or rounded middle segment appears;
+- the Home workspace `i` remains right-aligned and unaffected;
+- DRY/LIVE embedded scrolling and REPORTS history remain unchanged.
 
 ## Current next step — V12 cleanup plus parity closure
 
@@ -119,9 +151,9 @@ The six remaining MainWindow Control SystemColors mappings were audited before r
 - `SystemColors.ControlDarkBrushKey`
 - `SystemColors.ControlDarkDarkBrushKey`
 
-Result before P2: **retain this family until the Profile card-template smoke passes and remaining legacy/default-template consumers are re-audited.** P2 removes the strongest visible Profile `GroupBox` dependency, but other MainWindow/fallback controls may still rely on these compatibility mappings.
+Result after P2/P3: **retain this family until remaining MainWindow/fallback default-template consumers are re-audited.** Profile no longer visibly depends on stock GroupBox/control chrome, but other MainWindow/fallback controls may still rely on these compatibility mappings.
 
-Do not delete this family wholesale immediately after P2. Re-run the ownership audit first.
+Do not delete this family wholesale yet. Re-run the ownership audit before any removal.
 
 ### Current `ThemeRuntime` boundary
 
