@@ -50,6 +50,7 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 5. Narrowed `ApplyMainWindowThemeFixups()` by removing duplicate Profile DataGrid header/row-header normalization. The attempted removal of the MainWindow-local ToolTip bridge exposed a Profile-only white-tooltip regression, proving that bridge is still required by legacy XAML. The bridge was restored and operator smoke passed 2026-10-12. MainWindow SystemColors mappings and the local `InfoButtonStyle` compatibility bridge remain intentionally retained.
 6. Removed duplicate standalone-window theme application. `DryRunWindow`, `LiveDeploymentReviewWindow`, and `IncidentBundlePreviewWindow` keep their existing single local `ThemeRuntime.Apply(...)` pass, while the global Window Loaded hook skips those three compatibility windows. Operator smoke passed 2026-10-12.
 7. Audited and removed the remaining recursive `ThemeRuntime` legacy color-conversion layer. No legacy literal warning/info/muted colors remained in the repository, so the descendant scan and delayed recoloring passes were deleted. Operator smoke passed 2026-10-12.
+8. Removed the obsolete `SystemColors.ScrollBarBrushKey` MainWindow override after confirming V11's explicit shared scrollbar template is the sole scrollbar visual owner. Operator smoke passed 2026-10-12.
 
 ### Current `ThemeRuntime` boundary after cleanup group 6
 
@@ -60,19 +61,30 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 
 The Window background/foreground assignment is **not yet removed**. The repository still contains several standalone/fallback windows beyond DRY/LIVE/Incident (for example About, Activity, Git Safety, Access Onboarding, Deployment Session and report artifact surfaces), so a wholesale removal would be broader than the evidence currently supports.
 
-### V12 cleanup group 7 — implemented, awaiting operator smoke
+### V12 cleanup group 8 — implemented, awaiting operator smoke
 
-`ApplyMainWindowThemeFixups()` still contained one obsolete SystemColors scrollbar override:
+The remaining MainWindow `SystemColors` compatibility bridge is being retired one family at a time.
 
-- `Resources[SystemColors.ScrollBarBrushKey] = surface;`
+This slice removes only:
 
-V11 already owns scrollbar appearance explicitly through `Pda8InteractionTheme.xaml`, including the accepted dark scrollbar track/thumb and hover/drag states. The SystemColors scrollbar override was therefore a second legacy owner and has been removed.
+- `SystemColors.HighlightBrushKey`
+- `SystemColors.HighlightTextBrushKey`
 
-No other SystemColors compatibility mappings were removed in this slice. Control, highlight, info and window brush mappings remain until each can be proven redundant against legacy XAML/control behavior.
+Evidence for removal:
 
-### Next V12 cleanup group after group 7 smoke
+- current ComboBox item selection is explicitly styled with `AppSelectionBrush` and `AppTextBrush`;
+- current Profile/DataGrid selection and PDA-8 interaction states have explicit resource/template owners;
+- no code outside `ApplyMainWindowThemeFixups()` references these two SystemColors keys.
 
-Audit the remaining MainWindow SystemColors compatibility mappings one family at a time. In particular, determine whether Window/Control/Highlight/Info brush overrides are still required by any legacy Profile/MainWindow control templates. Remove only mappings with an explicit PDA-8 owner and a clear smoke path.
+The local `selection` brush variable became dead after this removal and was deleted as part of the same slice.
+
+No Window, Control or Info SystemColors mappings were changed in this group.
+
+### Next V12 cleanup group after group 8 smoke
+
+Audit the `SystemColors.InfoBrushKey` / `InfoTextBrushKey` pair next. Remove them only if Profile help/tooltips are fully protected by the restored MainWindow `SharedToolTipStyle` bridge and no remaining legacy control reads the Info SystemColors family.
+
+After that, audit Control and Window mappings separately; do not collapse those families into one removal.
 
 Do **not** remove `ThemeRuntime.Apply(window)` wholesale yet; older standalone windows still need a separate ownership audit.
 
@@ -83,6 +95,7 @@ Smoke requirements after each V12 cleanup group:
 - standalone/fallback DRY, LIVE review and Incident preview windows remain dark and readable;
 - shared `i` controls remain chrome-free;
 - Profile and Home tooltips remain dark and readable;
+- ComboBox/DataGrid selection remains dark and legible;
 - shared scrollbar styling remains intact;
 - refresh glyph behavior remains intact;
 - no delayed restyling/flicker appears;
