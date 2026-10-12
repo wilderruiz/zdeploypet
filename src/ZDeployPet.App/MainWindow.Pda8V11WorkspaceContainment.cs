@@ -9,6 +9,9 @@ public partial class MainWindow
 
     private void ApplyPda8V11WorkspaceContainment()
     {
+        if (_pda8V11WorkspaceContainmentApplied)
+            return;
+
         if (_operatorAccessCard is null || _operatorAccessCard.Child is not Grid workspaceRoot)
             return;
 
