@@ -322,6 +322,49 @@ Only after the static hierarchy is correct:
 - no tiny icon should be the only way to understand a destructive or authority-changing action;
 - verify contrast for muted text, selected tabs and console output.
 
+### 3.11.1 V11.1 — investigate and fix outer Deployment workspace height ownership
+
+The V11 scrollbar smoke confirmed that the **inner DRY/LIVE workflow surfaces now scroll correctly**, but it also exposed a separate layout-containment defect in the outer Home workspace shell.
+
+Observed behavior from the accepted smoke screenshots:
+
+- the inner DRY/LIVE `ScrollViewer` correctly gains a vertical scrollbar when content is taller than its viewport;
+- however, the outer **Deployment workspace** container can still extend below the visible left-pane viewport;
+- its lower border is visibly cut off by the bottom of the application rather than resizing to the available Home height;
+- the effect is most obvious at shorter window heights and while DRY or LIVE owns a tall embedded workflow;
+- resizing the application changes the amount of visible inner content, but the outer shell does not always appear to participate correctly in the same available-height calculation.
+
+This must be investigated as a **layout ownership problem**, not worked around by simply shrinking the inner scroll viewer further.
+
+Investigation requirements:
+
+1. trace the visual/layout chain from the Home left pane through the Home content host, `_operatorAccessCard`, the DRY/LIVE/REPORTS workspace root, selected content host, action workspace shell, and embedded workflow `ScrollViewer`;
+2. identify any explicit `Height`, `MinHeight`, `MaxHeight`, window-height-derived calculation, fixed row, `Auto` row, `StackPanel`, or measure/arrange behavior that lets the outer workspace request more vertical space than the visible left-pane viewport;
+3. specifically review whether the V11 embedded scroll bound is calculated from `MainWindow.ActualHeight` while failing to subtract all outer chrome such as menu/title area, Home hero, context strip, workspace heading/tabs, outer padding/borders and bottom margins;
+4. verify whether a parent `StackPanel` is measuring the workspace with effectively unbounded vertical height, which would allow the outer card to grow beyond the viewport even though the inner workflow has its own scrollbar;
+5. determine which layer should own the vertical constraint. Preferred result: the **outer Deployment workspace container fits inside the remaining Home viewport**, while only the currently selected DRY/LIVE/REPORTS content area consumes the remainder and scrolls internally when necessary;
+6. avoid multiple competing `MaxHeight` calculations. There should be one clear viewport owner and one clear overflow owner;
+7. REPORTS must follow the same containment contract so switching among `DRY | LIVE | REPORTS` never changes the outer card into an off-screen surface;
+8. preserve the independent right-side **Activity & reports** pane; fixing the left viewport must not resize, scroll or reset the console;
+9. re-test with the right pane both visible and hidden, because available width can change wrapping and therefore left-side vertical demand;
+10. smoke at normal, maximized and deliberately short window heights, plus 100%, 125% and 150% DPI.
+
+Target invariant:
+
+> **The outer Deployment workspace card must always remain fully contained inside the visible Home left-pane viewport. Its bottom border must remain visible. DRY/LIVE/REPORTS may scroll inside that card, but the card itself must not be clipped below the application window.**
+
+Acceptance smoke for V11.1:
+
+- shrink the app vertically until DRY requires scrolling: outer workspace bottom remains visible;
+- repeat with a long LIVE immutable review: outer workspace bottom remains visible while LIVE scrolls internally;
+- switch to REPORTS: outer workspace remains contained and report history owns any required overflow;
+- maximize, restore and repeatedly resize shorter/taller: no stale fixed height remains;
+- hide/show Activity & reports: left workspace recomputes correctly;
+- no double vertical scrollbars appear around the same workflow;
+- no controls become unreachable beneath the application window.
+
+Complete V11.1 **before V12 cleanup**, because removing old visual/layout shims before the height owner is understood could hide the true source of the clipping defect.
+
 ## 3.12 Phase V12 — remove superseded visual shims last
 
 After the new native styles are operator-smoked:
@@ -367,6 +410,7 @@ The redesign is accepted only when all of the following are true:
 - DRY | LIVE | REPORTS looks like one compact workspace control;
 - DRY/LIVE embedded content remains fully functional and popup-free;
 - embedded DRY and LIVE workflows scroll vertically with the shared global dark scrollbar style whenever their content exceeds the viewport;
+- the outer Deployment workspace card remains fully contained inside the visible left-pane viewport at all supported window heights, with its bottom border visible while selected DRY/LIVE/REPORTS content owns internal overflow;
 - embedded workflow scrolling remains independent from the right-side console and does not create nested-scroll or stale-offset regressions;
 - Activity & reports remains the primary latest-output surface;
 - report history is secondary and does not dominate normal operation;
