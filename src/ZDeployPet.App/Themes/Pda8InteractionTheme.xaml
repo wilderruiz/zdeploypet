@@ -1,0 +1,135 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- PDA-8 V11 shared interaction/accessibility layer. -->
+
+    <SolidColorBrush x:Key="Pda8ScrollTrackBrush" Color="#0A0F14" />
+    <SolidColorBrush x:Key="Pda8ScrollThumbBrush" Color="#343C47" />
+    <SolidColorBrush x:Key="Pda8ScrollThumbHoverBrush" Color="#46546A" />
+    <SolidColorBrush x:Key="Pda8ScrollThumbDraggingBrush" Color="#556B86" />
+
+    <ControlTemplate x:Key="Pda8VerticalScrollBarTemplate" TargetType="{x:Type ScrollBar}">
+        <Grid Width="10" Background="Transparent">
+            <Track x:Name="PART_Track" IsDirectionReversed="True" Focusable="False">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}"
+                                  Focusable="False"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Opacity="0" />
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb Width="8" MinHeight="24" Cursor="Hand">
+                        <Thumb.Template>
+                            <ControlTemplate TargetType="{x:Type Thumb}">
+                                <Border x:Name="ThumbChrome"
+                                        Margin="1"
+                                        Background="{StaticResource Pda8ScrollThumbBrush}"
+                                        CornerRadius="4" />
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource Pda8ScrollThumbHoverBrush}" />
+                                    </Trigger>
+                                    <Trigger Property="IsDragging" Value="True">
+                                        <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource Pda8ScrollThumbDraggingBrush}" />
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="ThumbChrome" Property="Opacity" Value="0.35" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}"
+                                  Focusable="False"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Opacity="0" />
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+    </ControlTemplate>
+
+    <ControlTemplate x:Key="Pda8HorizontalScrollBarTemplate" TargetType="{x:Type ScrollBar}">
+        <Grid Height="10" Background="Transparent">
+            <Track x:Name="PART_Track" IsDirectionReversed="False" Focusable="False">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="{x:Static ScrollBar.PageLeftCommand}"
+                                  Focusable="False"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Opacity="0" />
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb Height="8" MinWidth="24" Cursor="Hand">
+                        <Thumb.Template>
+                            <ControlTemplate TargetType="{x:Type Thumb}">
+                                <Border x:Name="ThumbChrome"
+                                        Margin="1"
+                                        Background="{StaticResource Pda8ScrollThumbBrush}"
+                                        CornerRadius="4" />
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource Pda8ScrollThumbHoverBrush}" />
+                                    </Trigger>
+                                    <Trigger Property="IsDragging" Value="True">
+                                        <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource Pda8ScrollThumbDraggingBrush}" />
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="ThumbChrome" Property="Opacity" Value="0.35" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="{x:Static ScrollBar.PageRightCommand}"
+                                  Focusable="False"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Opacity="0" />
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+    </ControlTemplate>
+
+    <Style x:Key="Pda8ScrollBarStyle" TargetType="{x:Type ScrollBar}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource Pda8ScrollThumbBrush}" />
+        <Setter Property="Width" Value="10" />
+        <Setter Property="MinWidth" Value="10" />
+        <Setter Property="Template" Value="{StaticResource Pda8VerticalScrollBarTemplate}" />
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Height" Value="10" />
+                <Setter Property="MinHeight" Value="10" />
+                <Setter Property="Template" Value="{StaticResource Pda8HorizontalScrollBarTemplate}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Shared scrollbar chrome across all PDA-8 surfaces, including ComboBox popups,
+         standalone compatibility windows and embedded DRY/LIVE workflow viewers. -->
+    <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource Pda8ScrollBarStyle}" />
+
+    <Style x:Key="Pda8WorkflowScrollViewerStyle" TargetType="{x:Type ScrollViewer}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="PanningMode" Value="VerticalOnly" />
+        <Setter Property="CanContentScroll" Value="False" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <!-- Apply the already-accepted tooltip visual consistently instead of requiring
+         every owner to opt in separately. -->
+    <Style TargetType="{x:Type ToolTip}" BasedOn="{StaticResource Pda8ToolTipStyle}" />
+
+</ResourceDictionary>
