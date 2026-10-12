@@ -84,7 +84,12 @@ public partial class MainWindow
                 }
                 else if (sectionChild is Button infoButton && string.Equals(infoButton.Content?.ToString(), "i", StringComparison.Ordinal))
                 {
+                    if (Application.Current.TryFindResource("SharedInfoButtonStyle") is Style sharedInfoStyle)
+                        infoButton.Style = sharedInfoStyle;
+
                     infoButton.Margin = new Thickness(0, 7, 8, 0);
+                    infoButton.HorizontalAlignment = HorizontalAlignment.Right;
+                    infoButton.VerticalAlignment = VerticalAlignment.Top;
                 }
             }
         }
