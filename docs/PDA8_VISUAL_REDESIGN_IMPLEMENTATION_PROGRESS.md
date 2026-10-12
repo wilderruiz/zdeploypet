@@ -48,6 +48,17 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 3. Removed runtime ScrollBar scanning/fade timers from `ThemeRuntime`; shared scrollbar templates are now owned by `Pda8InteractionTheme.xaml`.
 4. Removed runtime `button.Content == "i"` repainting from `ThemeRuntime`; shared information controls are now owned by `Pda8InfoButtonTheme.xaml` and no longer risk being re-boxed by legacy runtime code.
 
+### V12 cleanup group 4 — implemented, awaiting operator smoke
+
+`ApplyMainWindowThemeFixups()` has been narrowed further:
+
+- removed the MainWindow-local ToolTip resource override because V11 now supplies the application-wide implicit ToolTip style;
+- removed duplicate `TargetsGrid` / `DestinationsGrid` header and row-header normalization because V10 is the explicit Profile DataGrid owner;
+- retained the MainWindow SystemColors dark mappings for legacy XAML controls;
+- retained the local `InfoButtonStyle` compatibility bridge because `MainWindow.xaml` still declares/uses that legacy key and it must continue deriving from the shared chrome-free info style.
+
+This cleanup changes no deployment/profile behavior and should be visually neutral.
+
 ### `ThemeRuntime` compatibility boundary after cleanup group 3
 
 `ThemeRuntime` is intentionally **not** removed wholesale yet. It still performs compatibility work for older standalone windows that retain legacy literal colors:
@@ -60,9 +71,9 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 
 These remaining responsibilities must be audited before any further deletion.
 
-### Next V12 cleanup group
+### Next V12 cleanup group after group 4 smoke
 
-Audit the remaining `ThemeRuntime.Apply(...)` callers and `ApplyMainWindowThemeFixups()` ownership. Prefer moving any still-required presentation into resource dictionaries or the explicit owning window, but do not remove compatibility behavior that would reintroduce light legacy surfaces in standalone/fallback windows.
+Audit the duplicate per-window `ThemeRuntime.Apply(...)` calls. `App.xaml.cs` already invokes `ThemeRuntime.Apply(window)` for every loaded Window, so standalone DRY/LIVE/Incident windows may be doing a second redundant recursive pass. Remove those local calls only after confirming the global class-handler timing fully covers their legacy surfaces.
 
 Smoke requirements after each V12 cleanup group:
 
