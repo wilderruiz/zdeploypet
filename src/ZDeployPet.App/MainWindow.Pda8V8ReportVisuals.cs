@@ -39,13 +39,7 @@ public partial class MainWindow
 
         ApplyCompactReportAction(_latestReportSummaryButton);
         ApplyCompactReportAction(_latestReportFullLogButton);
-
-        if (_latestReportRefreshButton is not null &&
-            Application.Current.TryFindResource("Pda8IconButtonStyle") is Style iconButtonStyle)
-        {
-            _latestReportRefreshButton.Style = iconButtonStyle;
-            _latestReportRefreshButton.ToolTip = "Refresh deployment reports";
-        }
+        ConfigurePda8LatestReportHeaderActions();
 
         if (_deploymentHistoryStatusText is not null)
         {
@@ -86,6 +80,94 @@ public partial class MainWindow
         button.Margin = button == _latestReportSummaryButton
             ? new Thickness(0, 0, 8, 0)
             : new Thickness(0);
+    }
+
+    private void ConfigurePda8LatestReportHeaderActions()
+    {
+        Button? refresh = _latestReportRefreshButton;
+        if (refresh?.Parent is not Grid grid)
+            return;
+
+        int refreshIndex = grid.Children.IndexOf(refresh);
+        Button? help = refreshIndex >= 0 && refreshIndex + 1 < grid.Children.Count
+            ? grid.Children[refreshIndex + 1] as Button
+            : null;
+
+        if (Application.Current.TryFindResource("Pda8IconButtonStyle") is Style iconButtonStyle)
+            refresh.Style = iconButtonStyle;
+
+        Brush normal = FindBrush("AppMutedTextBrush", Brushes.LightGray);
+        Brush hover = FindBrush("AppDryBorderBrush", new SolidColorBrush(Color.FromRgb(0x4F, 0x6F, 0x96)));
+        Grid glyph = BuildPda8CounterClockwiseRefreshGlyph(normal);
+
+        refresh.Content = glyph;
+        refresh.Width = 28;
+        refresh.Height = 28;
+        refresh.MinHeight = 0;
+        refresh.Padding = new Thickness(3);
+        refresh.Margin = new Thickness(0, 0, help is null ? 0 : 32, 0);
+        refresh.HorizontalAlignment = HorizontalAlignment.Right;
+        refresh.VerticalAlignment = VerticalAlignment.Top;
+        refresh.Background = Brushes.Transparent;
+        refresh.BorderBrush = Brushes.Transparent;
+        refresh.BorderThickness = new Thickness(0);
+        refresh.ToolTip = "Refresh deployment reports";
+
+        refresh.MouseEnter += (_, _) => SetPda8RefreshGlyphBrush(glyph, hover);
+        refresh.MouseLeave += (_, _) => SetPda8RefreshGlyphBrush(glyph, normal);
+        refresh.IsEnabledChanged += (_, _) => glyph.Opacity = refresh.IsEnabled ? 1.0 : 0.45;
+        glyph.Opacity = refresh.IsEnabled ? 1.0 : 0.45;
+
+        Grid.SetRow(refresh, 0);
+        Grid.SetColumn(refresh, 1);
+
+        if (help is null)
+            return;
+
+        Grid.SetRow(help, 0);
+        Grid.SetColumn(help, 1);
+        help.HorizontalAlignment = HorizontalAlignment.Right;
+        help.VerticalAlignment = VerticalAlignment.Top;
+        help.Margin = new Thickness(0);
+    }
+
+    private static Grid BuildPda8CounterClockwiseRefreshGlyph(Brush brush)
+    {
+        Grid glyph = new() { Width = 18, Height = 18 };
+
+        System.Windows.Shapes.Path arc = new()
+        {
+            Data = Geometry.Parse("M 14.8,5.2 A 6.2,6.2 0 1 0 15.0,12.7"),
+            Stroke = brush,
+            StrokeThickness = 1.8,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            Fill = Brushes.Transparent
+        };
+        glyph.Children.Add(arc);
+
+        System.Windows.Shapes.Path arrow = new()
+        {
+            Data = Geometry.Parse("M 14.8,2.7 L 14.8,6.6 L 10.9,6.6"),
+            Stroke = brush,
+            StrokeThickness = 1.8,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent
+        };
+        glyph.Children.Add(arrow);
+
+        return glyph;
+    }
+
+    private static void SetPda8RefreshGlyphBrush(Grid glyph, Brush brush)
+    {
+        foreach (UIElement child in glyph.Children)
+        {
+            if (child is System.Windows.Shapes.Path path)
+                path.Stroke = brush;
+        }
     }
 
     private void StyleHistoryHeader()
