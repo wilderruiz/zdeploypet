@@ -1,7 +1,5 @@
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Threading;
 
@@ -39,8 +37,6 @@ internal static class ThemeRuntime
         "#FFD8D8D8"
     };
 
-    private static readonly ConditionalWeakTable<ScrollBar, DispatcherTimer> ScrollFadeTimers = new();
-
     public static void Apply(Window window)
     {
         Brush background = ResourceBrush("AppBackgroundBrush", Brushes.Black);
@@ -48,12 +44,10 @@ internal static class ThemeRuntime
         window.Background = background;
         window.Foreground = text;
 
-        // Keep every ScrollViewer in the app on the same compact scrollbar metric.
-        // The delayed scans are important because WPF creates ScrollBar visuals only
-        // after the owning ScrollViewer template has been realized.
-        Application.Current.Resources[SystemParameters.VerticalScrollBarWidthKey] = 7.0;
-        Application.Current.Resources[SystemParameters.HorizontalScrollBarHeightKey] = 7.0;
-
+        // PDA-8 now owns ScrollBar/ScrollViewer and lightweight information-control
+        // presentation through shared resource dictionaries. ThemeRuntime remains only
+        // as a compatibility bridge for older windows that still carry legacy literal
+        // brushes in their existing visual trees.
         ApplyToDescendants(window);
         window.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => ApplyToDescendants(window)));
         window.Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() => ApplyToDescendants(window)));
@@ -109,26 +103,6 @@ internal static class ThemeRuntime
         if (element is TextBlock textBlock && IsLegacyBrush(textBlock.Foreground, LegacyMutedForegrounds))
             textBlock.Foreground = ResourceBrush("AppMutedTextBrush", Brushes.LightGray);
 
-        if (element is ScrollBar scrollBar)
-            PrepareSharedScrollBar(scrollBar);
-
-        if (element is Button button && Equals(button.Content, "i"))
-        {
-            Thickness margin = button.Margin;
-            HorizontalAlignment horizontalAlignment = button.HorizontalAlignment;
-            VerticalAlignment verticalAlignment = button.VerticalAlignment;
-
-            if (Application.Current.TryFindResource("SharedInfoButtonStyle") is Style style)
-                button.Style = style;
-
-            button.Margin = margin;
-            button.HorizontalAlignment = horizontalAlignment;
-            button.VerticalAlignment = verticalAlignment;
-            button.Background = ResourceBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray);
-            button.BorderBrush = ResourceBrush("AppSurfaceRaisedBrush", Brushes.DarkSlateGray);
-            button.Foreground = ResourceBrush("AppTextBrush", Brushes.White);
-        }
-
         if (element is Border border)
         {
             if (IsLegacyBrush(border.Background, LegacyWarningBackgrounds))
@@ -141,62 +115,6 @@ internal static class ThemeRuntime
             else if (IsLegacyBrush(border.BorderBrush, LegacyNeutralBorders))
                 border.BorderBrush = ResourceBrush("AppBorderBrush", Brushes.DimGray);
         }
-    }
-
-    private static void PrepareSharedScrollBar(ScrollBar scrollBar)
-    {
-        if (ScrollFadeTimers.TryGetValue(scrollBar, out _))
-            return;
-
-        if (scrollBar.Orientation == Orientation.Vertical)
-        {
-            scrollBar.Width = 7;
-            scrollBar.MinWidth = 7;
-            scrollBar.MaxWidth = 7;
-        }
-        else
-        {
-            scrollBar.Height = 7;
-            scrollBar.MinHeight = 7;
-            scrollBar.MaxHeight = 7;
-        }
-
-        scrollBar.Opacity = 0;
-        scrollBar.Background = Brushes.Transparent;
-        scrollBar.BorderBrush = Brushes.Transparent;
-
-        DispatcherTimer fadeTimer = new(DispatcherPriority.Background)
-        {
-            Interval = TimeSpan.FromMilliseconds(850)
-        };
-
-        fadeTimer.Tick += (_, _) =>
-        {
-            fadeTimer.Stop();
-            if (!scrollBar.IsMouseOver)
-                scrollBar.Opacity = 0;
-        };
-
-        scrollBar.MouseEnter += (_, _) =>
-        {
-            fadeTimer.Stop();
-            scrollBar.Opacity = 0.92;
-        };
-
-        scrollBar.MouseLeave += (_, _) =>
-        {
-            fadeTimer.Stop();
-            fadeTimer.Start();
-        };
-
-        scrollBar.ValueChanged += (_, _) =>
-        {
-            scrollBar.Opacity = 0.92;
-            fadeTimer.Stop();
-            fadeTimer.Start();
-        };
-
-        ScrollFadeTimers.Add(scrollBar, fadeTimer);
     }
 
     private static bool IsLegacyBrush(Brush? brush, HashSet<string> values) =>
