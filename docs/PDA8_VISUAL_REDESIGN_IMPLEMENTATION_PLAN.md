@@ -93,6 +93,7 @@ Before restructuring individual screens:
    - segmented workspace tab;
    - compact console tab;
    - ComboBox/TextBox/input surface;
+   - shared `ScrollViewer` / vertical `ScrollBar` treatment for embedded workflow surfaces;
    - tooltip;
    - info (`i`) button;
 4. preserve accessibility names/focus behavior;
@@ -173,7 +174,7 @@ Visual rules:
 - READY state still exposes the real embedded DRY/LIVE workflow content;
 - no popup regression.
 
-## 3.7 Phase V7 — embedded workflow cards and inputs
+## 3.7 Phase V7 — embedded workflow cards, inputs and shared scrolling
 
 Restyle the existing embedded DRY and LIVE controls without rewriting them.
 
@@ -194,7 +195,24 @@ Restyle the existing embedded DRY and LIVE controls without rewriting them.
 - armed/validated LIVE action uses green only after the accepted PDA-6 state allows it;
 - dangerous/destructive red is not used merely to make LIVE look dramatic.
 
-At narrower widths, forms stack cleanly rather than clipping.
+### Shared embedded workflow scrolling
+
+DRY and LIVE are embedded workflow surfaces inside the Home workspace and can grow taller than the available viewport. Their scroll behavior is therefore part of the shared UI contract.
+
+Requirements:
+
+- both embedded DRY and LIVE surfaces must remain independently **vertically scrollable** when their content exceeds the available Home workspace height;
+- reuse the **global PDA-8 `ScrollViewer` / `ScrollBar` style** from the central theme resources rather than using default light OS chrome or separate one-off scrollbar implementations;
+- the shared scrollbar should be slim, dark navy/charcoal, visually quiet when idle, and gain a restrained blue/neutral highlight on hover or thumb interaction;
+- scrollbars should appear only when required (`Auto`) and must not reserve excessive width when hidden;
+- mouse wheel scrolling must operate on the currently selected embedded DRY or LIVE workflow when the pointer/focus is over that workflow;
+- keyboard scrolling (`PageUp`, `PageDown`, arrows where applicable, Home/End) must remain usable through normal WPF focus behavior;
+- scrolling the left workflow must never move or reset the right-side Activity/Reports console;
+- switching `DRY | LIVE | REPORTS` must not transfer stale scroll offset between different workspace surfaces; each selected surface should begin or restore position intentionally rather than inheriting another tab's offset;
+- no nested-scroll trap: the embedded workflow owns its internal vertical overflow, while the overall application window and right console remain independently usable;
+- the old standalone `DryRunWindow` / `LiveDeploymentReviewWindow` wrappers, while retained for compatibility during refactor, should use the same shared scrollbar resources whenever shown so embedded and standalone presentation do not diverge.
+
+At narrower widths, forms stack cleanly rather than clipping, and vertical scrolling must remain available after the stack transition.
 
 ## 3.8 Phase V8 — REPORTS workspace
 
@@ -249,6 +267,8 @@ Only after the static hierarchy is correct:
 - visible keyboard focus rings;
 - tooltips use one style;
 - disabled state remains readable and visually distinct;
+- shared scrollbars have consistent idle / hover / drag / disabled states and do not fall back to light OS chrome;
+- verify mouse-wheel and keyboard scrolling for embedded DRY and LIVE at normal and narrow widths;
 - DPI scaling smoke at 100%, 125%, 150%;
 - no tiny icon should be the only way to understand a destructive or authority-changing action;
 - verify contrast for muted text, selected tabs and console output.
@@ -297,6 +317,8 @@ The redesign is accepted only when all of the following are true:
 - ZDeploy Pet remains the obvious READY/LOCKED access anchor;
 - DRY | LIVE | REPORTS looks like one compact workspace control;
 - DRY/LIVE embedded content remains fully functional and popup-free;
+- embedded DRY and LIVE workflows scroll vertically with the shared global dark scrollbar style whenever their content exceeds the viewport;
+- embedded workflow scrolling remains independent from the right-side console and does not create nested-scroll or stale-offset regressions;
 - Activity & reports remains the primary latest-output surface;
 - report history is secondary and does not dominate normal operation;
 - controls have consistent radius, padding, typography and border grammar;
