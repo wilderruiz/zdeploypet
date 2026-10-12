@@ -4,6 +4,8 @@ namespace ZDeployPet.App;
 
 public partial class MainWindow
 {
+    private const double PreferredMaximumActivityPaneFraction = 0.40;
+
     private readonly UiLayoutStore _uiLayoutStore = new();
     private bool _uiLayoutRestored;
 
@@ -35,7 +37,7 @@ public partial class MainWindow
             WindowStartupLocation = WindowStartupLocation.Manual;
         }
 
-        RestoreConsolePaneMemory(snapshot);
+        RestoreConsolePaneMemory(snapshot, width);
 
         if (snapshot.MainMaximized)
             WindowState = WindowState.Maximized;
@@ -43,13 +45,25 @@ public partial class MainWindow
         ShellRuntime.Activity.Add(ShellActivityLevel.Info, "Shell", "Restored saved UI sizing and console-pane layout.");
     }
 
-    private void RestoreConsolePaneMemory(UiLayoutSnapshot snapshot)
+    private void RestoreConsolePaneMemory(UiLayoutSnapshot snapshot, double mainWindowWidth)
     {
         if (_activityPaneColumn is null || _activitySplitterColumn is null ||
             _activityPane is null || _activityPaneSplitter is null)
             return;
 
-        double consoleWidth = ClampFinite(snapshot.ConsolePaneWidth, MinimumActivityPaneWidth, 1200, 430);
+        // PDA-8 parity: Activity & reports is intentionally secondary to the main
+        // deployment workspace. Older saved layouts could restore a nearly 50/50
+        // split, so bound restored width to 40% of the remembered window width.
+        // The operator can still drag the splitter wider during the current session.
+        double maximumRestoredConsoleWidth = Math.Max(
+            MinimumActivityPaneWidth,
+            Math.Min(1200, mainWindowWidth * PreferredMaximumActivityPaneFraction));
+        double fallbackConsoleWidth = Math.Min(430, maximumRestoredConsoleWidth);
+        double consoleWidth = ClampFinite(
+            snapshot.ConsolePaneWidth,
+            MinimumActivityPaneWidth,
+            maximumRestoredConsoleWidth,
+            fallbackConsoleWidth);
         _rememberedActivityPaneWidth = new GridLength(consoleWidth);
 
         if (snapshot.ConsolePaneVisible)
