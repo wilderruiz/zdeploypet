@@ -32,6 +32,7 @@ public partial class App : Application
         LoadPda8VisualTheme();
         LoadPda8ShellTheme();
         LoadPda8InteractionTheme();
+        LoadPda8InfoButtonTheme();
 
         _singleInstanceActivationEvent = new EventWaitHandle(
             initialState: false,
@@ -131,6 +132,25 @@ public partial class App : Application
         };
 
         Resources.MergedDictionaries.Add(theme);
+    }
+
+    private void LoadPda8InfoButtonTheme()
+    {
+        ResourceDictionary theme = new()
+        {
+            Source = new Uri(
+                "pack://application:,,,/ZDeployPet;component/Themes/Pda8InfoButtonTheme.xaml",
+                UriKind.Absolute)
+        };
+
+        Resources.MergedDictionaries.Add(theme);
+
+        // App.xaml still contains the legacy SharedInfoButtonStyle for compatibility
+        // with older windows. Replace that application-level key after the PDA-8 theme
+        // has loaded so every existing info affordance resolves to the chrome-free
+        // implementation without per-window visual-tree fixups.
+        if (theme["Pda8BareInfoButtonStyle"] is Style infoStyle)
+            Resources["SharedInfoButtonStyle"] = infoStyle;
     }
 
     private static bool IsInsideToggleButton(DependencyObject source, ComboBox owner)
