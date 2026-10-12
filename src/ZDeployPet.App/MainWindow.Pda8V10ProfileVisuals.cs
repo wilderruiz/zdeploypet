@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Markup;
 using System.Windows.Media;
 
 namespace ZDeployPet.App;
@@ -8,6 +9,7 @@ namespace ZDeployPet.App;
 public partial class MainWindow
 {
     private bool _pda8V10ProfileVisualsInitialized;
+    private static ControlTemplate? _pda8ProfileGroupBoxTemplate;
 
     private void InitializePda8V10ProfileVisuals()
     {
@@ -71,11 +73,15 @@ public partial class MainWindow
             {
                 if (sectionChild is GroupBox group)
                 {
+                    // Profile owns its own GroupBox template. The stock Windows
+                    // fieldset template can draw bright system-theme edges even when
+                    // BorderBrush is dark, so replace it with one continuous PDA-8 card.
+                    group.Template = GetPda8ProfileGroupBoxTemplate();
                     group.Background = surface;
                     group.Foreground = text;
                     group.BorderBrush = border;
                     group.BorderThickness = new Thickness(1);
-                    group.Padding = new Thickness(14, 12, 14, 14);
+                    group.Padding = new Thickness(14, 8, 14, 14);
                     group.Margin = new Thickness(0);
                     group.FontSize = 13;
                     group.FontWeight = FontWeights.SemiBold;
@@ -111,6 +117,42 @@ public partial class MainWindow
 
         StatusText.Foreground = muted;
         SetupValidationText.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x8A, 0x8A));
+    }
+
+    private static ControlTemplate GetPda8ProfileGroupBoxTemplate()
+    {
+        if (_pda8ProfileGroupBoxTemplate is not null)
+            return _pda8ProfileGroupBoxTemplate;
+
+        const string templateXaml = """
+            <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                             TargetType="{x:Type GroupBox}">
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <ContentPresenter Grid.Row="0"
+                                          ContentSource="Header"
+                                          Margin="14,11,14,0"
+                                          HorizontalAlignment="Left"
+                                          RecognizesAccessKey="True" />
+                        <ContentPresenter Grid.Row="1"
+                                          Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch" />
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+            """;
+
+        _pda8ProfileGroupBoxTemplate = (ControlTemplate)XamlReader.Parse(templateXaml);
+        return _pda8ProfileGroupBoxTemplate;
     }
 
     private static void ApplyPda8V10ProfileElementVisuals(
