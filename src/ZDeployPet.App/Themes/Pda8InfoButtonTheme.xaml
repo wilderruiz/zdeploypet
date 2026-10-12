@@ -2,11 +2,13 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-        PDA-8 V12 shared information affordance.
+        PDA-8 V11/V12 shared information affordance.
 
         Information actions should read as lightweight annotations rather than
         rectangular command buttons. The 28x28 hit target remains available for
         mouse/keyboard use, while the visible chrome is only the glyph itself.
+        Keyboard focus is rendered by the glyph colour, so the native light-theme
+        focus adorner is intentionally disabled for this owned template.
     -->
     <Style x:Key="Pda8BareInfoButtonStyle" TargetType="{x:Type Button}">
         <Setter Property="Width" Value="28" />
@@ -24,6 +26,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="ToolTipService.InitialShowDelay" Value="250" />
         <Setter Property="ToolTipService.ShowDuration" Value="2147483647" />
