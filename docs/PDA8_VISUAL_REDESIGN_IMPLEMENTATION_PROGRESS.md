@@ -30,6 +30,7 @@ This file is the live implementation checkpoint for the PDA-8 native WPF redesig
 - Profile regression fix — legacy Profile-local `InfoButtonStyle` no longer visually overrides the shared information affordance. Operator smoke passed 2026-10-12.
 - V11.2 — keyboard focus and disabled-state polish for shared information actions and shell/menu actions. Operator smoke passed 2026-10-12; no light OS focus chrome regression observed.
 - V11.3 — DPI/resize resilience audit. The stale `MainWindow.ActualHeight - 360` embedded-workflow height calculation was removed so V11.1 remains the sole Home vertical viewport owner. Operator smoke passed 2026-10-12.
+- Parity P1 — main/activity split restore now keeps the workspace dominant and the Activity pane secondary. Operator smoke passed 2026-10-12.
 
 ### Confirmed implementation details
 
@@ -45,8 +46,8 @@ A fresh side-by-side comparison of the real WPF application against `mocks up/zd
 
 Highest-priority remaining visual gaps:
 
-1. **Main/Activity split proportion:** current UI can read close to 50/50; mockup intends a main-workspace-dominant layout around 60–65% left / 35–40% right at normal desktop widths.
-2. **Profile legacy fieldset chrome:** bright pale/white GroupBox outlines remain the strongest visible mismatch and must become subtle dark rounded section cards.
+1. **Main/Activity split proportion:** closed by parity P1 and operator-smoked.
+2. **Profile legacy fieldset chrome:** P2 implemented; awaiting operator smoke. Bright Windows fieldset outlines are replaced with Profile-owned dark rounded section cards.
 3. **Profile control chrome:** buttons, inputs and grids are dark but still more rectangular/heavy than the mockup; normalize radius/padding/border grammar.
 4. **Home segmented control:** tighten DRY/LIVE/REPORTS into the shared compact capsule treatment from the mockup.
 5. **Surface hierarchy:** reduce remaining heavy card borders and rely more on spacing/surface contrast.
@@ -62,20 +63,33 @@ These parity items are now part of the implementation plan and must close before
 
 ### Parity P1 — main/activity proportion
 
-**Implemented 2026-10-12, awaiting operator smoke.**
+**Implemented and operator-smoked 2026-10-12.**
 
-The saved Activity & reports width is now bounded during layout restore to a maximum of 40% of the remembered main-window width. This prevents older saved nearly-50/50 layouts from defeating the accepted mockup hierarchy after relaunch, while still leaving the splitter fully interactive during the current session.
+The saved Activity & reports width is bounded during layout restore to a maximum of 40% of the remembered main-window width. This prevents older saved nearly-50/50 layouts from defeating the accepted mockup hierarchy after relaunch, while still leaving the splitter fully interactive during the current session.
 
 Implementation owner: `MainWindow.LayoutMemory.cs`.
 
+### Parity P2 — Profile section-card ownership
+
+**Implemented 2026-10-12, awaiting operator smoke.**
+
+Profile no longer relies on the stock Windows `GroupBox` fieldset template for its numbered setup sections. `MainWindow.Pda8V10ProfileVisuals.cs` now assigns a Profile-only control template that renders each section as one continuous dark rounded card with an internal header and subtle border.
+
+Important ownership boundary:
+
+- the global application `GroupBox` style is intentionally unchanged;
+- Access Onboarding and other standalone/fallback surfaces are not affected by this cosmetic parity slice;
+- Profile `i` buttons remain independently overlaid using the shared borderless information style;
+- existing Profile controls, validation logic, grids and section content are unchanged.
+
 Smoke acceptance:
 
-- relaunch with the Activity & reports pane visible;
-- main deployment/Profile workspace should visibly dominate the horizontal layout;
-- right pane should restore at no more than roughly 40% of the window width;
-- splitter remains draggable in both directions after startup;
-- hide/show Activity & reports still works;
-- saved main-window position/size still restores correctly.
+- open Profile and confirm the bright/pale fieldset outlines are gone;
+- numbered section titles remain visible and correctly aligned inside each card;
+- section `i` actions remain at the upper-right and tooltips remain dark;
+- ComboBoxes, grids and buttons still function and retain dark chrome;
+- Profile scrolling remains unchanged;
+- Home/Activity and standalone fallback windows remain visually unchanged.
 
 ## Current next step — V12 cleanup plus parity closure
 
@@ -105,9 +119,9 @@ The six remaining MainWindow Control SystemColors mappings were audited before r
 - `SystemColors.ControlDarkBrushKey`
 - `SystemColors.ControlDarkDarkBrushKey`
 
-Result: **do not remove this family yet.** The repository still has legacy/default-template controls on Profile and fallback windows, and the current Profile `GroupBox` style only sets foreground/border properties rather than fully owning the control template. The visible bright fieldset mismatch is evidence that control-template ownership must be completed before these compatibility mappings can be safely deleted.
+Result before P2: **retain this family until the Profile card-template smoke passes and remaining legacy/default-template consumers are re-audited.** P2 removes the strongest visible Profile `GroupBox` dependency, but other MainWindow/fallback controls may still rely on these compatibility mappings.
 
-The next parity slice therefore precedes further Control-SystemColors deletion: explicitly own the Profile GroupBox/fieldset chrome with the dark rounded PDA-8 card grammar, smoke it, then repeat the Control mapping audit.
+Do not delete this family wholesale immediately after P2. Re-run the ownership audit first.
 
 ### Current `ThemeRuntime` boundary
 
