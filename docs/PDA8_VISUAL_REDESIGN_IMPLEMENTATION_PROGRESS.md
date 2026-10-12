@@ -51,8 +51,9 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 6. Removed duplicate standalone-window theme application. `DryRunWindow`, `LiveDeploymentReviewWindow`, and `IncidentBundlePreviewWindow` keep their existing single local `ThemeRuntime.Apply(...)` pass, while the global Window Loaded hook skips those three compatibility windows. Operator smoke passed 2026-10-12.
 7. Audited and removed the remaining recursive `ThemeRuntime` legacy color-conversion layer. No legacy literal warning/info/muted colors remained in the repository, so the descendant scan and delayed recoloring passes were deleted. Operator smoke passed 2026-10-12.
 8. Removed the obsolete `SystemColors.ScrollBarBrushKey` MainWindow override after confirming V11's explicit shared scrollbar template is the sole scrollbar visual owner. Operator smoke passed 2026-10-12.
+9. Removed the obsolete `SystemColors.HighlightBrushKey` and `SystemColors.HighlightTextBrushKey` MainWindow mappings after verifying explicit ComboBox/DataGrid/PDA-8 selection styling. Operator smoke passed 2026-10-12.
 
-### Current `ThemeRuntime` boundary after cleanup group 6
+### Current `ThemeRuntime` boundary
 
 `ThemeRuntime` now deliberately owns only:
 
@@ -61,30 +62,35 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 
 The Window background/foreground assignment is **not yet removed**. The repository still contains several standalone/fallback windows beyond DRY/LIVE/Incident (for example About, Activity, Git Safety, Access Onboarding, Deployment Session and report artifact surfaces), so a wholesale removal would be broader than the evidence currently supports.
 
-### V12 cleanup group 8 — implemented, awaiting operator smoke
-
-The remaining MainWindow `SystemColors` compatibility bridge is being retired one family at a time.
+### V12 cleanup group 9 — implemented, awaiting operator smoke
 
 This slice removes only:
 
-- `SystemColors.HighlightBrushKey`
-- `SystemColors.HighlightTextBrushKey`
+- `SystemColors.InfoBrushKey`
+- `SystemColors.InfoTextBrushKey`
 
 Evidence for removal:
 
-- current ComboBox item selection is explicitly styled with `AppSelectionBrush` and `AppTextBrush`;
-- current Profile/DataGrid selection and PDA-8 interaction states have explicit resource/template owners;
-- no code outside `ApplyMainWindowThemeFixups()` references these two SystemColors keys.
+- Profile/MainWindow help tooltips are explicitly bridged to `SharedToolTipStyle` in `ApplyMainWindowThemeFixups()`;
+- Home/Activity help tips already use the shared dark tooltip owner;
+- shared `i` controls are owned by `Pda8InfoButtonTheme.xaml`;
+- the prior Profile white-tooltip regression was caused by removal of the local tooltip bridge, not by the Info SystemColors pair;
+- no code outside `ApplyMainWindowThemeFixups()` owns or references these Info SystemColors mappings.
 
-The local `selection` brush variable became dead after this removal and was deleted as part of the same slice.
+Window and Control SystemColors families remain untouched in this group.
 
-No Window, Control or Info SystemColors mappings were changed in this group.
+### Next V12 cleanup group after group 9 smoke
 
-### Next V12 cleanup group after group 8 smoke
+Audit the Control SystemColors family separately:
 
-Audit the `SystemColors.InfoBrushKey` / `InfoTextBrushKey` pair next. Remove them only if Profile help/tooltips are fully protected by the restored MainWindow `SharedToolTipStyle` bridge and no remaining legacy control reads the Info SystemColors family.
+- `SystemColors.ControlBrushKey`
+- `SystemColors.ControlTextBrushKey`
+- `SystemColors.ControlLightBrushKey`
+- `SystemColors.ControlLightLightBrushKey`
+- `SystemColors.ControlDarkBrushKey`
+- `SystemColors.ControlDarkDarkBrushKey`
 
-After that, audit Control and Window mappings separately; do not collapse those families into one removal.
+Remove only mappings proven redundant against explicit PDA-8 templates and legacy Profile/MainWindow controls. Audit Window mappings only after Control ownership is settled.
 
 Do **not** remove `ThemeRuntime.Apply(window)` wholesale yet; older standalone windows still need a separate ownership audit.
 
