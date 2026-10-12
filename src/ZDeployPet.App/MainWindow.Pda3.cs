@@ -57,9 +57,6 @@ public partial class MainWindow
 
     private void ApplyMainWindowThemeFixups()
     {
-        if (Application.Current.TryFindResource("SharedToolTipStyle") is Style sharedToolTipStyle)
-            Resources[typeof(ToolTip)] = sharedToolTipStyle;
-
         if (Application.Current.TryFindResource("SharedInfoButtonStyle") is Style sharedInfoButtonStyle)
         {
             Style infoButtonStyle = new(typeof(Button), sharedInfoButtonStyle);
@@ -88,11 +85,6 @@ public partial class MainWindow
         Resources[SystemColors.InfoTextBrushKey] = text;
         Resources[SystemColors.HighlightBrushKey] = selection;
         Resources[SystemColors.HighlightTextBrushKey] = text;
-
-        TargetsGrid.HeadersVisibility = DataGridHeadersVisibility.Column;
-        TargetsGrid.RowHeaderWidth = 0;
-        DestinationsGrid.HeadersVisibility = DataGridHeadersVisibility.Column;
-        DestinationsGrid.RowHeaderWidth = 0;
     }
 
     private static Brush FindBrush(string key, Brush fallback)
