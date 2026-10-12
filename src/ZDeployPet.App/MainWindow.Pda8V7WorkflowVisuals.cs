@@ -25,6 +25,11 @@ public partial class MainWindow
         // place without duplicating or moving any execution logic.
         _homeDryBodyHost.LayoutUpdated += (_, _) => RefreshPda8V7WorkflowVisuals(_homeDryBodyHost, isLive: false);
         _homeLiveBodyHost.LayoutUpdated += (_, _) => RefreshPda8V7WorkflowVisuals(_homeLiveBodyHost, isLive: true);
+        SizeChanged += (_, _) =>
+        {
+            RefreshPda8V7WorkflowVisuals(_homeDryBodyHost, isLive: false);
+            RefreshPda8V7WorkflowVisuals(_homeLiveBodyHost, isLive: true);
+        };
 
         RefreshPda8V7WorkflowVisuals(_homeDryBodyHost, isLive: false);
         RefreshPda8V7WorkflowVisuals(_homeLiveBodyHost, isLive: true);
@@ -44,8 +49,7 @@ public partial class MainWindow
         switch (node)
         {
             case ScrollViewer scroll:
-                scroll.Background = Brushes.Transparent;
-                scroll.BorderThickness = new Thickness(0);
+                StylePda8V11WorkflowScrollViewer(scroll);
                 if (scroll.Content is DependencyObject scrollContent)
                     ApplyPda8V7WorkflowVisuals(scrollContent, isLive);
                 return;
@@ -97,6 +101,26 @@ public partial class MainWindow
                 StylePda8V7Button(button, isLive);
                 return;
         }
+    }
+
+    private void StylePda8V11WorkflowScrollViewer(ScrollViewer scroll)
+    {
+        if (Application.Current.TryFindResource("Pda8WorkflowScrollViewerStyle") is Style scrollStyle)
+            scroll.Style = scrollStyle;
+
+        scroll.Background = Brushes.Transparent;
+        scroll.BorderThickness = new Thickness(0);
+        scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+        scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+        scroll.PanningMode = PanningMode.VerticalOnly;
+        scroll.CanContentScroll = false;
+
+        // Bound the embedded workflow to the currently visible Home viewport so long
+        // immutable LIVE reviews scroll inside their tab rather than stretching the
+        // whole Home surface below the application window. At small window heights,
+        // keep enough usable space for the workflow itself.
+        if (ActualHeight > 0)
+            scroll.MaxHeight = Math.Max(320, ActualHeight - 360);
     }
 
     private void StylePda8V7WorkflowCard(Border border, bool isLive)
