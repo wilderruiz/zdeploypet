@@ -48,7 +48,17 @@ public partial class App : Application
             {
                 if (sender is not Window window) return;
                 window.Icon = ProductIconFactory.CreateWindowIcon();
-                ThemeRuntime.Apply(window);
+
+                // These three compatibility windows still own one local ThemeRuntime pass.
+                // Do not apply it a second time from the global Loaded hook; PDA-8 embedded
+                // workflow content is themed by the MainWindow owners instead.
+                if (window is not DryRunWindow &&
+                    window is not LiveDeploymentReviewWindow &&
+                    window is not IncidentBundlePreviewWindow)
+                {
+                    ThemeRuntime.Apply(window);
+                }
+
                 NativeWindowChromeRuntime.Apply(window);
                 Pda8ShellRuntime.ApplyWindow(window);
                 AccessibilityRuntime.Apply(window);
