@@ -10,7 +10,7 @@ This file is the live implementation checkpoint for the PDA-8 native WPF redesig
 
 ## Current status
 
-**Overall:** 🟡 V12 cleanup is in progress, but a new visual-parity checkpoint has been frozen before final cleanup completion. V1–V11 visual implementation and resilience work are operator-smoked.
+**Overall:** 🟡 V12 cleanup is in progress, while the frozen visual-parity closure queue is now being implemented before PDA-8 is declared visually finished. V1–V11 visual implementation and resilience work are operator-smoked.
 
 ### Completed / operator-smoked
 
@@ -60,7 +60,24 @@ Intentional accepted divergence: do **not** custom-draw the Windows title bar me
 
 These parity items are now part of the implementation plan and must close before PDA-8 can be declared visually finished, even if V12 cleanup itself completes earlier.
 
-## Current next step — V12 cleanup of superseded visual/runtime shims
+### Parity P1 — main/activity proportion
+
+**Implemented 2026-10-12, awaiting operator smoke.**
+
+The saved Activity & reports width is now bounded during layout restore to a maximum of 40% of the remembered main-window width. This prevents older saved nearly-50/50 layouts from defeating the accepted mockup hierarchy after relaunch, while still leaving the splitter fully interactive during the current session.
+
+Implementation owner: `MainWindow.LayoutMemory.cs`.
+
+Smoke acceptance:
+
+- relaunch with the Activity & reports pane visible;
+- main deployment/Profile workspace should visibly dominate the horizontal layout;
+- right pane should restore at no more than roughly 40% of the window width;
+- splitter remains draggable in both directions after startup;
+- hide/show Activity & reports still works;
+- saved main-window position/size still restores correctly.
+
+## Current next step — V12 cleanup plus parity closure
 
 V12 removes only visual/runtime compatibility layers that are proven redundant after V1–V11. Each cleanup group must build and be operator-smoked before the next one. The visual parity closure queue above remains a separate acceptance gate; cleanup must not delete bridges that a still-visible legacy surface demonstrably needs.
 
@@ -75,7 +92,22 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 7. Audited and removed the remaining recursive `ThemeRuntime` legacy color-conversion layer. No legacy literal warning/info/muted colors remained in the repository, so the descendant scan and delayed recoloring passes were deleted. Operator smoke passed 2026-10-12.
 8. Removed the obsolete `SystemColors.ScrollBarBrushKey` MainWindow override after confirming V11's explicit shared scrollbar template is the sole scrollbar visual owner. Operator smoke passed 2026-10-12.
 9. Removed the obsolete `SystemColors.HighlightBrushKey` and `SystemColors.HighlightTextBrushKey` MainWindow mappings after verifying explicit ComboBox/DataGrid/PDA-8 selection styling. Operator smoke passed 2026-10-12.
-10. Removed the obsolete `SystemColors.InfoBrushKey` and `SystemColors.InfoTextBrushKey` MainWindow mappings while retaining the explicit `SharedToolTipStyle` bridge required by Profile/MainWindow XAML. Operator smoke passed 2026-10-12; Profile and Home tooltips remained dark/readable.
+10. Removed the obsolete `SystemColors.InfoBrushKey` and `SystemColors.InfoTextBrushKey` MainWindow mappings while retaining the explicit `SharedToolTipStyle` bridge required by Profile/MainWindow XAML. Operator smoke/build passed 2026-10-12; Profile and Home tooltips remained dark/readable.
+
+### Control SystemColors audit — retain for now
+
+The six remaining MainWindow Control SystemColors mappings were audited before removal:
+
+- `SystemColors.ControlBrushKey`
+- `SystemColors.ControlTextBrushKey`
+- `SystemColors.ControlLightBrushKey`
+- `SystemColors.ControlLightLightBrushKey`
+- `SystemColors.ControlDarkBrushKey`
+- `SystemColors.ControlDarkDarkBrushKey`
+
+Result: **do not remove this family yet.** The repository still has legacy/default-template controls on Profile and fallback windows, and the current Profile `GroupBox` style only sets foreground/border properties rather than fully owning the control template. The visible bright fieldset mismatch is evidence that control-template ownership must be completed before these compatibility mappings can be safely deleted.
+
+The next parity slice therefore precedes further Control-SystemColors deletion: explicitly own the Profile GroupBox/fieldset chrome with the dark rounded PDA-8 card grammar, smoke it, then repeat the Control mapping audit.
 
 ### Current `ThemeRuntime` boundary
 
@@ -86,22 +118,9 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 
 The Window background/foreground assignment is **not yet removed**. The repository still contains several standalone/fallback windows beyond DRY/LIVE/Incident (for example About, Activity, Git Safety, Access Onboarding, Deployment Session and report artifact surfaces), so a wholesale removal would be broader than the evidence currently supports.
 
-### Next V12 cleanup group after the parity checkpoint
-
-Audit the Control SystemColors family separately:
-
-- `SystemColors.ControlBrushKey`
-- `SystemColors.ControlTextBrushKey`
-- `SystemColors.ControlLightBrushKey`
-- `SystemColors.ControlLightLightBrushKey`
-- `SystemColors.ControlDarkBrushKey`
-- `SystemColors.ControlDarkDarkBrushKey`
-
-Remove only mappings proven redundant against explicit PDA-8 templates and legacy Profile/MainWindow controls. **Because Profile still visibly contains legacy GroupBox/control chrome, do not assume all Control mappings are redundant merely because Home no longer needs them.** Audit Window mappings only after Control ownership is settled.
-
 Do **not** remove `ThemeRuntime.Apply(window)` wholesale yet; older standalone windows still need a separate ownership audit.
 
-Smoke requirements after each V12 cleanup group:
+Smoke requirements after each V12/parity cleanup group:
 
 - Home and Profile retain the accepted PDA-8 appearance;
 - DRY/LIVE/REPORTS embedded surfaces are unchanged;
