@@ -8,7 +8,7 @@ This file is the live implementation checkpoint for the PDA-8 native WPF redesig
 
 ## Current status
 
-**Overall:** 🟡 V11 polish in progress. V1–V10 visual implementation is operator-smoked. V11.1 workspace containment, the shared information-button normalization, and V11.2 keyboard focus / disabled-state polish are operator-smoked.
+**Overall:** 🟡 V12 cleanup in progress. V1–V11 visual implementation and resilience work are operator-smoked.
 
 ### Completed / operator-smoked
 
@@ -24,9 +24,10 @@ This file is the live implementation checkpoint for the PDA-8 native WPF redesig
 - V9 — right-side `Activity & reports` pane.
 - V10 — Profile page parity with the PDA-8 visual system.
 - V11.1 — outer Deployment workspace height ownership/containment fix; inner workflow content owns overflow and the outer card remains bounded by the visible left viewport.
-- Shared information affordance — all application `i` actions now use the borderless/backgroundless shared treatment; the glyph alone is visible on dark surfaces and highlights on hover/focus.
+- Shared information affordance — all application `i` actions use the borderless/backgroundless shared treatment; the glyph alone is visible on dark surfaces and highlights on hover/focus.
 - Profile regression fix — legacy Profile-local `InfoButtonStyle` no longer visually overrides the shared information affordance. Operator smoke passed 2026-10-12.
 - V11.2 — keyboard focus and disabled-state polish for shared information actions and shell/menu actions. Operator smoke passed 2026-10-12; no light OS focus chrome regression observed.
+- V11.3 — DPI/resize resilience audit. The stale `MainWindow.ActualHeight - 360` embedded-workflow height calculation was removed so V11.1 remains the sole Home vertical viewport owner. Operator smoke passed 2026-10-12.
 
 ### Confirmed implementation details
 
@@ -34,41 +35,46 @@ This file is the live implementation checkpoint for the PDA-8 native WPF redesig
 - `Pda8InfoButtonTheme.xaml` owns the shared lightweight `i` affordance.
 - Profile V10 layout preserves its local positioning while normalizing the `i` controls to the shared style.
 - The right `Activity & reports` pane remains independently scrollable/usable and is not owned by the left workflow scrollbar.
-- V11.1 owns Home workflow vertical containment through the star-sized workspace/content rows. Embedded DRY/LIVE scroll viewers must not also derive their maximum height from `MainWindow.ActualHeight`.
+- V11.1 owns Home workflow vertical containment through the star-sized workspace/content rows. Embedded DRY/LIVE scroll viewers do not derive their maximum height from `MainWindow.ActualHeight`.
 
-## Current next step — V11.3 DPI / resize / interaction resilience
+## Current next step — V12 cleanup of superseded visual/runtime shims
 
-Finish V11 with a targeted resilience audit before V12 cleanup.
+V12 removes only visual/runtime compatibility layers that are proven redundant after V1–V11. Each cleanup group must build and be operator-smoked before the next one.
 
-### Code audit finding and correction
+### V12 cleanup already completed
 
-The V11.3 audit found one stale V7 height calculation:
+1. Removed the old `MainWindow.UiPolishRuntime.cs` retry/timer layer after moving the accepted refresh-glyph behavior into the V8 report owner.
+2. Removed the old recursive Profile visual-tree fixup after V10 became the explicit Profile visual owner.
+3. Removed runtime ScrollBar scanning/fade timers from `ThemeRuntime`; shared scrollbar templates are now owned by `Pda8InteractionTheme.xaml`.
+4. Removed runtime `button.Content == "i"` repainting from `ThemeRuntime`; shared information controls are now owned by `Pda8InfoButtonTheme.xaml` and no longer risk being re-boxed by legacy runtime code.
 
-```text
-scroll.MaxHeight = Math.Max(320, ActualHeight - 360)
-```
+### `ThemeRuntime` compatibility boundary after cleanup group 3
 
-That calculation predated V11.1 and had become a second competing viewport owner. It was removed on 2026-10-12 so the WPF grid containment introduced by V11.1 remains the sole vertical owner. This avoids shell-height arithmetic that can become inaccurate at non-100% DPI or after resize.
+`ThemeRuntime` is intentionally **not** removed wholesale yet. It still performs compatibility work for older standalone windows that retain legacy literal colors:
 
-### V11.3 smoke gate
+- converts old muted TextBlock foreground literals to the current muted-text token;
+- converts old warning/info Border backgrounds to current dark surfaces;
+- converts old warning/neutral Border colors to the current border token;
+- applies the shared tooltip style and normalizes old tooltip text;
+- is still invoked by standalone compatibility windows such as DRY, LIVE review and Incident bundle preview.
 
-Verify the accepted PDA-8 surfaces at Windows scaling 100%, 125% and 150% where practical:
+These remaining responsibilities must be audited before any further deletion.
 
-1. Home at normal size and deliberately short height;
-2. DRY embedded workflow with vertical scrolling;
-3. LIVE immutable-review workflow with vertical scrolling;
-4. REPORTS history scrolling;
-5. Profile page, including section `i` controls, ComboBoxes and DataGrid rows;
-6. Activity & reports visible and hidden;
-7. maximize → restore → repeatedly resize narrower/shorter;
-8. Tab / Shift+Tab remains usable after scaling changes;
-9. no clipped bottom border, overlapping controls, light OS chrome, double vertical scrollbar or unreachable action appears;
-10. semantic DRY/LIVE/REPORTS and READY/LOCKED states remain readable at every tested scale.
+### Next V12 cleanup group
 
-No deployment/session/security behavior may change during this verification.
+Audit the remaining `ThemeRuntime.Apply(...)` callers and `ApplyMainWindowThemeFixups()` ownership. Prefer moving any still-required presentation into resource dictionaries or the explicit owning window, but do not remove compatibility behavior that would reintroduce light legacy surfaces in standalone/fallback windows.
 
-## Remaining after V11.3
+Smoke requirements after each V12 cleanup group:
 
-- V12 — remove only visual/runtime shims proven superseded by the central resources/templates; rebuild and smoke after each cleanup group.
-- `ThemeRuntime` remains a major V12 audit target because it still performs recursive visual-tree recoloring and scrollbar/info-button runtime patching that central PDA-8 resources may now supersede. Do not remove it wholesale: first separate any still-required legacy compatibility behavior from purely visual ownership.
-- Separate functional lifecycle slice remains outstanding: **closing the main UI means OFF and process exit; minimize may preserve READY**. This is not cosmetic V11/V12 work and must remain separately guarded.
+- Home and Profile retain the accepted PDA-8 appearance;
+- DRY/LIVE/REPORTS embedded surfaces are unchanged;
+- standalone/fallback DRY, LIVE review and Incident preview windows remain dark and readable;
+- shared `i` controls remain chrome-free;
+- shared scrollbar styling remains intact;
+- refresh glyph behavior remains intact;
+- no delayed restyling/flicker appears;
+- Release test/build/publish succeeds.
+
+## Remaining outside PDA-8 visual cleanup
+
+A separate functional lifecycle slice remains outstanding: **closing the main UI means OFF and process exit; minimize may preserve READY**. This is not cosmetic V11/V12 work and must remain separately guarded.
