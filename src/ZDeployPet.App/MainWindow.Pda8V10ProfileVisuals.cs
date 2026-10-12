@@ -10,6 +10,7 @@ public partial class MainWindow
 {
     private bool _pda8V10ProfileVisualsInitialized;
     private static ControlTemplate? _pda8ProfileGroupBoxTemplate;
+    private static ControlTemplate? _pda8ProfileButtonTemplate;
 
     private void InitializePda8V10ProfileVisuals()
     {
@@ -104,16 +105,15 @@ public partial class MainWindow
         StyleProfileDataGrid(DestinationsGrid, surface, raised, border, text, muted);
 
         // The primary profile action should read as the single intentional completion action.
+        ApplyPda8ProfileButtonChrome(SaveProfileButton, text, border);
         SaveProfileButton.Padding = new Thickness(14, 7, 14, 7);
         SaveProfileButton.MinWidth = 150;
         SaveProfileButton.Background = new SolidColorBrush(Color.FromRgb(0x1D, 0x3B, 0x2A));
         SaveProfileButton.BorderBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0x7D, 0x5B));
-        SaveProfileButton.Foreground = text;
 
+        ApplyPda8ProfileButtonChrome(ForgetSuggestionsButton, muted, border);
         ForgetSuggestionsButton.Padding = new Thickness(10, 5, 10, 5);
         ForgetSuggestionsButton.Background = surface;
-        ForgetSuggestionsButton.BorderBrush = border;
-        ForgetSuggestionsButton.Foreground = muted;
 
         StatusText.Foreground = muted;
         SetupValidationText.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x8A, 0x8A));
@@ -155,6 +155,59 @@ public partial class MainWindow
         return _pda8ProfileGroupBoxTemplate;
     }
 
+    private static ControlTemplate GetPda8ProfileButtonTemplate()
+    {
+        if (_pda8ProfileButtonTemplate is not null)
+            return _pda8ProfileButtonTemplate;
+
+        const string templateXaml = """
+            <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                             TargetType="{x:Type Button}">
+                <Border x:Name="Chrome"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="6">
+                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      RecognizesAccessKey="True" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="Chrome" Property="Background" Value="#30343D" />
+                        <Setter TargetName="Chrome" Property="BorderBrush" Value="#B98A35" />
+                    </Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Setter TargetName="Chrome" Property="BorderBrush" Value="#B98A35" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter TargetName="Chrome" Property="Background" Value="#383D47" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter TargetName="Chrome" Property="Background" Value="#20242B" />
+                        <Setter TargetName="Chrome" Property="BorderBrush" Value="#343943" />
+                        <Setter Property="Opacity" Value="0.72" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+            """;
+
+        _pda8ProfileButtonTemplate = (ControlTemplate)XamlReader.Parse(templateXaml);
+        return _pda8ProfileButtonTemplate;
+    }
+
+    private static void ApplyPda8ProfileButtonChrome(Button button, Brush foreground, Brush border)
+    {
+        button.Template = GetPda8ProfileButtonTemplate();
+        button.Foreground = foreground;
+        button.BorderBrush = border;
+        button.BorderThickness = new Thickness(1);
+        button.Padding = new Thickness(11, 6, 11, 6);
+        button.MinHeight = 30;
+    }
+
     private static void ApplyPda8V10ProfileElementVisuals(
         DependencyObject parent,
         Brush surface,
@@ -185,7 +238,8 @@ public partial class MainWindow
                     textBox.Foreground = text;
                     textBox.BorderBrush = border;
                     textBox.BorderThickness = new Thickness(1);
-                    textBox.Padding = new Thickness(8, 5, 8, 5);
+                    textBox.Padding = new Thickness(10, 6, 10, 6);
+                    textBox.MinHeight = 31;
                     break;
 
                 case ComboBox combo:
@@ -193,13 +247,13 @@ public partial class MainWindow
                     combo.Foreground = text;
                     combo.BorderBrush = border;
                     combo.BorderThickness = new Thickness(1);
-                    combo.MinHeight = 30;
+                    combo.Padding = new Thickness(10, 5, 30, 5);
+                    combo.MinHeight = 31;
                     break;
 
                 case Button button when !string.Equals(button.Content?.ToString(), "i", StringComparison.Ordinal):
+                    ApplyPda8ProfileButtonChrome(button, text, border);
                     button.Background = raised;
-                    button.Foreground = text;
-                    button.BorderBrush = border;
                     break;
 
                 case DataGrid grid:
@@ -207,7 +261,8 @@ public partial class MainWindow
                     grid.Foreground = text;
                     grid.BorderBrush = border;
                     grid.HorizontalGridLinesBrush = border;
-                    grid.VerticalGridLinesBrush = border;
+                    grid.VerticalGridLinesBrush = Brushes.Transparent;
+                    grid.GridLinesVisibility = DataGridGridLinesVisibility.Horizontal;
                     break;
             }
 
@@ -229,11 +284,12 @@ public partial class MainWindow
         grid.BorderThickness = new Thickness(1);
         grid.RowBackground = surface;
         grid.AlternatingRowBackground = raised;
+        grid.GridLinesVisibility = DataGridGridLinesVisibility.Horizontal;
         grid.HorizontalGridLinesBrush = border;
-        grid.VerticalGridLinesBrush = border;
+        grid.VerticalGridLinesBrush = Brushes.Transparent;
         grid.HeadersVisibility = DataGridHeadersVisibility.Column;
         grid.RowHeaderWidth = 0;
-        grid.ColumnHeaderHeight = 28;
+        grid.ColumnHeaderHeight = 29;
         grid.RowHeight = 31;
         grid.FontSize = 11.5;
 
@@ -241,8 +297,8 @@ public partial class MainWindow
         headerStyle.Setters.Add(new Setter(Control.BackgroundProperty, raised));
         headerStyle.Setters.Add(new Setter(Control.ForegroundProperty, muted));
         headerStyle.Setters.Add(new Setter(Control.BorderBrushProperty, border));
-        headerStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 1, 1)));
-        headerStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(8, 5, 8, 5)));
+        headerStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 0, 1)));
+        headerStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(9, 5, 9, 5)));
         headerStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
         grid.ColumnHeaderStyle = headerStyle;
     }
