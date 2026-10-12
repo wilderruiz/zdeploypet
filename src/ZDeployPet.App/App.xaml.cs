@@ -31,6 +31,7 @@ public partial class App : Application
 
         LoadPda8VisualTheme();
         LoadPda8ShellTheme();
+        LoadPda8InteractionTheme();
 
         _singleInstanceActivationEvent = new EventWaitHandle(
             initialState: false,
@@ -114,6 +115,18 @@ public partial class App : Application
         {
             Source = new Uri(
                 "pack://application:,,,/ZDeployPet;component/Themes/Pda8ShellTheme.xaml",
+                UriKind.Absolute)
+        };
+
+        Resources.MergedDictionaries.Add(theme);
+    }
+
+    private void LoadPda8InteractionTheme()
+    {
+        ResourceDictionary theme = new()
+        {
+            Source = new Uri(
+                "pack://application:,,,/ZDeployPet;component/Themes/Pda8InteractionTheme.xaml",
                 UriKind.Absolute)
         };
 
