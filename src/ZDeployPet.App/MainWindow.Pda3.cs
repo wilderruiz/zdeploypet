@@ -33,6 +33,7 @@ public partial class MainWindow
         }
 
         InitializePda3MenuShell();
+        InitializePda8V9ActivityReports();
         InitializeProfileDiscoveryActivityRouting();
         InitializeOperatorAccessControl();
         InitializePetCompanion();
