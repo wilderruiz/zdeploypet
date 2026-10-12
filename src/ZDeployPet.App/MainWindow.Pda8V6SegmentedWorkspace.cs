@@ -29,6 +29,7 @@ public partial class MainWindow
         // This is presentation only: three actions now read as one compact
         // segmented selector rather than three independent command buttons.
         CompleteV6WorkspaceHeading(root, tabs);
+        ApplyPda8V11WorkspaceContainment();
 
         tabs.Margin = new Thickness(0, 0, 0, 12);
         tabs.VerticalAlignment = VerticalAlignment.Top;
