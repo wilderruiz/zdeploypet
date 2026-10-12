@@ -57,6 +57,13 @@ public partial class MainWindow
 
     private void ApplyMainWindowThemeFixups()
     {
+        // MainWindow.xaml still declares a local implicit ToolTip style for the
+        // legacy Profile help content. That local style shadows the application-level
+        // PDA-8 tooltip style, so bridge the shared dark tooltip explicitly here.
+        // This is intentionally MainWindow-scoped rather than a global runtime repaint.
+        if (Application.Current.TryFindResource("SharedToolTipStyle") is Style sharedToolTipStyle)
+            Resources[typeof(ToolTip)] = sharedToolTipStyle;
+
         if (Application.Current.TryFindResource("SharedInfoButtonStyle") is Style sharedInfoButtonStyle)
         {
             Style infoButtonStyle = new(typeof(Button), sharedInfoButtonStyle);
