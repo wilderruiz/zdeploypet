@@ -47,6 +47,7 @@ public partial class MainWindow
         InitializePda8ContextStrip();
         InitializePda8V6SegmentedWorkspace();
         InitializePda8V8ReportVisuals();
+        InitializePda8V10ProfileVisuals();
         ApplyResponsiveActionSpacing();
         RefreshLegacyFooterStatusVisibility();
     }
