@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Markup;
 using System.Windows.Media;
 
 namespace ZDeployPet.App;
@@ -8,6 +9,9 @@ public partial class MainWindow
 {
     private bool _pda8V6SegmentedWorkspaceInitialized;
     private bool _pda8V6WorkspaceHeadingAdded;
+    private static ControlTemplate? _pda8V6FirstSegmentTemplate;
+    private static ControlTemplate? _pda8V6MiddleSegmentTemplate;
+    private static ControlTemplate? _pda8V6LastSegmentTemplate;
 
     private void InitializePda8V6SegmentedWorkspace()
     {
@@ -33,6 +37,8 @@ public partial class MainWindow
 
         tabs.Margin = new Thickness(0, 0, 0, 12);
         tabs.VerticalAlignment = VerticalAlignment.Top;
+
+        BuildV6SegmentCapsule(tabs);
 
         Style? segmentedStyle = Application.Current.TryFindResource("Pda8SegmentedTabStyle") as Style;
 
@@ -106,24 +112,122 @@ public partial class MainWindow
         }
     }
 
+    private void BuildV6SegmentCapsule(Grid tabs)
+    {
+        if (_homeDryTabButton is null || _homeLiveTabButton is null || _homeReportsTabButton is null)
+            return;
+
+        if (!tabs.Children.Contains(_homeDryTabButton) ||
+            !tabs.Children.Contains(_homeLiveTabButton) ||
+            !tabs.Children.Contains(_homeReportsTabButton))
+        {
+            return;
+        }
+
+        tabs.Children.Remove(_homeDryTabButton);
+        tabs.Children.Remove(_homeLiveTabButton);
+        tabs.Children.Remove(_homeReportsTabButton);
+
+        Grid segmentHost = new();
+        segmentHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        segmentHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        segmentHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        Grid.SetColumn(_homeDryTabButton, 0);
+        Grid.SetColumn(_homeLiveTabButton, 1);
+        Grid.SetColumn(_homeReportsTabButton, 2);
+        segmentHost.Children.Add(_homeDryTabButton);
+        segmentHost.Children.Add(_homeLiveTabButton);
+        segmentHost.Children.Add(_homeReportsTabButton);
+
+        Border capsule = new()
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Background = FindBrush("AppInputBackgroundBrush", Brushes.Black),
+            BorderBrush = FindBrush("AppBorderStrongBrush", Brushes.DimGray),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(9),
+            Child = segmentHost
+        };
+
+        Grid.SetColumn(capsule, 0);
+        Grid.SetColumnSpan(capsule, 3);
+        tabs.Children.Add(capsule);
+    }
+
     private void ApplyV6SegmentBase(Button button, Style? segmentedStyle, bool isFirst, bool isLast)
     {
         if (segmentedStyle is not null)
             button.Style = segmentedStyle;
 
+        button.Template = GetV6SegmentTemplate(isFirst, isLast);
         button.MinWidth = 92;
         button.MinHeight = 34;
         button.Padding = new Thickness(14, 6, 14, 6);
-        button.Margin = isLast
-            ? new Thickness(-1, 0, 0, 0)
-            : isFirst
-                ? new Thickness(0)
-                : new Thickness(-1, 0, 0, 0);
+        button.Margin = new Thickness(0);
+        button.BorderThickness = isLast ? new Thickness(0) : new Thickness(0, 0, 1, 0);
         button.FontSize = 11;
         button.FontWeight = FontWeights.SemiBold;
         button.HorizontalContentAlignment = HorizontalAlignment.Center;
         button.VerticalContentAlignment = VerticalAlignment.Center;
         button.Opacity = 1.0;
+    }
+
+    private static ControlTemplate GetV6SegmentTemplate(bool isFirst, bool isLast)
+    {
+        ControlTemplate? cached = isFirst
+            ? _pda8V6FirstSegmentTemplate
+            : isLast
+                ? _pda8V6LastSegmentTemplate
+                : _pda8V6MiddleSegmentTemplate;
+
+        if (cached is not null)
+            return cached;
+
+        string radius = isFirst ? "8,0,0,8" : isLast ? "0,8,8,0" : "0";
+        string xaml = $"""
+            <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                             TargetType="{{x:Type Button}}">
+                <Border x:Name="Chrome"
+                        Background="{{TemplateBinding Background}}"
+                        BorderBrush="{{TemplateBinding BorderBrush}}"
+                        BorderThickness="{{TemplateBinding BorderThickness}}"
+                        CornerRadius="{radius}"
+                        SnapsToDevicePixels="True">
+                    <ContentPresenter Margin="{{TemplateBinding Padding}}"
+                                      HorizontalAlignment="{{TemplateBinding HorizontalContentAlignment}}"
+                                      VerticalAlignment="{{TemplateBinding VerticalContentAlignment}}"
+                                      RecognizesAccessKey="True" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Foreground" Value="#F4F1EA" />
+                    </Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Setter Property="Foreground" Value="#DFC087" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter TargetName="Chrome" Property="Opacity" Value="0.88" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Foreground" Value="#687383" />
+                        <Setter TargetName="Chrome" Property="Opacity" Value="0.72" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+            """;
+
+        ControlTemplate template = (ControlTemplate)XamlReader.Parse(xaml);
+        if (isFirst)
+            _pda8V6FirstSegmentTemplate = template;
+        else if (isLast)
+            _pda8V6LastSegmentTemplate = template;
+        else
+            _pda8V6MiddleSegmentTemplate = template;
+
+        return template;
     }
 
     private void RefreshV6SegmentedWorkspaceVisuals()
