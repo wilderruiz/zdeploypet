@@ -77,7 +77,6 @@ public partial class MainWindow
         Brush surface = FindBrush("AppSurfaceBrush", shell);
         Brush raised = FindBrush("AppSurfaceRaisedBrush", surface);
         Brush text = FindBrush("AppTextBrush", Brushes.White);
-        Brush selection = FindBrush("AppSelectionBrush", raised);
 
         Resources[SystemColors.WindowBrushKey] = surface;
         Resources[SystemColors.WindowTextBrushKey] = text;
@@ -89,8 +88,6 @@ public partial class MainWindow
         Resources[SystemColors.ControlDarkDarkBrushKey] = raised;
         Resources[SystemColors.InfoBrushKey] = raised;
         Resources[SystemColors.InfoTextBrushKey] = text;
-        Resources[SystemColors.HighlightBrushKey] = selection;
-        Resources[SystemColors.HighlightTextBrushKey] = text;
     }
 
     private static Brush FindBrush(string key, Brush fallback)
