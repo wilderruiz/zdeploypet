@@ -69,23 +69,29 @@ public partial class MainWindow
             return;
 
         bool homeVisible = DiscoveryPanel.Visibility == Visibility.Visible && _activeProfile is not null;
+        bool profileVisible = SetupPanel.Visibility == Visibility.Visible;
 
         _pda8HomeHeading.Foreground = FindBrush("AppTextBrush", Brushes.WhiteSmoke);
         _pda8HomeHeading.FontWeight = FontWeights.SemiBold;
+        _pda8HomeHeading.FontSize = 28;
 
         SubtitleText.Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray);
+        SubtitleText.Margin = new Thickness(0, 7, 0, 18);
 
         if (homeVisible)
         {
             _pda8HomeHeading.Text = "Deployment workspace";
-            _pda8HomeHeading.FontSize = 28;
             SubtitleText.Text = "A controlled release surface for verified scripts, immutable reviews and trusted deployment evidence.";
-            SubtitleText.Margin = new Thickness(0, 7, 0, 18);
             return;
         }
 
-        // Profile/setup keeps its existing copy and behavior until PDA-8 V10.
+        if (profileVisible)
+        {
+            _pda8HomeHeading.Text = "Deployment profile";
+            SubtitleText.Text = "Configure the local project, runner, targets and destination map ZDeployPet is allowed to use.";
+            return;
+        }
+
         _pda8HomeHeading.Text = "ZDeployPet";
-        _pda8HomeHeading.FontSize = 28;
     }
 }
