@@ -64,7 +64,17 @@ public partial class MainWindow
         root.RowDefinitions.Clear();
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        // V11.1: the selected DRY/LIVE/REPORTS surface owns only the remaining
+        // visible workspace height. Previously this row was Auto, which let the
+        // child request its full desired height and pushed the outer workspace
+        // card below the visible Home viewport even though the child itself had
+        // a ScrollViewer.
+        root.RowDefinitions.Add(new RowDefinition
+        {
+            Height = new GridLength(1, GridUnitType.Star),
+            MinHeight = 0
+        });
 
         StackPanel heading = new()
         {
@@ -88,8 +98,11 @@ public partial class MainWindow
         Grid.SetRow(heading, 0);
         root.Children.Add(heading);
         Grid.SetRow(tabs, 1);
-        if (contentHost is not null)
-            Grid.SetRow(contentHost, 2);
+        if (contentHost is FrameworkElement contentElement)
+        {
+            Grid.SetRow(contentElement, 2);
+            contentElement.VerticalAlignment = VerticalAlignment.Stretch;
+        }
     }
 
     private void ApplyV6SegmentBase(Button button, Style? segmentedStyle, bool isFirst, bool isLast)
