@@ -2,13 +2,15 @@
 
 **Source plan:** `docs/PDA8_VISUAL_REDESIGN_IMPLEMENTATION_PLAN.md`
 
+**Visual parity checkpoint:** `docs/PDA8_VISUAL_PARITY_CHECKPOINT_2026-10-12.md`
+
 **Last updated:** 2026-10-12
 
 This file is the live implementation checkpoint for the PDA-8 native WPF redesign. The detailed design and invariants remain owned by `PDA8_VISUAL_REDESIGN_IMPLEMENTATION_PLAN.md`; this companion exists so implementation progress can be updated in small commits without rewriting the full specification.
 
 ## Current status
 
-**Overall:** 🟡 V12 cleanup in progress. V1–V11 visual implementation and resilience work are operator-smoked.
+**Overall:** 🟡 V12 cleanup is in progress, but a new visual-parity checkpoint has been frozen before final cleanup completion. V1–V11 visual implementation and resilience work are operator-smoked.
 
 ### Completed / operator-smoked
 
@@ -37,9 +39,30 @@ This file is the live implementation checkpoint for the PDA-8 native WPF redesig
 - The right `Activity & reports` pane remains independently scrollable/usable and is not owned by the left workflow scrollbar.
 - V11.1 owns Home workflow vertical containment through the star-sized workspace/content rows. Embedded DRY/LIVE scroll viewers do not derive their maximum height from `MainWindow.ActualHeight`.
 
+## Visual parity checkpoint — 2026-10-12
+
+A fresh side-by-side comparison of the real WPF application against `mocks up/zdeploypet-ui-proposal.html` confirms that the architecture is close but several visible mockup-parity items remain. The detailed ordered closure queue is recorded in `docs/PDA8_VISUAL_PARITY_CHECKPOINT_2026-10-12.md`.
+
+Highest-priority remaining visual gaps:
+
+1. **Main/Activity split proportion:** current UI can read close to 50/50; mockup intends a main-workspace-dominant layout around 60–65% left / 35–40% right at normal desktop widths.
+2. **Profile legacy fieldset chrome:** bright pale/white GroupBox outlines remain the strongest visible mismatch and must become subtle dark rounded section cards.
+3. **Profile control chrome:** buttons, inputs and grids are dark but still more rectangular/heavy than the mockup; normalize radius/padding/border grammar.
+4. **Home segmented control:** tighten DRY/LIVE/REPORTS into the shared compact capsule treatment from the mockup.
+5. **Surface hierarchy:** reduce remaining heavy card borders and rely more on spacing/surface contrast.
+6. **Toolbar icon chrome:** Git safety/discovery and similar icon actions should be quieter by default, with hover/active treatment rather than permanent heavy boxes.
+7. **Warm accent parity:** keep gold/warm accent sparse and consistent across active rail/menu/context states.
+8. **Activity & reports density:** preserve the current structure but keep it visually secondary and compact.
+9. **Pet-card final polish:** state behavior is accepted; only border/radius/elevation/friendly-anchor parity remains.
+10. **Final side-by-side/DPI closure:** compare native WPF against the v2 mockup at matched aspect ratio and smoke 100/125/150% DPI.
+
+Intentional accepted divergence: do **not** custom-draw the Windows title bar merely to reproduce the HTML mockup. Native window controls remain preferred. No WebView/browser dependency is allowed.
+
+These parity items are now part of the implementation plan and must close before PDA-8 can be declared visually finished, even if V12 cleanup itself completes earlier.
+
 ## Current next step — V12 cleanup of superseded visual/runtime shims
 
-V12 removes only visual/runtime compatibility layers that are proven redundant after V1–V11. Each cleanup group must build and be operator-smoked before the next one.
+V12 removes only visual/runtime compatibility layers that are proven redundant after V1–V11. Each cleanup group must build and be operator-smoked before the next one. The visual parity closure queue above remains a separate acceptance gate; cleanup must not delete bridges that a still-visible legacy surface demonstrably needs.
 
 ### V12 cleanup already completed
 
@@ -52,6 +75,7 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 7. Audited and removed the remaining recursive `ThemeRuntime` legacy color-conversion layer. No legacy literal warning/info/muted colors remained in the repository, so the descendant scan and delayed recoloring passes were deleted. Operator smoke passed 2026-10-12.
 8. Removed the obsolete `SystemColors.ScrollBarBrushKey` MainWindow override after confirming V11's explicit shared scrollbar template is the sole scrollbar visual owner. Operator smoke passed 2026-10-12.
 9. Removed the obsolete `SystemColors.HighlightBrushKey` and `SystemColors.HighlightTextBrushKey` MainWindow mappings after verifying explicit ComboBox/DataGrid/PDA-8 selection styling. Operator smoke passed 2026-10-12.
+10. Removed the obsolete `SystemColors.InfoBrushKey` and `SystemColors.InfoTextBrushKey` MainWindow mappings while retaining the explicit `SharedToolTipStyle` bridge required by Profile/MainWindow XAML. Operator smoke passed 2026-10-12; Profile and Home tooltips remained dark/readable.
 
 ### Current `ThemeRuntime` boundary
 
@@ -62,24 +86,7 @@ V12 removes only visual/runtime compatibility layers that are proven redundant a
 
 The Window background/foreground assignment is **not yet removed**. The repository still contains several standalone/fallback windows beyond DRY/LIVE/Incident (for example About, Activity, Git Safety, Access Onboarding, Deployment Session and report artifact surfaces), so a wholesale removal would be broader than the evidence currently supports.
 
-### V12 cleanup group 9 — implemented, awaiting operator smoke
-
-This slice removes only:
-
-- `SystemColors.InfoBrushKey`
-- `SystemColors.InfoTextBrushKey`
-
-Evidence for removal:
-
-- Profile/MainWindow help tooltips are explicitly bridged to `SharedToolTipStyle` in `ApplyMainWindowThemeFixups()`;
-- Home/Activity help tips already use the shared dark tooltip owner;
-- shared `i` controls are owned by `Pda8InfoButtonTheme.xaml`;
-- the prior Profile white-tooltip regression was caused by removal of the local tooltip bridge, not by the Info SystemColors pair;
-- no code outside `ApplyMainWindowThemeFixups()` owns or references these Info SystemColors mappings.
-
-Window and Control SystemColors families remain untouched in this group.
-
-### Next V12 cleanup group after group 9 smoke
+### Next V12 cleanup group after the parity checkpoint
 
 Audit the Control SystemColors family separately:
 
@@ -90,7 +97,7 @@ Audit the Control SystemColors family separately:
 - `SystemColors.ControlDarkBrushKey`
 - `SystemColors.ControlDarkDarkBrushKey`
 
-Remove only mappings proven redundant against explicit PDA-8 templates and legacy Profile/MainWindow controls. Audit Window mappings only after Control ownership is settled.
+Remove only mappings proven redundant against explicit PDA-8 templates and legacy Profile/MainWindow controls. **Because Profile still visibly contains legacy GroupBox/control chrome, do not assume all Control mappings are redundant merely because Home no longer needs them.** Audit Window mappings only after Control ownership is settled.
 
 Do **not** remove `ThemeRuntime.Apply(window)` wholesale yet; older standalone windows still need a separate ownership audit.
 
