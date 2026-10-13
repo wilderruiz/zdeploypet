@@ -20,8 +20,8 @@ public partial class MainWindow
         stripBorder.Padding = new Thickness(10, 7, 10, 7);
         stripBorder.Margin = new Thickness(0, 0, 0, 10);
         stripBorder.Background = FindBrush("AppSurfaceBrush", Brushes.Black);
-        stripBorder.BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray);
-        stripBorder.BorderThickness = new Thickness(1);
+        stripBorder.BorderBrush = Brushes.Transparent;
+        stripBorder.BorderThickness = new Thickness(0);
         stripBorder.CornerRadius = new CornerRadius(8);
         stripBorder.SnapsToDevicePixels = true;
 
