@@ -45,12 +45,14 @@ public partial class MainWindow
         content.Background = shell;
         content.Margin = new Thickness(0, 0, 10, 0);
 
-        // Intro copy becomes a quiet GitHub-like context card instead of a warning banner.
+        // Intro copy is passive context rather than an armed/action surface.
+        // P5 lets the layer contrast and spacing carry its hierarchy without
+        // another visible rectangular outline.
         if (content.Children.Count > 0 && content.Children[0] is Border intro)
         {
             intro.Background = surface;
-            intro.BorderBrush = border;
-            intro.BorderThickness = new Thickness(1);
+            intro.BorderBrush = Brushes.Transparent;
+            intro.BorderThickness = new Thickness(0);
             intro.CornerRadius = new CornerRadius(8);
             intro.Padding = new Thickness(14, 12, 14, 12);
             intro.Margin = new Thickness(0, 0, 0, 14);
