@@ -59,6 +59,11 @@ public partial class MainWindow
         if (Application.Current.TryFindResource(styleKey) is Style style)
             card.Style = style;
 
+        // P5: report cards are passive inspection surfaces. Their hierarchy
+        // comes from layered background + spacing; they do not need a visible
+        // outline competing with the semantic DRY/LIVE workspace border.
+        card.BorderBrush = Brushes.Transparent;
+        card.BorderThickness = new Thickness(0);
         card.Margin = new Thickness(0, 0, 0, 12);
         card.Padding = raised
             ? new Thickness(16, 14, 16, 14)
