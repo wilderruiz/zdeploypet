@@ -4,7 +4,7 @@
 
 **Visual parity checkpoint:** `docs/PDA8_VISUAL_PARITY_CHECKPOINT_2026-10-12.md`
 
-**Last updated:** 2026-10-12
+**Last updated:** 2026-10-13
 
 This file is the live implementation checkpoint for the PDA-8 native WPF redesign. The detailed design and invariants remain owned by `PDA8_VISUAL_REDESIGN_IMPLEMENTATION_PLAN.md`; this companion exists so implementation progress can be updated in small commits without rewriting the full specification.
 
@@ -33,6 +33,7 @@ This file is the live implementation checkpoint for the PDA-8 native WPF redesig
 - Parity P1 — main/activity split restore now keeps the workspace dominant and the Activity pane secondary. Operator smoke passed 2026-10-12.
 - Parity P2 — Profile legacy GroupBox fieldsets replaced by Profile-owned dark rounded section cards. Operator smoke passed 2026-10-12.
 - Parity P3 — Profile buttons/inputs/grids softened and compacted without changing behavior. Operator smoke passed 2026-10-12, including dark dropdown selection behavior.
+- Parity P4 — Home `DRY | LIVE | REPORTS` now renders as one compact segmented capsule with semantic active colors. Operator smoke passed 2026-10-13 across DRY, LIVE and REPORTS.
 
 ### Confirmed implementation details
 
@@ -51,8 +52,8 @@ Highest-priority remaining visual gaps:
 1. **Main/Activity split proportion:** closed by parity P1 and operator-smoked.
 2. **Profile legacy fieldset chrome:** closed by parity P2 and operator-smoked.
 3. **Profile control chrome:** closed by parity P3 and operator-smoked.
-4. **Home segmented control:** P4 implemented; awaiting operator smoke. DRY/LIVE/REPORTS now render inside one compact capsule rather than as three separate rounded buttons.
-5. **Surface hierarchy:** reduce remaining heavy card borders and rely more on spacing/surface contrast.
+4. **Home segmented control:** closed by parity P4 and operator-smoked across DRY/LIVE/REPORTS.
+5. **Surface hierarchy:** P5 implemented; awaiting operator smoke. Passive context/report surfaces now rely on layer contrast rather than visible box outlines.
 6. **Toolbar icon chrome:** Git safety/discovery and similar icon actions should be quieter by default, with hover/active treatment rather than permanent heavy boxes.
 7. **Warm accent parity:** keep gold/warm accent sparse and consistent across active rail/menu/context states.
 8. **Activity & reports density:** preserve the current structure but keep it visually secondary and compact.
@@ -100,9 +101,9 @@ Implementation owner: `MainWindow.Pda8V10ProfileVisuals.cs`.
 
 ### Parity P4 — Home segmented capsule
 
-**Implemented 2026-10-12, awaiting operator smoke.**
+**Implemented and operator-smoked 2026-10-13.**
 
-The Home `DRY | LIVE | REPORTS` selector now presents the three existing buttons as one compact rounded capsule:
+The Home `DRY | LIVE | REPORTS` selector presents the three existing buttons as one compact rounded capsule:
 
 - one outer dark capsule/border owns the group silhouette;
 - the three existing buttons are re-parented into a nested three-column segment host;
@@ -110,18 +111,36 @@ The Home `DRY | LIVE | REPORTS` selector now presents the three existing buttons
 - first/last segments own only the capsule-end radii, while the middle segment remains square;
 - existing click handlers and `HomeWorkspaceSection` selection authority are unchanged;
 - DRY/LIVE/REPORTS semantic active colors remain authoritative;
-- hover/focus/pressed feedback remains native WPF and does not introduce a browser/WebView dependency.
+- operator smoke confirmed correct geometry and state behavior across all three tabs.
 
 Implementation owner: `MainWindow.Pda8V6SegmentedWorkspace.cs`.
 
+### Parity P5 — quieter passive surface hierarchy
+
+**Implemented 2026-10-13, awaiting operator smoke.**
+
+P5 deliberately removes visible outlines only from passive context/inspection surfaces while preserving borders that communicate state or interaction:
+
+- the Home profile/project context strip now uses `AppSurfaceBrush` + spacing with no visible border;
+- Latest deployment report and Deployment history cards keep their layered `Pda8RaisedCardStyle` / `Pda8CardStyle` backgrounds and rounded geometry but no longer draw a visible outline;
+- the Profile intro/context card now uses surface contrast and spacing without a border;
+- Profile numbered section cards retain their subtle accepted boundary from P2;
+- DRY/LIVE embedded workflow outlines remain because those borders communicate the selected semantic workspace state;
+- terminal/report content boundaries remain intact where they materially aid scanning.
+
+Implementation owners:
+
+- `MainWindow.Pda8ContextStrip.cs`
+- `MainWindow.Pda8V8ReportVisuals.cs`
+- `MainWindow.Pda8V10ProfileVisuals.cs`
+
 Smoke acceptance:
 
-- Home shows one continuous compact `DRY | LIVE | REPORTS` capsule rather than three detached buttons;
-- switching among all three tabs still changes content correctly;
-- DRY/LIVE/REPORTS active colors remain visible and only the selected segment reads active;
-- no extra gap, double outer border, or rounded middle segment appears;
-- the Home workspace `i` remains right-aligned and unaffected;
-- DRY/LIVE embedded scrolling and REPORTS history remain unchanged.
+- Home context strip reads as a quiet metadata layer rather than a boxed card;
+- REPORTS latest/history surfaces remain clearly separated by fill and spacing without looking outlined;
+- Profile intro remains readable but visually secondary to numbered configuration sections;
+- active DRY/LIVE semantic borders remain visible;
+- report/terminal console boundaries and scrolling remain unchanged.
 
 ## Current next step — V12 cleanup plus parity closure
 
