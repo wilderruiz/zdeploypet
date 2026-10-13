@@ -186,19 +186,19 @@ public partial class MainWindow
             return cached;
 
         string radius = isFirst ? "8,0,0,8" : isLast ? "0,8,8,0" : "0";
-        string xaml = $"""
+        string xaml = $$"""
             <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                             TargetType="{{x:Type Button}}">
+                             TargetType="{x:Type Button}">
                 <Border x:Name="Chrome"
-                        Background="{{TemplateBinding Background}}"
-                        BorderBrush="{{TemplateBinding BorderBrush}}"
-                        BorderThickness="{{TemplateBinding BorderThickness}}"
-                        CornerRadius="{radius}"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{{radius}}"
                         SnapsToDevicePixels="True">
-                    <ContentPresenter Margin="{{TemplateBinding Padding}}"
-                                      HorizontalAlignment="{{TemplateBinding HorizontalContentAlignment}}"
-                                      VerticalAlignment="{{TemplateBinding VerticalContentAlignment}}"
+                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                       RecognizesAccessKey="True" />
                 </Border>
                 <ControlTemplate.Triggers>
