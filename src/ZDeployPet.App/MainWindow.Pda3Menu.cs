@@ -246,15 +246,22 @@ public partial class MainWindow
             Height = 34,
             Margin = new Thickness(0, 0, 6, 0),
             Padding = new Thickness(7),
-            Background = AppSurface,
-            BorderBrush = FindBrush("AppAccentBrush", Brushes.IndianRed),
-            BorderThickness = new Thickness(1),
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
             Foreground = AppText,
             Content = icon,
             ToolTip = toolTip,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center
         };
+        if (Application.Current.TryFindResource("Pda8IconButtonStyle") is Style iconButtonStyle)
+            button.Style = iconButtonStyle;
+
+        button.Width = 38;
+        button.Height = 34;
+        button.Margin = new Thickness(0, 0, 6, 0);
+        button.Padding = new Thickness(7);
         AutomationProperties.SetName(button, automationName);
         AutomationProperties.SetHelpText(button, toolTip);
         return button;
@@ -268,15 +275,22 @@ public partial class MainWindow
             Height = 32,
             Margin = new Thickness(0, 0, 5, 0),
             Padding = new Thickness(6),
-            Background = AppSurfaceRaised,
-            BorderBrush = AppBorder,
-            BorderThickness = new Thickness(1),
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
             Foreground = AppText,
             Content = icon,
             ToolTip = toolTip,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center
         };
+        if (Application.Current.TryFindResource("Pda8IconButtonStyle") is Style iconButtonStyle)
+            button.Style = iconButtonStyle;
+
+        button.Width = 34;
+        button.Height = 32;
+        button.Margin = new Thickness(0, 0, 5, 0);
+        button.Padding = new Thickness(6);
         AutomationProperties.SetName(button, automationName);
         AutomationProperties.SetHelpText(button, toolTip);
         return button;
