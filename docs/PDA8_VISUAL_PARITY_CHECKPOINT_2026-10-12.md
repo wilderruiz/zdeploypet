@@ -111,6 +111,20 @@ Required:
 
 Acceptance: toolbar reads as a compact developer-tool command strip, not a row of legacy buttons.
 
+#### P6.1 — toolbar info glyph placement
+
+The Profile command-strip `i` helpers should read as annotations to Git safety / discovery rather than equal-weight toolbar commands.
+
+Required:
+
+- keep the shared chrome-free `i` behavior and existing tooltip payloads;
+- use the shared muted resting foreground and brighten only on hover/focus/press;
+- present each toolbar `i` slightly raised beside its command, visually approaching a superscript helper cue;
+- retain a practical click/focus target even though the visible glyph is smaller;
+- do not change Profile section-card `i` placement or global help-button behavior.
+
+Acceptance: each toolbar action reads as one primary command plus a quiet raised help glyph, matching the accepted visual cue without adding another visible box.
+
 ### P7 — shell/menu warm-accent parity
 
 The v2 mockup uses a restrained gold/warm cue for active navigation/menu state rather than broad red highlighting.
