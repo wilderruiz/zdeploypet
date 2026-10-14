@@ -54,8 +54,6 @@ public partial class MainWindow
         Button detailInfoButton,
         Thickness margin)
     {
-        // The short explanation now belongs to the contextual flyout, so do not
-        // also show the old native one-line ToolTip on the command itself.
         actionButton.ToolTip = null;
         actionButton.Margin = new Thickness(0);
 
@@ -89,9 +87,6 @@ public partial class MainWindow
         };
         flyoutRow.Children.Add(label);
 
-        // Reuse the existing HelpTipFactory button so the detailed help text has
-        // one owner. The glyph stays muted at rest and lights on hover/focus via
-        // SharedInfoButtonStyle; only its footprint is compacted for this flyout.
         detailInfoButton.Width = 20;
         detailInfoButton.Height = 20;
         detailInfoButton.Margin = new Thickness(0);
@@ -114,6 +109,9 @@ public partial class MainWindow
             Child = flyoutChrome
         };
 
+        ToolTip? detailToolTip = detailInfoButton.ToolTip as ToolTip;
+        bool detailToolTipMouseOver = false;
+
         DispatcherTimer closeDelay = new()
         {
             Interval = TimeSpan.FromMilliseconds(180)
@@ -132,16 +130,21 @@ public partial class MainWindow
             closeDelay.Start();
         }
 
+        bool IsInsideHelpEnvelope()
+        {
+            return actionButton.IsMouseOver ||
+                   flyoutChrome.IsMouseOver ||
+                   actionButton.IsKeyboardFocusWithin ||
+                   detailInfoButton.IsKeyboardFocusWithin ||
+                   detailToolTipMouseOver ||
+                   detailToolTip?.IsOpen == true;
+        }
+
         closeDelay.Tick += (_, _) =>
         {
             closeDelay.Stop();
-            if (!actionButton.IsMouseOver &&
-                !flyoutChrome.IsMouseOver &&
-                !actionButton.IsKeyboardFocusWithin &&
-                !detailInfoButton.IsKeyboardFocusWithin)
-            {
+            if (!IsInsideHelpEnvelope())
                 popup.IsOpen = false;
-            }
         };
 
         actionButton.MouseEnter += (_, _) => OpenFlyout();
@@ -154,10 +157,34 @@ public partial class MainWindow
         detailInfoButton.GotKeyboardFocus += (_, _) => OpenFlyout();
         detailInfoButton.LostKeyboardFocus += (_, _) => ScheduleClose();
 
+        if (detailToolTip is not null)
+        {
+            detailToolTip.Opened += (_, _) => closeDelay.Stop();
+            detailToolTip.Closed += (_, _) =>
+            {
+                detailToolTipMouseOver = false;
+                ScheduleClose();
+            };
+            detailToolTip.MouseEnter += (_, _) =>
+            {
+                detailToolTipMouseOver = true;
+                closeDelay.Stop();
+            };
+            detailToolTip.MouseLeave += (_, _) =>
+            {
+                detailToolTipMouseOver = false;
+                ScheduleClose();
+            };
+        }
+
         actionButton.IsVisibleChanged += (_, _) =>
         {
             if (!actionButton.IsVisible)
+            {
+                if (detailToolTip is not null)
+                    detailToolTip.IsOpen = false;
                 popup.IsOpen = false;
+            }
         };
 
         host.Children.Add(actionButton);
