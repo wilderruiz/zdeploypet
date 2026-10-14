@@ -68,12 +68,14 @@ public partial class MainWindow
         if (legacyNavigationBar is not null && shell.Children.Contains(legacyNavigationBar))
             shell.Children.Remove(legacyNavigationBar);
 
+        const double navigationRailWidth = 64;
+
         UIElement[] existingBodyChildren = body.Children.Cast<UIElement>().ToArray();
         body.ColumnDefinitions.Insert(0, new ColumnDefinition
         {
-            Width = new GridLength(56),
-            MinWidth = 56,
-            MaxWidth = 56
+            Width = new GridLength(navigationRailWidth),
+            MinWidth = navigationRailWidth,
+            MaxWidth = navigationRailWidth
         });
 
         foreach (UIElement child in existingBodyChildren)
@@ -81,13 +83,13 @@ public partial class MainWindow
 
         Border rail = new()
         {
-            Width = 56,
+            Width = navigationRailWidth,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             Background = FindBrush("Pda8ShellBackgroundBrush", FindBrush("AppBackgroundBrush", Brushes.Black)),
             BorderBrush = FindBrush("AppBorderBrush", Brushes.DimGray),
             BorderThickness = new Thickness(0, 0, 1, 0),
-            Padding = new Thickness(8, 12, 8, 8)
+            Padding = new Thickness(10, 12, 10, 8)
         };
 
         StackPanel navigation = new()
@@ -118,7 +120,7 @@ public partial class MainWindow
         _pda8NavigationRailApplied = true;
         QueuePda8NavigationRailStateRefresh();
 
-        MinWidth = Math.Max(MinWidth, MinimumOperatorPaneWidth + MinimumActivityPaneWidth + 101);
+        MinWidth = Math.Max(MinWidth, MinimumOperatorPaneWidth + MinimumActivityPaneWidth + 109);
 
         ShellRuntime.Activity.Add(
             ShellActivityLevel.Info,
