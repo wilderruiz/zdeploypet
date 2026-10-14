@@ -4,7 +4,7 @@
 
 **Visual parity checkpoint:** `docs/PDA8_VISUAL_PARITY_CHECKPOINT_2026-10-12.md`
 
-**Last updated:** 2026-10-13
+**Last updated:** 2026-10-14
 
 This file is the live implementation checkpoint for the PDA-8 native WPF redesign. The detailed design and invariants remain owned by `PDA8_VISUAL_REDESIGN_IMPLEMENTATION_PLAN.md`; this companion exists so implementation progress can be updated in small commits without rewriting the full specification.
 
@@ -34,6 +34,7 @@ This file is the live implementation checkpoint for the PDA-8 native WPF redesig
 - Parity P2 — Profile legacy GroupBox fieldsets replaced by Profile-owned dark rounded section cards. Operator smoke passed 2026-10-12.
 - Parity P3 — Profile buttons/inputs/grids softened and compacted without changing behavior. Operator smoke passed 2026-10-12, including dark dropdown selection behavior.
 - Parity P4 — Home `DRY | LIVE | REPORTS` now renders as one compact segmented capsule with semantic active colors. Operator smoke passed 2026-10-13 across DRY, LIVE and REPORTS.
+- Parity P5 — passive context/report surfaces now rely on layered fills and spacing rather than visible outlines; semantic DRY/LIVE and configuration boundaries remain. Operator smoke passed 2026-10-14 on Home and Profile.
 
 ### Confirmed implementation details
 
@@ -53,8 +54,8 @@ Highest-priority remaining visual gaps:
 2. **Profile legacy fieldset chrome:** closed by parity P2 and operator-smoked.
 3. **Profile control chrome:** closed by parity P3 and operator-smoked.
 4. **Home segmented control:** closed by parity P4 and operator-smoked across DRY/LIVE/REPORTS.
-5. **Surface hierarchy:** P5 implemented; awaiting operator smoke. Passive context/report surfaces now rely on layer contrast rather than visible box outlines.
-6. **Toolbar icon chrome:** Git safety/discovery and similar icon actions should be quieter by default, with hover/active treatment rather than permanent heavy boxes.
+5. **Surface hierarchy:** closed by parity P5 and operator-smoked on Home/Profile.
+6. **Toolbar icon chrome:** P6 implemented; awaiting operator smoke. Git safety/discovery and related shell icon actions now use quiet transparent default chrome with shared PDA-8 hover/focus treatment.
 7. **Warm accent parity:** keep gold/warm accent sparse and consistent across active rail/menu/context states.
 8. **Activity & reports density:** preserve the current structure but keep it visually secondary and compact.
 9. **Pet-card final polish:** state behavior is accepted; only border/radius/elevation/friendly-anchor parity remains.
@@ -117,13 +118,13 @@ Implementation owner: `MainWindow.Pda8V6SegmentedWorkspace.cs`.
 
 ### Parity P5 — quieter passive surface hierarchy
 
-**Implemented 2026-10-13, awaiting operator smoke.**
+**Implemented and operator-smoked 2026-10-14.**
 
 P5 deliberately removes visible outlines only from passive context/inspection surfaces while preserving borders that communicate state or interaction:
 
-- the Home profile/project context strip now uses `AppSurfaceBrush` + spacing with no visible border;
-- Latest deployment report and Deployment history cards keep their layered `Pda8RaisedCardStyle` / `Pda8CardStyle` backgrounds and rounded geometry but no longer draw a visible outline;
-- the Profile intro/context card now uses surface contrast and spacing without a border;
+- the Home profile/project context strip uses `AppSurfaceBrush` + spacing with no visible border;
+- Latest deployment report and Deployment history cards keep their layered `Pda8RaisedCardStyle` / `Pda8CardStyle` backgrounds and rounded geometry without a visible outline;
+- the Profile intro/context card uses surface contrast and spacing without a border;
 - Profile numbered section cards retain their subtle accepted boundary from P2;
 - DRY/LIVE embedded workflow outlines remain because those borders communicate the selected semantic workspace state;
 - terminal/report content boundaries remain intact where they materially aid scanning.
@@ -134,13 +135,28 @@ Implementation owners:
 - `MainWindow.Pda8V8ReportVisuals.cs`
 - `MainWindow.Pda8V10ProfileVisuals.cs`
 
+### Parity P6 — quiet toolbar icon chrome
+
+**Implemented 2026-10-14, awaiting operator smoke.**
+
+The contextual shell command icons now reuse the shared PDA-8 icon-button grammar instead of drawing permanent square boxes:
+
+- Git safety and discovery/search actions are transparent and borderless at rest;
+- hover/focus uses the existing rounded PDA-8 icon-button surface;
+- hit target sizes, automation names and tooltips are unchanged;
+- command behavior and Git/discovery authority are unchanged;
+- the legacy horizontal Home/Profile command buttons use the same quiet chrome if that fallback toolbar is ever visible.
+
+Implementation owner: `MainWindow.Pda3Menu.cs`.
+
 Smoke acceptance:
 
-- Home context strip reads as a quiet metadata layer rather than a boxed card;
-- REPORTS latest/history surfaces remain clearly separated by fill and spacing without looking outlined;
-- Profile intro remains readable but visually secondary to numbered configuration sections;
-- active DRY/LIVE semantic borders remain visible;
-- report/terminal console boundaries and scrolling remain unchanged.
+- on Profile, Git safety and discovery/search icons no longer sit inside permanent outlined squares;
+- hover/focus still gives visible feedback;
+- clicking Git safety still opens the existing Git-safety action flow;
+- clicking discovery still runs the existing read-only discovery flow;
+- adjacent borderless `i` actions remain unchanged;
+- no light/native button chrome appears during keyboard focus.
 
 ## Current next step — V12 cleanup plus parity closure
 
