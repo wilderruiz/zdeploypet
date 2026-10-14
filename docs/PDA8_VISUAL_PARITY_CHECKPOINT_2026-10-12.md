@@ -125,6 +125,23 @@ Required:
 
 Acceptance: each toolbar action reads as one primary command plus a quiet raised help glyph, matching the accepted visual cue without adding another visible box.
 
+#### P6.2 — nested contextual help flyout
+
+P6.1 proved the muted helper-glyph language, but the operator prefers progressive disclosure so the toolbar can remain even cleaner and scale to many contextual help points.
+
+Required:
+
+- remove the permanently visible toolbar `i` glyphs for Git safety and discovery;
+- hovering/focusing a toolbar command opens a compact contextual flyout with the short label (`Git safety` / `Run discovery`) plus one muted nested `i`;
+- the nested `i` reuses the existing `HelpTipFactory` detailed payload, so help content keeps one owner;
+- the contextual flyout remains open while the pointer moves from the command into the flyout and closes shortly after both lose hover/focus;
+- retain the command's existing click action, automation name/help text and accessible hit target;
+- do not change section-card `i` controls elsewhere yet; this slice establishes a reusable pattern first.
+
+Acceptance: at rest the Profile command strip shows only the Git/discovery icons. On hover/focus, the short contextual label appears with a quiet nested `i`; moving to that `i` reveals the existing detailed help without cluttering the resting toolbar.
+
+Future use: once operator-smoked, this contextual-help host may be reused for other dense command surfaces where a permanent `i` would add visual noise.
+
 ### P7 — shell/menu warm-accent parity
 
 The v2 mockup uses a restrained gold/warm cue for active navigation/menu state rather than broad red highlighting.
