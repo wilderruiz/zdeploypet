@@ -20,6 +20,7 @@ public partial class MainWindow
         }
 
         InitializePda3MenuShell();
+        ApplyProfileToolbarInfoPolish();
         InitializePda8V9ActivityReports();
         InitializeProfileDiscoveryActivityRouting();
         InitializeOperatorAccessControl();
@@ -37,6 +38,50 @@ public partial class MainWindow
         InitializePda8V10ProfileVisuals();
         ApplyResponsiveActionSpacing();
         RefreshLegacyFooterStatusVisibility();
+    }
+
+    private void ApplyProfileToolbarInfoPolish()
+    {
+        if (_profileStageToolbar?.Child is not StackPanel row || row.Children.Count != 4)
+            return;
+
+        if (row.Children[0] is not Button gitAction ||
+            row.Children[1] is not Button gitInfo ||
+            row.Children[2] is not Button discoveryAction ||
+            row.Children[3] is not Button discoveryInfo)
+            return;
+
+        row.Children.Clear();
+        row.Children.Add(BuildProfileToolbarActionHost(gitAction, gitInfo, new Thickness(0, 0, 12, 0)));
+        row.Children.Add(BuildProfileToolbarActionHost(discoveryAction, discoveryInfo, new Thickness(0)));
+    }
+
+    private static FrameworkElement BuildProfileToolbarActionHost(Button action, Button info, Thickness margin)
+    {
+        Grid host = new()
+        {
+            Width = 54,
+            Height = 36,
+            Margin = margin,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        action.Margin = new Thickness(0);
+        action.HorizontalAlignment = HorizontalAlignment.Left;
+        action.VerticalAlignment = VerticalAlignment.Center;
+
+        // P6.1: keep the shared info-button semantics, but present toolbar help as
+        // a small raised annotation beside the command rather than a peer control.
+        info.Width = 20;
+        info.Height = 20;
+        info.FontSize = 11;
+        info.Margin = new Thickness(0, -3, 0, 0);
+        info.HorizontalAlignment = HorizontalAlignment.Right;
+        info.VerticalAlignment = VerticalAlignment.Top;
+
+        host.Children.Add(action);
+        host.Children.Add(info);
+        return host;
     }
 
     private void NormalizeDiscoverySurfaceRows()
