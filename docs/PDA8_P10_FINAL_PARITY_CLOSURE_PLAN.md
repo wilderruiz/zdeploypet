@@ -1,21 +1,35 @@
 # PDA-8 P10 — Final parity / DPI closure plan
 
-**Status:** NEXT visual step after the main-window lifecycle close bug is fixed and operator-smoked.
+**Status:** IN PROGRESS — lifecycle prerequisite smoke passed; P10.1 implemented and awaiting operator smoke.
 
 **Source of truth:** `mocks up/zdeploypet-ui-proposal.html` plus the accepted current WPF screenshots.
 
 P10 is the final visual closure slice. It must not change deployment authority, DRY/LIVE/REPORTS behavior, bounded access/session rules, report routing, or execution safety.
 
+## Lifecycle prerequisite — COMPLETE
+
+The critical lifecycle defect was fixed before cosmetic P10 work.
+
+Acceptance confirmed by operator smoke:
+
+- launch while LOCKED, close with `X`, process exits;
+- turn ZDeploy Pet ON/READY, close with `X`, the UI closes and the process terminates;
+- immediate relaunch works without manual `Get-Process` / `Stop-Process` recovery;
+- main-window close remains authoritative even if bounded WSL/OpenSSH cleanup stalls, because cleanup is hard-bounded and cannot strand the single-instance mutex indefinitely.
+
+This satisfies the planned invariant: **closed UI means OFF/process exit; minimized UI may remain alive.**
+
 ## Ordered implementation
 
-1. **Home context strip wrapping**
-   - replace the current single-line truncation-first presentation with a compact wrapping layout;
-   - keep the metadata order `Profile • Project • WSL • Runner • Targets • Destinations`;
-   - allow the project/runner values to wrap naturally without pushing the Activity pane or workspace out of bounds;
-   - remove/avoid the oversized overflow tooltip that currently stretches across the workspace when the truncated strip is hovered;
-   - preserve Home read-only behavior.
+1. **Home context strip wrapping — IMPLEMENTED, SMOKE NEXT**
+   - replaced the previous single-line `NoWrap + CharacterEllipsis` presentation with compact wrapping;
+   - metadata order remains `Profile • Project • WSL • Runner • Targets • Destinations`;
+   - project/runner values remain inside the Home column rather than projecting across Activity;
+   - removed the oversized full-value hover tooltip that previously stretched across the workspace;
+   - constrained the strip to a compact two-line visual height;
+   - Home remains read-only.
 
-2. **Home hero/workspace breathing room**
+2. **Home hero/workspace breathing room — NEXT AFTER P10.1 SMOKE**
    - slightly increase vertical spacing between the hero title, subtitle, pet card/context strip and the Deployment workspace card;
    - keep the current accepted left/right pane proportion;
    - do not increase the overall dashboard feel or reintroduce oversized branding.
@@ -47,7 +61,3 @@ PDA-8 may be declared visually finished when:
 - no white/light native chrome regressions appear;
 - 100/125/150% DPI smoke passes;
 - final WPF/mockup comparison has no material hierarchy, spacing or clipping mismatch.
-
-## Lifecycle prerequisite now scheduled ahead of P10
-
-The implementation plan already defines the invariant **closing the main UI means OFF and process exit**. The currently observed defect is being fixed before this P10 cosmetic work: closing after the ZDeploy Pet card reaches READY must not leave a hidden `ZDeployPet.exe` process or the single-instance mutex alive, and immediate relaunch must work without manual `Get-Process` / `Stop-Process` recovery.
