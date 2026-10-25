@@ -7,7 +7,6 @@ namespace ZDeployPet.App;
 public partial class MainWindow
 {
     private bool _pda8ContextStripInitialized;
-    private string? _pda8ContextStripLastText;
 
     private void InitializePda8ContextStrip()
     {
@@ -28,14 +27,16 @@ public partial class MainWindow
         ProfileSummaryText.FontSize = 11;
         ProfileSummaryText.FontWeight = FontWeights.Normal;
         ProfileSummaryText.Foreground = FindBrush("AppMutedTextBrush", Brushes.LightGray);
-        ProfileSummaryText.TextWrapping = TextWrapping.NoWrap;
-        ProfileSummaryText.TextTrimming = TextTrimming.CharacterEllipsis;
+        ProfileSummaryText.TextWrapping = TextWrapping.Wrap;
+        ProfileSummaryText.TextTrimming = TextTrimming.None;
         ProfileSummaryText.VerticalAlignment = VerticalAlignment.Center;
+        ProfileSummaryText.MaxHeight = 34;
 
-        // The visible strip stays deliberately compact. Keep the complete context
-        // available on hover even when a long project path is ellipsized.
-        ProfileSummaryText.LayoutUpdated += (_, _) => RefreshPda8ContextStripToolTip();
-        RefreshPda8ContextStripToolTip();
+        // P10 parity: keep Home context readable inside its own column. The previous
+        // single-line ellipsis plus full-value ToolTip could project a very wide popup
+        // across the Activity pane. A compact two-line wrap matches the accepted mockup
+        // more closely and keeps metadata inspection local to the Home workspace.
+        ProfileSummaryText.ToolTip = null;
     }
 
     private Border? FindContextStripBorder()
@@ -49,14 +50,5 @@ public partial class MainWindow
         }
 
         return null;
-    }
-
-    private void RefreshPda8ContextStripToolTip()
-    {
-        string text = ProfileSummaryText.Text ?? string.Empty;
-        if (string.Equals(text, _pda8ContextStripLastText, StringComparison.Ordinal)) return;
-
-        _pda8ContextStripLastText = text;
-        ProfileSummaryText.ToolTip = string.IsNullOrWhiteSpace(text) ? null : text;
     }
 }
