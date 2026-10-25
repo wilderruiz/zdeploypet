@@ -25,34 +25,39 @@ public partial class MainWindow
     {
         try
         {
-            Task cleanup = Task.Run(() =>
-                _deploymentSession.LockSynchronouslyBestEffort(TimeSpan.FromSeconds(2)));
+            try
+            {
+                Task cleanup = Task.Run(() =>
+                    _deploymentSession.LockSynchronouslyBestEffort(TimeSpan.FromSeconds(2)));
 
-            // Cancellation is advisory to the underlying WSL/OpenSSH process path.
-            // If that external teardown ignores cancellation, stop waiting here and
-            // let the final process boundary below terminate all remaining workers.
-            _ = cleanup.Wait(ShutdownCleanupBudget);
-        }
-        catch
-        {
-            // Closing the UI is authoritative. Failure to verify teardown must not
-            // strand a hidden ZDeployPet process or keep the single-instance mutex.
+                // Cancellation is advisory to the underlying WSL/OpenSSH process path.
+                // If that external teardown ignores cancellation, stop waiting here and
+                // let the final process boundary below terminate all remaining workers.
+                _ = cleanup.Wait(ShutdownCleanupBudget);
+            }
+            catch
+            {
+                // Closing the UI is authoritative. Failure to verify teardown must not
+                // strand a hidden ZDeployPet process or keep the single-instance mutex.
+            }
+            finally
+            {
+                base.OnClosed(e);
+            }
         }
         finally
         {
-            base.OnClosed(e);
-        }
-
-        try
-        {
-            Application.Current?.Shutdown(0);
-        }
-        finally
-        {
-            // Closing the main window means ZDeployPet is finished. Force the
-            // process boundary so no hidden/background component can keep the
-            // published executable locked or retain the single-instance mutex.
-            Environment.Exit(0);
+            try
+            {
+                Application.Current?.Shutdown(0);
+            }
+            finally
+            {
+                // Closing the main window means ZDeployPet is finished. Force the
+                // process boundary so no hidden/background component can keep the
+                // published executable locked or retain the single-instance mutex.
+                Environment.Exit(0);
+            }
         }
     }
 }
