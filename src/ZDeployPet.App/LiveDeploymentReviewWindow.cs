@@ -191,8 +191,7 @@ public sealed class LiveDeploymentReviewWindow : Window
             return;
         }
 
-        bool releaseRequired = target.PromptChoice != 2;
-        if (releaseRequired && release is null)
+        if (release is null)
         {
             SetStatus("BLOCKED — choose a release type.", true);
             return;
@@ -243,7 +242,7 @@ public sealed class LiveDeploymentReviewWindow : Window
             return;
         }
 
-        string releaseToken = releaseRequired ? release!.Token : "unchanged";
+        string releaseToken = release.Token;
         List<string> allowedIds = _profile.Targets.Select(item => item.Id).ToList();
         if (BuildTargetOptions().Any(option => option.Id == AllTargetsId))
             allowedIds.Add(AllTargetsId);
@@ -401,8 +400,7 @@ public sealed class LiveDeploymentReviewWindow : Window
             return;
         }
 
-        bool releaseRequired = target.PromptChoice != 2;
-        if (releaseRequired && release is null)
+        if (release is null)
         {
             SetStatus("LIVE BLOCKED — release selection is no longer valid.", true);
             return;
@@ -428,7 +426,7 @@ public sealed class LiveDeploymentReviewWindow : Window
             string operatorPhrase = _confirmationBox.Text;
             LiveDeploymentPromptPlan plan = new(
                 TargetChoice: target.PromptChoice,
-                ReleaseChoice: releaseRequired ? release!.PromptChoice : null,
+                ReleaseChoice: release.PromptChoice,
                 ConfirmationPhrase: _snapshot.LiveConfirmationPhrase);
 
             SetStatus("LIVE RUNNING — the approved script is executing through the bounded deployment-access session. Output is streaming to the Live deploy console.");
@@ -544,9 +542,7 @@ public sealed class LiveDeploymentReviewWindow : Window
         TargetOption? selectedTarget = _targetCombo.SelectedItem as TargetOption;
         ReleaseOption? selectedRelease = _releaseCombo.SelectedItem as ReleaseOption;
         string selectedTargetId = selectedTarget?.Id ?? string.Empty;
-        string selectedReleaseToken = selectedTarget?.PromptChoice == 2
-            ? "unchanged"
-            : selectedRelease?.Token ?? string.Empty;
+        string selectedReleaseToken = selectedRelease?.Token ?? string.Empty;
 
         LiveDeploymentConfirmationResult result = LiveDeploymentReviewGuard.ValidateConfirmation(
             _snapshot,
@@ -605,12 +601,8 @@ public sealed class LiveDeploymentReviewWindow : Window
     {
         if (_executionBusy) return;
 
-        TargetOption? target = _targetCombo.SelectedItem as TargetOption;
-        bool required = target is null || target.PromptChoice != 2;
-        _releaseCombo.IsEnabled = required;
-        if (!required)
-            _releaseCombo.SelectedIndex = -1;
-        else if (_releaseCombo.SelectedIndex < 0 && _releaseCombo.Items.Count > 0)
+        _releaseCombo.IsEnabled = true;
+        if (_releaseCombo.SelectedIndex < 0 && _releaseCombo.Items.Count > 0)
             _releaseCombo.SelectedIndex = 0;
     }
 
