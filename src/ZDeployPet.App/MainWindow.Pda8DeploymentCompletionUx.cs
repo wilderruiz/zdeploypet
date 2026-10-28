@@ -9,6 +9,8 @@ namespace ZDeployPet.App;
 public partial class MainWindow
 {
     private static readonly bool Pda8DeploymentCompletionUxRegistered = RegisterPda8DeploymentCompletionUx();
+    private static readonly TimeSpan DeploymentCompletionStrobeInterval = TimeSpan.FromSeconds(1);
+    private const int ActiveWindowCompletionStrobeSteps = 6;
 
     private bool _pda8DeploymentCompletionUxInitialized;
     private bool _deploymentCompletionPresentationPending;
@@ -140,13 +142,13 @@ public partial class MainWindow
         _deploymentCompletionPulseStep = 0;
         _deploymentCompletionAttentionActive = true;
 
-        _deploymentCompletionPulseTimer ??= new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(420)
-        };
+        _deploymentCompletionPulseTimer ??= new DispatcherTimer();
+        _deploymentCompletionPulseTimer.Interval = DeploymentCompletionStrobeInterval;
         _deploymentCompletionPulseTimer.Tick -= DeploymentCompletionPulseTimer_Tick;
         _deploymentCompletionPulseTimer.Tick += DeploymentCompletionPulseTimer_Tick;
 
+        // Show immediately, then alternate once per second. If ZDeployPet is in the
+        // background/minimized this continues until the operator returns to the app.
         ShowDeploymentCompletionTaskbarColor(show: true);
         _deploymentCompletionPulseTimer.Start();
     }
@@ -157,18 +159,14 @@ public partial class MainWindow
         bool show = _deploymentCompletionPulseStep % 2 == 0;
         ShowDeploymentCompletionTaskbarColor(show);
 
-        if (_deploymentCompletionPulseStep < 8)
+        // While ZDeployPet is in the background, keep the subtle green/red strobe
+        // running indefinitely so completion is visible without stealing focus.
+        // If the app was already active when the run completed, six one-second
+        // transitions are enough acknowledgement and the taskbar returns to normal.
+        if (!IsActive || _deploymentCompletionPulseStep < ActiveWindowCompletionStrobeSteps)
             return;
 
-        _deploymentCompletionPulseTimer?.Stop();
-
-        // If the app is in the background, leave a solid green/red taskbar state
-        // after the pulse until the operator returns. If already active, the pulse
-        // itself is enough and the taskbar returns to normal.
-        if (IsActive)
-            ClearDeploymentCompletionTaskbarAttention();
-        else
-            ShowDeploymentCompletionTaskbarColor(show: true);
+        ClearDeploymentCompletionTaskbarAttention();
     }
 
     private void ShowDeploymentCompletionTaskbarColor(bool show)
