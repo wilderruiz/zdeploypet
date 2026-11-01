@@ -82,7 +82,20 @@ public partial class MainWindow
             string.Equals(entry.Category, "Report", StringComparison.OrdinalIgnoreCase) &&
             entry.Message.StartsWith("Latest deployment report loaded for", StringComparison.OrdinalIgnoreCase);
 
-        if (!trustedReportLoaded || !_deploymentCompletionPresentationPending || _latestDeploymentReport is null)
+        if (!trustedReportLoaded || _latestDeploymentReport is null)
+            return;
+
+        // The report card can be refreshed independently of a just-finished run
+        // (timer refresh, manual refresh, Home/Profile navigation). Always derive
+        // its tint from the trusted report currently being rendered so stale PASS/
+        // FAIL presentation cannot survive after the card content changes.
+        bool passed = _latestDeploymentReport.Outcome == DeploymentReportOutcome.Pass;
+        ApplyLatestReportCompletionHighlight(passed);
+
+        // Only a real deployment completion owns the automatic Reports focus and
+        // Windows taskbar attention. Passive report refreshes merely synchronize
+        // the card presentation to reporter truth.
+        if (!_deploymentCompletionPresentationPending)
             return;
 
         _deploymentCompletionPresentationPending = false;
